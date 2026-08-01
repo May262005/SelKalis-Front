@@ -41,31 +41,39 @@ export class DocumentosService {
   }
 
   private handleError(error: any): Observable<never> {
-    // Extraer el mensaje amable del backend
-    let userMessage = 'Ocurrió un error. Intenta de nuevo.';
-    
-    // Si el backend envió un mensaje de error amable
+    let userMessage = 'Ocurrio un error. Intenta de nuevo.';
+
     if (error.error?.error) {
+      // Mensaje amable que ya viene del backend
       userMessage = error.error.error;
     } else if (error.error?.message) {
       userMessage = error.error.message;
+    } else if (error.status === 0) {
+      // Sin conexion al servidor, CORS, o servidor caido
+      userMessage = 'No hay conexion con el servidor. Verifica tu internet.';
+    } else if (error.status === 401) {
+      userMessage = 'Tu sesion expiro. Inicia sesion de nuevo.';
+    } else if (error.status === 403) {
+      userMessage = 'No tienes permiso para hacer esto.';
+    } else if (error.status === 404) {
+      userMessage = 'No encontramos lo que buscas.';
+    } else if (error.status === 413) {
+      userMessage = 'El archivo es demasiado pesado. El limite es 50 MB.';
+    } else if (error.status >= 500) {
+      userMessage = 'Hubo un problema en el servidor. Intenta de nuevo en un momento.';
     } else if (error.message) {
-      // Si es un error de red o timeout
       if (error.message.includes('timeout')) {
-        userMessage = 'La conexión está tardando demasiado. Verifica tu internet.';
+        userMessage = 'La conexion esta tardando demasiado. Verifica tu internet.';
       } else if (error.message.includes('Network')) {
-        userMessage = 'No hay conexión con el servidor. Verifica tu internet.';
-      } else {
-        userMessage = error.message;
+        userMessage = 'No hay conexion con el servidor. Verifica tu internet.';
       }
     }
-    
+
     console.error('Error del servicio:', { error, userMessage });
-    
-    // Devolver el error con el mensaje amable
-    return throwError(() => ({ 
-      ...error, 
-      userMessage: userMessage 
+
+    return throwError(() => ({
+      ...error,
+      userMessage: userMessage
     }));
   }
 
@@ -107,7 +115,7 @@ export class DocumentosService {
     if (token) {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
-    // NO establecer Content-Type - el navegador lo hace automáticamente con FormData
+    // No establecer Content-Type, el navegador lo hace automaticamente con FormData
 
     return this.http.post(`${this.apiUrl}/documentos/upload`, formData, {
       headers: headers
