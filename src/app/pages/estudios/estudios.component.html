@@ -1,0 +1,500 @@
+<div class="estudios-container">
+  <div class="hero">
+    <h1>Mis <span>Estudios</span></h1>
+    <p>Gestión completa de tus estudios médicos</p>
+  </div>
+
+  <div class="search-section">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        placeholder="Buscar por título, tipo o lugar..." 
+        [(ngModel)]="terminoBusqueda"
+        (input)="filtrarEstudios(); actualizarVista();"
+      >
+    </div>
+    <div class="filter-buttons">
+      <button class="filter-btn" [class.active]="filtroActual === 'todos'" (click)="cambiarFiltro('todos')">
+        Todos
+      </button>
+      <button class="filter-btn" [class.active]="filtroActual === 'pendientes'" (click)="cambiarFiltro('pendientes')">
+        Pendientes
+      </button>
+      <button class="filter-btn" [class.active]="filtroActual === 'completados'" (click)="cambiarFiltro('completados')">
+        Completados
+      </button>
+      <button class="filter-btn" [class.active]="filtroActual === 'cancelados'" (click)="cambiarFiltro('cancelados')">
+        Cancelados
+      </button>
+      <button class="btn-add" (click)="abrirModal()">
+        <i class="fas fa-plus-circle"></i> Nuevo estudio
+      </button>
+    </div>
+  </div>
+
+  <div class="vista-tabs">
+    <button class="vista-tab" [class.active]="vistaActual === 'lista'" (click)="cambiarVista('lista')">
+      <i class="fas fa-list-ul"></i> Lista
+    </button>
+    <button class="vista-tab" [class.active]="vistaActual === 'mes'" (click)="cambiarVista('mes')">
+      <i class="fas fa-calendar-alt"></i> Mes
+    </button>
+    <button class="vista-tab" [class.active]="vistaActual === 'semana'" (click)="cambiarVista('semana')">
+      <i class="fas fa-calendar-week"></i> Semana
+    </button>
+    <button class="vista-tab" [class.active]="vistaActual === 'dia'" (click)="cambiarVista('dia')">
+      <i class="fas fa-calendar-day"></i> Día
+    </button>
+  </div>
+
+  <!-- ==================== VISTA: LISTA ==================== -->
+  <div class="estudios-list" *ngIf="vistaActual === 'lista'">
+    <div class="spinner-overlay" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <p class="spinner-text">Cargando estudios...</p>
+    </div>
+
+    <ng-container *ngIf="!isLoading">
+      <div class="estudios-list-container" *ngIf="estudiosPaginados.length > 0">
+        <div class="estudio-card" *ngFor="let estudio of estudiosPaginados">
+          <div class="estudio-card-header" (click)="toggleEstudio(estudio.id!)">
+            <div class="header-left">
+              <i class="fas" [class.fa-chevron-down]="estudioExpandidoId === estudio.id" 
+                 [class.fa-chevron-right]="estudioExpandidoId !== estudio.id"></i>
+              <div class="estudio-info">
+                <h3>{{ estudio.titulo }}</h3>
+                <p>{{ estudio.tipo }}</p>
+              </div>
+            </div>
+            <div class="header-right">
+              <span class="status-badge" [class.activo]="estudio.estado === 'pendiente'"
+                                         [class.completado]="estudio.estado === 'completado'"
+                                         [class.cancelado]="estudio.estado === 'cancelado'">
+                {{ estudio.estado === 'pendiente' ? 'Pendiente' : 
+                   estudio.estado === 'completado' ? 'Completado' : 'Cancelado' }}
+              </span>
+              <div class="acciones-header" *ngIf="estudio.estado === 'pendiente'">
+                <button class="btn-delete" (click)="$event.stopPropagation(); abrirModal(estudio)" 
+                        *ngIf="estudio.fecha >= obtenerFechaMinima()">
+                  Editar
+                </button>
+                <button class="btn-delete" (click)="$event.stopPropagation(); reagendarEstudioDesdeDetalle(estudio)">
+                  Reagendar
+                </button>
+                <button class="btn-delete" (click)="$event.stopPropagation(); cancelarEstudio(estudio.id!)">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="estudio-card-body" *ngIf="estudioExpandidoId === estudio.id">
+            <div class="estudio-detalles-grid">
+              <div class="detalle-item">
+                <span class="detalle-label">Fecha</span>
+                <span class="detalle-valor">{{ formatearFecha(estudio.fecha) }}</span>
+              </div>
+              <div class="detalle-item">
+                <span class="detalle-label">Hora</span>
+                <span class="detalle-valor">{{ formatearHora(estudio.hora) }}</span>
+              </div>
+              <div class="detalle-item" *ngIf="estudio.lugar">
+                <span class="detalle-label">Lugar</span>
+                <span class="detalle-valor">{{ estudio.lugar }}</span>
+              </div>
+              <div class="detalle-item" *ngIf="estudio.notas">
+                <span class="detalle-label">Notas</span>
+                <span class="detalle-valor">{{ estudio.notas }}</span>
+              </div>
+            </div>
+
+            <div class="estudio-acciones-body" *ngIf="estudio.estado === 'pendiente'">
+              <span class="aviso-edicion" *ngIf="estudio.fecha < obtenerFechaMinima()">
+                No se puede editar porque la fecha ya pasó
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pagination-container" *ngIf="estudiosFiltrados.length > 0">
+        <div class="pagination-info">
+          Mostrando {{ (paginaActual - 1) * itemsPorPagina + 1 }} - 
+          {{ Math.min(paginaActual * itemsPorPagina, estudiosFiltrados.length) }} 
+          de {{ estudiosFiltrados.length }} estudios
+        </div>
+        <div class="pagination-controls">
+          <button class="pagination-btn" [disabled]="paginaActual === 1" (click)="cambiarPagina(paginaActual - 1)">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="pagination-btn" *ngFor="let pagina of obtenerPaginas()" 
+                  [class.active]="pagina === paginaActual" 
+                  [class.separador]="pagina === -1"
+                  (click)="pagina !== -1 && cambiarPagina(pagina)">
+            {{ pagina === -1 ? '…' : pagina }}
+          </button>
+          <button class="pagination-btn" [disabled]="paginaActual === totalPaginas" (click)="cambiarPagina(paginaActual + 1)">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-estudios" *ngIf="estudiosFiltrados.length === 0">
+        <i class="fas fa-flask"></i>
+        <p *ngIf="filtroActual === 'todos'">No tienes estudios registrados</p>
+        <p *ngIf="filtroActual === 'pendientes'">No tienes estudios pendientes</p>
+        <p *ngIf="filtroActual === 'completados'">No tienes estudios completados</p>
+        <p *ngIf="filtroActual === 'cancelados'">No tienes estudios cancelados</p>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- ==================== VISTA: MES ==================== -->
+  <div class="card" *ngIf="vistaActual === 'mes'">
+    <div class="card-header calendario-header">
+      <h3><i class="fas fa-calendar-alt"></i> {{ obtenerNombreMes(mesActual) }} {{ anioActual }}</h3>
+      <div class="calendario-controls">
+        <button class="btn-nav" (click)="mesAnterior()">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="mes-anio">
+          {{ obtenerNombreMes(mesActual) }} {{ anioActual }}
+        </span>
+        <button class="btn-nav" (click)="mesSiguiente()">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+        <button class="btn-hoy" (click)="irHoy()">
+          <i class="fas fa-calendar-day"></i> Hoy
+        </button>
+      </div>
+    </div>
+
+    <div class="calendario-grid">
+      <div class="calendario-header-dias">
+        <div class="dia-nombre">Lun</div>
+        <div class="dia-nombre">Mar</div>
+        <div class="dia-nombre">Mié</div>
+        <div class="dia-nombre">Jue</div>
+        <div class="dia-nombre">Vie</div>
+        <div class="dia-nombre">Sáb</div>
+        <div class="dia-nombre">Dom</div>
+      </div>
+
+      <div class="calendario-dias">
+        <div class="calendario-dia" *ngFor="let dia of diasDelMes"
+             [class.hoy]="esHoy(dia.fecha)"
+             [class.otro-mes]="dia.fecha.getMonth() + 1 !== mesActual"
+             [class.seleccionado]="isFechaSeleccionada(dia.fecha)"
+             [class.con-citas]="dia.estudios.length > 0"
+             (click)="seleccionarFecha(dia.fecha)">
+          <span class="dia-numero">{{ dia.dia }}</span>
+          <div class="citas-del-dia">
+            <div class="cita-mini" *ngFor="let estudio of dia.estudios | slice:0:3"
+                 [class.cita-pendiente]="estudio.estado === 'pendiente'"
+                 [class.cita-completada]="estudio.estado === 'completado'"
+                 [class.cita-cancelada]="estudio.estado === 'cancelado'"
+                 (click)="$event.stopPropagation(); verDetalleEstudio(estudio)">
+              <span class="cita-titulo">{{ estudio.titulo }}</span>
+              <span class="cita-hora">{{ formatearHora(estudio.hora) }}</span>
+            </div>
+            <div class="cita-mas" *ngIf="dia.estudios.length > 3">
+              +{{ dia.estudios.length - 3 }} más
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISTA: SEMANA ==================== -->
+  <div class="card" *ngIf="vistaActual === 'semana'">
+    <div class="card-header calendario-header">
+      <h3><i class="fas fa-calendar-week"></i> Semana</h3>
+      <div class="calendario-controls">
+        <button class="btn-nav" (click)="semanaAnterior()">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="mes-anio">
+          {{ formatearFecha(formatearFechaLocal(semanaActual[0])) }} - 
+          {{ formatearFecha(formatearFechaLocal(semanaActual[6])) }}
+        </span>
+        <button class="btn-nav" (click)="semanaSiguiente()">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+        <button class="btn-hoy" (click)="irHoy(); generarSemanaActual();">
+          <i class="fas fa-calendar-day"></i> Hoy
+        </button>
+      </div>
+    </div>
+
+    <div class="semana-grid">
+      <div class="semana-dia" *ngFor="let dia of semanaActual"
+           [class.seleccionado]="isFechaSeleccionada(dia)"
+           (click)="seleccionarFecha(dia)">
+        <div class="semana-dia-header" [class.hoy]="esHoy(dia)">
+          <span class="dia-nombre-semana">{{ obtenerNombreDia(dia) }}</span>
+          <span class="dia-numero-semana" [class.hoy-numero]="esHoy(dia)">{{ dia.getDate() }}</span>
+        </div>
+        <div class="semana-citas">
+          <div class="cita-semana" *ngFor="let estudio of getEstudiosDelDia(dia)"
+               [class.cita-pendiente]="estudio.estado === 'pendiente'"
+               [class.cita-completada]="estudio.estado === 'completado'"
+               [class.cita-cancelada]="estudio.estado === 'cancelado'"
+               (click)="$event.stopPropagation(); verDetalleEstudio(estudio)">
+            <div class="cita-semana-info">
+              <strong>{{ estudio.titulo }}</strong>
+              <span class="cita-semana-hora">{{ formatearHora(estudio.hora) }}</span>
+            </div>
+            <div class="cita-semana-estado">
+              <span class="estado-badge" [class.estado-pendiente]="estudio.estado === 'pendiente'"
+                                        [class.estado-completada]="estudio.estado === 'completado'"
+                                        [class.estado-cancelada]="estudio.estado === 'cancelado'">
+                {{ estudio.estado === 'pendiente' ? 'Pendiente' : 
+                   estudio.estado === 'completado' ? 'Completado' : 'Cancelado' }}
+              </span>
+            </div>
+          </div>
+          <div class="semana-vacio" *ngIf="getEstudiosDelDia(dia).length === 0">
+            <span>Sin estudios</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISTA: DÍA ==================== -->
+  <div class="card" *ngIf="vistaActual === 'dia'">
+    <div class="card-header calendario-header">
+      <h3><i class="fas fa-calendar-day"></i> {{ formatearFecha(formatearFechaLocal(fechaSeleccionada)) }}</h3>
+      <div class="calendario-controls">
+        <button class="btn-nav" (click)="diaAnterior()">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="btn-hoy" (click)="irHoyDia()">
+          <i class="fas fa-calendar-day"></i> Hoy
+        </button>
+        <button class="btn-nav" (click)="diaSiguiente()">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="dia-grid">
+      <div class="dia-hora" *ngFor="let hora of estudiosPorHora">
+        <div class="dia-hora-label">{{ formatearHora(hora.hora) }}</div>
+        <div class="dia-hora-citas">
+          <div class="cita-dia" *ngFor="let estudio of hora.estudios"
+               [class.cita-pendiente]="estudio.estado === 'pendiente'"
+               [class.cita-completada]="estudio.estado === 'completado'"
+               [class.cita-cancelada]="estudio.estado === 'cancelado'"
+               (click)="verDetalleEstudio(estudio)">
+            <div class="cita-dia-info">
+              <strong>{{ estudio.titulo }}</strong>
+              <span class="cita-dia-especialidad">{{ estudio.tipo }}</span>
+            </div>
+            <div class="cita-dia-estado">
+              <span class="estado-badge" [class.estado-pendiente]="estudio.estado === 'pendiente'"
+                                        [class.estado-completada]="estudio.estado === 'completado'"
+                                        [class.estado-cancelada]="estudio.estado === 'cancelado'">
+                {{ estudio.estado === 'pendiente' ? 'Pendiente' : 
+                   estudio.estado === 'completado' ? 'Completado' : 'Cancelado' }}
+              </span>
+            </div>
+          </div>
+          <div class="dia-hora-vacio" *ngIf="hora.estudios.length === 0">
+            <span>Sin estudios</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODALES ==================== -->
+
+<!-- MODAL: DETALLE DE ESTUDIO -->
+<div class="modal-overlay" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-flask"></i> Detalle del estudio</h3>
+      <button class="modal-close" (click)="cerrarModalDetalle()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body" *ngIf="estudioSeleccionado">
+      <div class="detalle-cita">
+        <div class="detalle-estado">
+          <span class="estado-badge-grande" [class.estado-pendiente]="estudioSeleccionado.estado === 'pendiente'"
+                                            [class.estado-completada]="estudioSeleccionado.estado === 'completado'"
+                                            [class.estado-cancelada]="estudioSeleccionado.estado === 'cancelado'">
+            {{ estudioSeleccionado.estado === 'pendiente' ? 'Pendiente' : 
+               estudioSeleccionado.estado === 'completado' ? 'Completado' : 'Cancelado' }}
+          </span>
+        </div>
+
+        <div class="detalle-item">
+          <span class="detalle-label">Estudio</span>
+          <span class="detalle-valor">{{ estudioSeleccionado.titulo }}</span>
+        </div>
+
+        <div class="detalle-item">
+          <span class="detalle-label">Tipo</span>
+          <span class="detalle-valor">{{ estudioSeleccionado.tipo }}</span>
+        </div>
+
+        <div class="detalle-item">
+          <span class="detalle-label">Fecha</span>
+          <span class="detalle-valor">{{ formatearFecha(estudioSeleccionado.fecha) }}</span>
+        </div>
+
+        <div class="detalle-item">
+          <span class="detalle-label">Hora</span>
+          <span class="detalle-valor">{{ formatearHora(estudioSeleccionado.hora) }}</span>
+        </div>
+
+        <div class="detalle-item" *ngIf="estudioSeleccionado.lugar">
+          <span class="detalle-label">Lugar</span>
+          <span class="detalle-valor">{{ estudioSeleccionado.lugar }}</span>
+        </div>
+
+        <div class="detalle-item" *ngIf="estudioSeleccionado.notas">
+          <span class="detalle-label">Notas</span>
+          <span class="detalle-valor">{{ estudioSeleccionado.notas }}</span>
+        </div>
+
+        <div class="aviso-fecha-pasada" *ngIf="estudioSeleccionado.estado === 'pendiente' && estudioSeleccionado.fecha < obtenerFechaMinima()">
+          <i class="fas fa-info-circle"></i> Se marcará como completado automáticamente
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer detalle-footer">
+      <button class="btn-cancel" (click)="cerrarModalDetalle()">Cerrar</button>
+      
+      <ng-container *ngIf="estudioSeleccionado">
+        <button *ngIf="estudioSeleccionado.estado === 'pendiente'" 
+                class="btn-cancelar" 
+                (click)="cancelarEstudioDesdeDetalle(estudioSeleccionado.id!)">
+          Cancelar
+        </button>
+        <button *ngIf="estudioSeleccionado.estado === 'pendiente'" 
+                class="btn-reagendar" 
+                (click)="reagendarEstudioDesdeDetalle(estudioSeleccionado)">
+          Reagendar
+        </button>
+        <button *ngIf="estudioSeleccionado.estado === 'pendiente' && estudioSeleccionado.fecha >= obtenerFechaMinima()" 
+                class="btn-edit" 
+                (click)="abrirModal(estudioSeleccionado)">
+          Editar
+        </button>
+        <button *ngIf="estudioSeleccionado.estado === 'completado'" 
+                class="btn-primary" 
+                (click)="cerrarModalDetalle()">
+          Aceptar
+        </button>
+        <button *ngIf="estudioSeleccionado.estado === 'cancelado'" 
+                class="btn-edit" 
+                (click)="abrirModal(estudioSeleccionado)">
+          Editar
+        </button>
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR / REAGENDAR ESTUDIO -->
+<div class="modal-overlay" *ngIf="mostrarModal" (click)="cerrarModal()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        <i class="fas" [class.fa-edit]="!esReagendar" [class.fa-calendar-plus]="esReagendar"></i>
+        {{ esReagendar ? 'Reagendar estudio' : (editandoId ? 'Editar estudio' : 'Registrar estudio') }}
+      </h3>
+      <button class="modal-close" (click)="cerrarModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="error-message" *ngIf="errorGuardando">
+        <i class="fas fa-exclamation-circle"></i> {{ errorGuardando }}
+      </div>
+
+      <div class="aviso-reagendar" *ngIf="esReagendar">
+        <i class="fas fa-calendar-plus"></i> Selecciona la nueva fecha y hora
+      </div>
+
+      <div class="aviso-edicion-modal" *ngIf="esEdicion && !esReagendar">
+        <i class="fas fa-info-circle"></i> Solo puedes modificar la información, no la fecha/hora
+      </div>
+
+      <div class="form-group">
+        <label>Título *</label>
+        <input type="text" [(ngModel)]="nuevoEstudio.titulo" placeholder="Ej: Análisis de sangre">
+      </div>
+      
+      <div class="form-group">
+        <label>Tipo *</label>
+        <select [(ngModel)]="nuevoEstudio.tipo">
+          <option value="">Selecciona un tipo...</option>
+          <option *ngFor="let tipo of tiposEstudio" [value]="tipo">{{ tipo }}</option>
+        </select>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha *</label>
+          <input type="date" 
+                 [(ngModel)]="nuevoEstudio.fecha" 
+                 [min]="obtenerFechaMinima()"
+                 [disabled]="esEdicion && !esReagendar">
+        </div>
+        <div class="form-group">
+          <label>Hora *</label>
+          <input type="time" 
+                 [(ngModel)]="nuevoEstudio.hora"
+                 [disabled]="esEdicion && !esReagendar">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Lugar</label>
+        <input type="text" [(ngModel)]="nuevoEstudio.lugar" placeholder="Laboratorio o dirección">
+      </div>
+
+      <div class="form-group">
+        <label>Notas</label>
+        <textarea [(ngModel)]="nuevoEstudio.notas" placeholder="Instrucciones, recomendaciones..." rows="2"></textarea>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cerrarModal()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarEstudio()" [disabled]="isLoading">
+        <span *ngIf="isLoading" class="spinner-in-button"></span>
+        {{ isLoading ? 'Guardando...' : (esReagendar ? 'Reagendar' : (editandoId ? 'Actualizar' : 'Guardar')) }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMACIÓN -->
+<div class="modal-overlay confirm-overlay" *ngIf="mostrarModalConfirmacion" (click)="cerrarModalConfirmacion()">
+  <div class="confirm-container" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">
+      <i class="fas fa-exclamation-circle"></i>
+    </div>
+    <h3 class="confirm-title">{{ confirmacion.titulo }}</h3>
+    <p class="confirm-message">{{ confirmacion.mensaje }}</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" (click)="cerrarModalConfirmacion()">
+        {{ confirmacion.textoCancelar }}
+      </button>
+      <button class="btn-confirm" (click)="confirmarAccion()">
+        {{ confirmacion.textoConfirmar }}
+      </button>
+    </div>
+  </div>
+</div>

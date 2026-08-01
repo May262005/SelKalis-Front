@@ -1,0 +1,308 @@
+/* faq.component.css */
+/* ============================================
+   SelKalis — Preguntas Frecuentes Styles
+   ============================================ */
+
+:host {
+  display: block;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.landing {
+  --marine-blue: #1F3A5F;
+  --steel-blue: #4A6FA5;
+  --steel-hover: #3D5F91;
+  --sky-blue: #6FA8DC;
+  --soft-blue-bg: #EEF3F8;
+  --white-card: #FFFFFF;
+  --border-light: #D6E2EE;
+  --text-primary: #1F3A5F;
+  --text-secondary: #4F6B8A;
+  --text-soft: #7B8CA8;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 40px;
+  background: #F8FAFC;
+  color: var(--text-secondary);
+  min-height: 100vh;
+}
+
+.hero {
+  padding: 80px 40px 64px;
+  max-width: 820px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1.13;
+  letter-spacing: -1.5px;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.hero h1 em {
+  font-style: normal;
+  color: var(--steel-blue);
+}
+
+.hero p {
+  font-size: 18px;
+  color: var(--text-soft);
+  max-width: 440px;
+  margin: 0 auto 36px;
+  line-height: 1.6;
+}
+
+.hero-ctas {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hero .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: var(--soft-blue-bg);
+  padding: 7px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-light);
+}
+
+.hero .badge i {
+  color: var(--steel-blue);
+}
+
+.stats-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--white-card);
+  padding: 0 40px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 40px;
+  gap: 3px;
+}
+
+.stat-n {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.stat-n i {
+  font-size: 24px;
+  color: var(--steel-blue);
+}
+
+.stat-l {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border-light);
+}
+
+.section {
+  padding: 72px 40px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.section-header {
+  margin-bottom: 32px;
+}
+
+.section h2 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.section-divider {
+  height: 1px;
+  background: var(--border-light);
+  margin: 0 40px;
+}
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.faq-item {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 24px 22px;
+  background: var(--white-card);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.faq-item:hover {
+  border-color: var(--steel-blue);
+  box-shadow: 0 4px 16px rgba(31, 58, 95, 0.08);
+  transform: translateY(-2px);
+}
+
+.faq-item h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+.faq-item p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.content-box {
+  background: var(--white-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 32px 36px;
+}
+
+.content-box p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+.content-box p:last-child {
+  margin-bottom: 0;
+}
+
+.content-box a {
+  color: var(--steel-blue);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.content-box a:hover {
+  color: var(--steel-hover);
+}
+
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  background: var(--white-card);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.contact-item:hover {
+  border-color: var(--steel-blue);
+  box-shadow: 0 4px 16px rgba(31, 58, 95, 0.06);
+}
+
+.contact-item.full {
+  grid-column: 1 / -1;
+}
+
+.contact-item i {
+  font-size: 20px;
+  color: var(--steel-blue);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.contact-item h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.contact-item p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.contact-item a {
+  color: var(--steel-blue);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.contact-item a:hover {
+  color: var(--steel-hover);
+}
+
+@media (max-width: 900px) {
+  .hero { padding: 56px 24px 48px; }
+  .hero h1 { font-size: 40px; }
+  .stats-bar { padding: 0 16px; }
+  .stat { padding: 20px; flex: 1; min-width: 100px; }
+  .stat-divider { display: none; }
+  .section { padding: 56px 24px; }
+  .section-divider { margin: 0 24px; }
+  .faq-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: 36px; }
+  .hero p { font-size: 16px; }
+  .stats-bar { flex-direction: column; }
+  .stat { width: 100%; padding: 16px 20px; border-bottom: 1px solid var(--border-light); }
+  .stat:last-child { border-bottom: none; }
+  .faq-grid { grid-template-columns: 1fr; }
+  .section h2 { font-size: 28px; }
+  .contact-grid { grid-template-columns: 1fr; }
+  .contact-item.full { grid-column: 1; }
+}
+
+@media (max-width: 600px) {
+  .hero { padding: 40px 20px 32px; }
+  .hero h1 { font-size: 32px; }
+  .section { padding: 40px 20px; }
+  .section h2 { font-size: 24px; }
+  .content-box { padding: 24px 20px; }
+  .faq-item { padding: 20px 16px; }
+  .contact-item { padding: 16px 20px; }
+}
+
+@media (max-width: 380px) {
+  .hero h1 { font-size: 28px; }
+  .stat-n { font-size: 22px; }
+  .stat-l { font-size: 11px; }
+  .section h2 { font-size: 22px; }
+}

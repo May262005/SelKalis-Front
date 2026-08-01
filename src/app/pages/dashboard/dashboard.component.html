@@ -1,0 +1,163 @@
+<!-- dashboard.component.html -->
+<div class="dashboard-container">
+  <!-- Spinner de carga -->
+  <div class="spinner-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p class="spinner-text">Cargando tu dashboard...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading">
+    <div class="hero">
+      <h1>{{ saludo }}, <span>{{ nombreUsuario }}</span></h1>
+      <p>{{ fechaActual }} · {{ horaActual }}</p>
+    </div>
+
+    <!-- Tarjetas superiores -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-icon">
+          <i class="fas fa-pills"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Próxima toma</span>
+          <strong>{{ proximaToma?.nombre || 'Sin medicamentos' }}</strong>
+          <span class="stat-time">{{ proximaToma?.hora || '—' }}</span>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">
+          <i class="fas fa-calendar-alt"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Próxima cita</span>
+          <strong>{{ proximaCita?.doctor || 'Sin citas' }}</strong>
+          <span class="stat-time">{{ proximaCita?.fecha || '—' }}</span>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">
+          <i class="fas fa-file-medical"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Tratamientos activos</span>
+          <strong>{{ tratamientosActivos }} activo{{ tratamientosActivos !== 1 ? 's' : '' }}</strong>
+          <span class="stat-time">{{ completadosHoy }} tomas completadas hoy</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Tratamientos activos -->
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-notes-medical"></i> Tratamientos activos</h3>
+          <a routerLink="/tratamientos" class="card-link">Ver todos →</a>
+        </div>
+        <div class="card-list">
+          <div class="list-row" *ngFor="let tratamiento of tratamientosActivosLista">
+            <div class="list-left">
+              <i class="fas fa-capsules"></i>
+              <div>
+                <strong>{{ tratamiento.nombre }}</strong>
+                <p>{{ tratamiento.medicamentosCount }} medicamento{{ tratamiento.medicamentosCount !== 1 ? 's' : '' }} · {{ tratamiento.progreso }}% completado</p>
+              </div>
+            </div>
+            <i class="fas fa-chart-line" style="color: var(--steel-blue, #4A6FA5);"></i>
+          </div>
+          <div class="list-row" *ngIf="tratamientosActivosLista.length === 0">
+            <div class="list-left">
+              <i class="fas fa-notes-medical"></i>
+              <div>
+                <strong>No hay tratamientos activos</strong>
+                <p>Comienza un nuevo tratamiento</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Próximas citas -->
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-calendar-check"></i> Próximas citas</h3>
+          <a routerLink="/citas" class="card-link">Ver todas →</a>
+        </div>
+        <div class="card-list">
+          <div class="list-row" *ngFor="let cita of proximasCitas">
+            <div class="list-left">
+              <i class="fas fa-user-md"></i>
+              <div>
+                <strong>{{ cita.doctor }}</strong>
+                <p>{{ cita.especialidad }} · {{ cita.fecha }} {{ cita.hora }}</p>
+              </div>
+            </div>
+            <span class="tag" [class.tag-virtual]="cita.tipo === 'virtual'">{{ cita.tipo === 'virtual' ? 'Virtual' : 'Presencial' }}</span>
+          </div>
+          <div class="list-row" *ngIf="proximasCitas.length === 0">
+            <div class="list-left">
+              <i class="fas fa-calendar-alt"></i>
+              <div>
+                <strong>No hay citas próximas</strong>
+                <p>Agenda una nueva cita</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Próximos estudios -->
+    <div class="card full-width">
+      <div class="card-header">
+        <h3><i class="fas fa-microscope"></i> Próximos estudios</h3>
+        <a routerLink="/estudios" class="card-link">Ver historial →</a>
+      </div>
+      <div class="card-list">
+        <div class="list-row" *ngFor="let estudio of proximosEstudios">
+          <div class="list-left">
+            <i class="fas fa-flask"></i>
+            <div>
+              <strong>{{ estudio.lugar }}</strong>
+              <p>{{ estudio.tipo }} · {{ estudio.fecha }} {{ estudio.hora }}</p>
+            </div>
+          </div>
+          <span class="tag">Pendiente</span>
+        </div>
+        <div class="list-row" *ngIf="proximosEstudios.length === 0">
+          <div class="list-left">
+            <i class="fas fa-microscope"></i>
+            <div>
+              <strong>No hay estudios programados</strong>
+              <p>Los próximos estudios aparecerán aquí</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Documentos recientes -->
+    <div class="card full-width">
+      <div class="card-header">
+        <h3><i class="fas fa-folder-open"></i> Documentos recientes</h3>
+        <button class="btn-outline" (click)="subirDocumento()"><i class="fas fa-upload"></i> Subir</button>
+      </div>
+      <div class="docs">
+        <div class="doc" *ngFor="let doc of documentosRecientes" (click)="verDocumento(doc)">
+          <i class="fas" [class.fa-file-pdf]="doc.tipo === 'pdf'" [class.fa-file-image]="doc.tipo === 'imagen'" [class.fa-file-alt]="doc.tipo !== 'pdf' && doc.tipo !== 'imagen'"></i>
+          <div>
+            <strong>{{ doc.nombre }}</strong>
+            <span>{{ doc.fecha }} · {{ doc.tamano }}</span>
+          </div>
+          <i class="fas fa-download"></i>
+        </div>
+        <div class="doc" *ngIf="documentosRecientes.length === 0">
+          <i class="fas fa-folder-open"></i>
+          <div>
+            <strong>No hay documentos</strong>
+            <span>Sube tu primer documento</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

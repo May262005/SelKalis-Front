@@ -1,0 +1,14 @@
+<ng-container *ngIf="showProtectedLayout">
+  <app-header></app-header>
+  <app-mobile-menu></app-mobile-menu>
+</ng-container>
+
+<ng-container *ngIf="showPublicLayout">
+  <app-public-header></app-public-header>
+</ng-container>
+
+<main [class.has-protected-header]="showProtectedLayout"
+      [class.has-public-header]="showPublicLayout">
+  <router-outlet></router-outlet>
+  <app-cookie-banner></app-cookie-banner>
+</main>

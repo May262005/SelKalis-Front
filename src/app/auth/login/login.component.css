@@ -1,0 +1,721 @@
+/* ============================================
+   SelKalis — Auth Styles (login + registro)
+   ============================================ */
+
+:host {
+  display: block;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.auth-container {
+  /* Paleta SelKalis */
+  --marine-blue: #1F3A5F;
+  --steel-blue: #4A6FA5;
+  --steel-hover: #3D5F91;
+  --sky-blue: #6FA8DC;
+  --soft-blue-bg: #EEF3F8;
+  --white-card: #FFFFFF;
+  --border-light: #D6E2EE;
+  --text-primary: #1F3A5F;
+  --text-secondary: #4F6B8A;
+  --text-soft: #7B8CA8;
+  --error-blue: #5A7DB3;
+  --success-blue: #7CA6D8;
+  --warning-blue: #8FB5E5;
+  --info-blue: #6FA8DC;
+
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: var(--soft-blue-bg);
+  padding: 40px 20px 32px;
+  box-sizing: border-box;
+}
+
+/* =================== CARD =================== */
+.auth-card {
+  background: var(--white-card);
+  border-radius: 32px;
+  border: 1px solid var(--border-light);
+  padding: 30px 42px;
+  width: min(750px, 92vw);
+  box-shadow: 0 20px 35px -12px rgba(31, 58, 95, 0.12);
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.auth-card--wide {
+  width: min(750px, 92vw);
+}
+
+/* =================== HEADER =================== */
+.auth-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.auth-header h2 {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -1px;
+  margin-bottom: 10px;
+}
+
+.auth-header p {
+  font-size: 16px;
+  color: var(--text-soft);
+}
+
+/* =================== FORM =================== */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="tel"] {
+  padding: 14px 18px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 14px;
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--white-card);
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--steel-blue);
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
+}
+
+.form-group input::placeholder {
+  color: var(--text-soft);
+  font-size: 14px;
+}
+
+/* =================== WRAPPER DE CONTRASEÑA =================== */
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  padding-right: 48px !important;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password-btn:hover:not(:disabled) {
+  color: var(--steel-blue);
+  background: var(--soft-blue-bg);
+}
+
+.toggle-password-btn:focus-visible {
+  outline: 2px solid var(--steel-blue);
+  outline-offset: 2px;
+}
+
+.toggle-password-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toggle-password-btn i {
+  font-size: 18px;
+}
+
+/* ============================================
+   CHECKBOX PREMIUM - "Recordarme" (Login)
+   ============================================ */
+.remember-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding: 0;
+}
+
+/* Ocultar el checkbox nativo */
+.remember-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Custom checkbox - diseño redondeado y elegante */
+.custom-checkbox-remember {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  background: var(--white-card);
+  border: 2px solid var(--border-light);
+  border-radius: 7px;
+  position: relative;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Hover state - más suave */
+.remember-checkbox:hover .custom-checkbox-remember {
+  border-color: var(--steel-blue);
+  box-shadow: 0 0 0 5px rgba(74, 111, 165, 0.08);
+  transform: scale(1.03);
+}
+
+/* Checked state - con gradiente suave */
+.remember-checkbox input[type="checkbox"]:checked + .custom-checkbox-remember {
+  background: var(--steel-blue);
+  border-color: var(--steel-blue);
+  box-shadow: 0 4px 12px rgba(74, 111, 165, 0.25);
+  transform: scale(1.05);
+}
+
+/* Checkmark más elegante */
+.remember-checkbox input[type="checkbox"]:checked + .custom-checkbox-remember::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 7px;
+  height: 12px;
+  border: 2.5px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) scale(1);
+  animation: checkPop 0.25s ease;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+}
+
+/* Focus state */
+.remember-checkbox input[type="checkbox"]:focus-visible + .custom-checkbox-remember {
+  outline: 2.5px solid var(--steel-blue);
+  outline-offset: 3px;
+}
+
+/* Disabled state */
+.remember-checkbox input[type="checkbox"]:disabled + .custom-checkbox-remember {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.remember-checkbox input[type="checkbox"]:disabled ~ .remember-label {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Animación de check mejorada */
+@keyframes checkPop {
+  0% {
+    transform: rotate(45deg) scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(45deg) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(45deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.remember-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: color 0.2s ease;
+}
+
+/* ============================================
+   CHECKBOX PREMIUM - "Términos" (Registro)
+   ============================================ */
+.terminos-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding: 0;
+  margin: 0;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+/* Ocultar el checkbox nativo */
+.terminos-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Custom checkbox - diseño redondeado y elegante */
+.custom-checkbox-terminos {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  background: var(--white-card);
+  border: 2px solid var(--border-light);
+  border-radius: 7px;
+  position: relative;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Hover state - más suave */
+.terminos-checkbox:hover .custom-checkbox-terminos {
+  border-color: var(--steel-blue);
+  box-shadow: 0 0 0 5px rgba(74, 111, 165, 0.08);
+  transform: scale(1.03);
+}
+
+/* Checked state - con gradiente suave */
+.terminos-checkbox input[type="checkbox"]:checked + .custom-checkbox-terminos {
+  background: var(--steel-blue);
+  border-color: var(--steel-blue);
+  box-shadow: 0 4px 12px rgba(74, 111, 165, 0.25);
+  transform: scale(1.05);
+}
+
+/* Checkmark más elegante */
+.terminos-checkbox input[type="checkbox"]:checked + .custom-checkbox-terminos::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 7px;
+  height: 12px;
+  border: 2.5px solid white;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) scale(1);
+  animation: checkPop 0.25s ease;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+}
+
+/* Focus state */
+.terminos-checkbox input[type="checkbox"]:focus-visible + .custom-checkbox-terminos {
+  outline: 2.5px solid var(--steel-blue);
+  outline-offset: 3px;
+}
+
+/* Disabled state */
+.terminos-checkbox input[type="checkbox"]:disabled + .custom-checkbox-terminos {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.terminos-checkbox input[type="checkbox"]:disabled ~ .terminos-lebel {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.terminos-lebel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: color 0.2s ease;
+}
+
+.terminos-lebel .link-primary {
+  font-weight: 600;
+}
+
+/* =================== LINKS =================== */
+.link-primary {
+  color: var(--steel-blue);
+  text-decoration: none;
+  transition: color 0.15s;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.link-primary:hover {
+  color: var(--steel-hover);
+  text-decoration: underline;
+}
+
+.link-bold {
+  font-weight: 700;
+}
+
+/* =================== BOTÓN SUBMIT =================== */
+.btn-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px;
+  background: var(--steel-blue);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: var(--steel-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(74, 111, 165, 0.25);
+}
+
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-submit i {
+  font-size: 18px;
+}
+
+/* =================== MEDIDOR DE CONTRASEÑA =================== */
+.password-meter-modern {
+  margin-top: 12px;
+  animation: slideDown 0.25s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.meter-bars {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.meter-bar {
+  flex: 1;
+  height: 5px;
+  background: var(--border-light);
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.meter-bar.fill {
+  background: var(--steel-blue);
+}
+
+.meter-bar.weak {
+  background: var(--error-blue);
+}
+
+.meter-bar.medium {
+  background: var(--warning-blue);
+}
+
+.meter-bar.strong {
+  background: var(--success-blue);
+}
+
+.meter-bar.very-strong {
+  background: var(--steel-blue);
+}
+
+.meter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.meter-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.meter-label.weak {
+  color: var(--error-blue);
+}
+
+.meter-label.medium {
+  color: var(--warning-blue);
+}
+
+.meter-label.strong {
+  color: var(--success-blue);
+}
+
+.meter-label.very-strong {
+  color: var(--steel-blue);
+}
+
+.meter-score {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-soft);
+  background: var(--soft-blue-bg);
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+.requirements-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.req-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-soft);
+  transition: all 0.2s;
+  padding: 4px 0;
+}
+
+.req-item i {
+  font-size: 10px;
+  width: 14px;
+  transition: all 0.2s;
+}
+
+.req-item.met {
+  color: var(--success-blue);
+}
+
+.req-item.met i {
+  color: var(--success-blue);
+}
+
+/* =================== CONFIRMACIÓN =================== */
+.confirm-status {
+  margin-top: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.confirm-status.success {
+  background: rgba(124, 166, 216, 0.1);
+  color: var(--success-blue);
+}
+
+.confirm-status.error {
+  background: rgba(90, 125, 179, 0.1);
+  color: var(--error-blue);
+}
+
+/* =================== FOOTER =================== */
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+  font-size: 14px;
+  color: var(--text-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-footer .link-primary {
+  font-weight: 600;
+}
+
+/* =================== TOAST NOTIFICATIONS =================== */
+.selkalis-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  padding: 16px 28px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(31, 58, 95, 0.15);
+  border: 1px solid #D6E2EE;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1F3A5F;
+  z-index: 9999;
+  max-width: 90vw;
+  min-width: 280px;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.selkalis-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.selkalis-toast--success {
+  border-left: 4px solid #7CA6D8;
+}
+
+.selkalis-toast--error {
+  border-left: 4px solid #5A7DB3;
+}
+
+.selkalis-toast--warning {
+  border-left: 4px solid #8FB5E5;
+}
+
+.selkalis-toast--info {
+  border-left: 4px solid #6FA8DC;
+}
+
+/* ===========================================
+   RESPONSIVE
+   =========================================== */
+
+@media (max-width: 768px) {
+  .auth-container {
+    padding: 24px 16px;
+  }
+
+  .auth-card {
+    padding: 32px 28px;
+    border-radius: 24px;
+  }
+
+  .auth-header h2 {
+    font-size: 30px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .requirements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px 20px;
+  }
+
+  .auth-header h2 {
+    font-size: 26px;
+  }
+
+  .btn-submit {
+    padding: 13px;
+    font-size: 15px;
+  }
+
+  .selkalis-toast {
+    min-width: auto;
+    width: 90vw;
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+
+  .custom-checkbox-remember,
+  .custom-checkbox-terminos {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+  }
+
+  .remember-checkbox input[type="checkbox"]:checked + .custom-checkbox-remember::after,
+  .terminos-checkbox input[type="checkbox"]:checked + .custom-checkbox-terminos::after {
+    left: 5px;
+    top: 1px;
+    width: 6px;
+    height: 11px;
+  }
+
+  .remember-label,
+  .terminos-lebel {
+    font-size: 13px;
+  }
+}

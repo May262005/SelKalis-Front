@@ -1,0 +1,146 @@
+<div class="auth-container">
+  <div class="auth-card">
+
+    <div class="auth-header">
+      <h2 *ngIf="!mostrarVerificacion && !mostrarCambioPassword">Recuperar contraseña</h2>
+      <h2 *ngIf="mostrarVerificacion && !mostrarCambioPassword">Verificar código</h2>
+      <h2 *ngIf="mostrarCambioPassword">Nueva contraseña</h2>
+      <p *ngIf="!mostrarVerificacion && !mostrarCambioPassword">
+        Ingresa tu correo y te enviaremos un código de verificación
+      </p>
+      <p *ngIf="mostrarVerificacion && !mostrarCambioPassword">
+        Ingresa el código que enviamos a tu correo
+      </p>
+      <p *ngIf="mostrarCambioPassword">
+        Crea una nueva contraseña para tu cuenta
+      </p>
+    </div>
+
+    <!-- PASO 1: Solicitar recuperación -->
+    <form *ngIf="!mostrarVerificacion && !mostrarCambioPassword" (ngSubmit)="solicitarRecuperacion()" class="auth-form">
+
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input
+          type="email"
+          [(ngModel)]="email"
+          name="email"
+          placeholder="tu@email.com"
+          required
+          [disabled]="isLoading"
+          autocomplete="email"
+        >
+      </div>
+
+      <button type="submit" class="btn-submit" [disabled]="isLoading">
+        <i *ngIf="isLoading" class="fas fa-spinner fa-spin"></i>
+        <span *ngIf="!isLoading">Enviar código</span>
+        <span *ngIf="isLoading">Enviando...</span>
+      </button>
+
+    </form>
+
+    <!-- PASO 2: Verificar código -->
+    <form *ngIf="mostrarVerificacion && !mostrarCambioPassword" (ngSubmit)="verificarCodigo()" class="auth-form">
+
+      <div class="form-group">
+        <label>Código de verificación</label>
+        <input
+          type="text"
+          [(ngModel)]="codigo"
+          name="codigo"
+          placeholder="Ingresa el código de 6 dígitos"
+          required
+          [disabled]="isLoading"
+          maxlength="6"
+          autocomplete="off"
+        >
+        <small class="form-hint">Revisa tu correo electrónico (incluyendo la carpeta de SPAM)</small>
+      </div>
+
+      <div class="form-options">
+        <button 
+          type="button" 
+          class="btn-reenviar" 
+          (click)="reenviarCodigo()"
+          [disabled]="isLoading || tiempoRestante > 0">
+          <i class="fas fa-redo" [class.fa-spin]="isLoading"></i>
+          <span *ngIf="tiempoRestante === 0">Reenviar código</span>
+          <span *ngIf="tiempoRestante > 0">Reenviar en {{ tiempoRestante }}s</span>
+        </button>
+      </div>
+
+      <button type="submit" class="btn-submit" [disabled]="isLoading">
+        <i *ngIf="isLoading" class="fas fa-spinner fa-spin"></i>
+        <span *ngIf="!isLoading">Verificar código</span>
+        <span *ngIf="isLoading">Verificando...</span>
+      </button>
+
+    </form>
+
+    <!-- PASO 3: Cambiar contraseña -->
+    <form *ngIf="mostrarCambioPassword" (ngSubmit)="cambiarPassword()" class="auth-form">
+
+      <div class="form-group">
+        <label>Nueva contraseña</label>
+        <div style="position: relative;">
+          <input
+            [type]="showNuevaPassword ? 'text' : 'password'"
+            [(ngModel)]="nuevaPassword"
+            name="nuevaPassword"
+            placeholder="••••••••"
+            required
+            [disabled]="isLoading"
+            autocomplete="new-password"
+            style="padding-right: 48px; width: 100%; box-sizing: border-box;"
+          >
+          <button
+            type="button"
+            (click)="toggleNuevaPassword()"
+            [disabled]="isLoading"
+            style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-soft); padding: 0; display: flex; align-items: center;"
+          >
+            <i [class]="showNuevaPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size: 16px;"></i>
+          </button>
+        </div>
+        <small class="form-hint">Mínimo 6 caracteres</small>
+      </div>
+
+      <div class="form-group">
+        <label>Confirmar contraseña</label>
+        <div style="position: relative;">
+          <input
+            [type]="showConfirmarPassword ? 'text' : 'password'"
+            [(ngModel)]="confirmarPassword"
+            name="confirmarPassword"
+            placeholder="••••••••"
+            required
+            [disabled]="isLoading"
+            autocomplete="new-password"
+            style="padding-right: 48px; width: 100%; box-sizing: border-box;"
+          >
+          <button
+            type="button"
+            (click)="toggleConfirmarPassword()"
+            [disabled]="isLoading"
+            style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-soft); padding: 0; display: flex; align-items: center;"
+          >
+            <i [class]="showConfirmarPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size: 16px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" [disabled]="isLoading">
+        <i *ngIf="isLoading" class="fas fa-spinner fa-spin"></i>
+        <span *ngIf="!isLoading">Cambiar contraseña</span>
+        <span *ngIf="isLoading">Cambiando...</span>
+      </button>
+
+    </form>
+
+    <div class="auth-footer">
+      <p>¿Recordaste tu contraseña? <a routerLink="/login" class="link-primary link-bold">Inicia sesión aquí</a></p>
+    </div>
+
+  </div>
+</div>

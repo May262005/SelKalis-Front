@@ -1,0 +1,204 @@
+<div class="documentos-container">
+  <div class="hero">
+    <h1>Mis <span>Documentos</span></h1>
+    <p>Tus archivos médicos organizados</p>
+  </div>
+
+  <div class="search-section">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        placeholder="Buscar documento..." 
+        [(ngModel)]="terminoBusqueda"
+        (input)="filtrarDocumentos()"
+      >
+    </div>
+    <div class="filter-buttons">
+      <button class="filter-btn" [class.active]="filtroActual === 'todos'" (click)="cambiarFiltro('todos')">Todos</button>
+      <button class="filter-btn" [class.active]="filtroActual === 'receta'" (click)="cambiarFiltro('receta')">Recetas</button>
+      <button class="filter-btn" [class.active]="filtroActual === 'estudio'" (click)="cambiarFiltro('estudio')">Estudios</button>
+      <button class="filter-btn" [class.active]="filtroActual === 'informe'" (click)="cambiarFiltro('informe')">Informes</button>
+      <button class="btn-add" (click)="abrirModal()">
+        <i class="fas fa-upload"></i> Subir documento
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== SPINNER DE CARGA ==================== -->
+  <div class="spinner-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p class="spinner-text">Cargando documentos...</p>
+  </div>
+
+  <!-- ==================== LISTA DE DOCUMENTOS ==================== -->
+  <ng-container *ngIf="!isLoading">
+    <div class="documentos-list-container" *ngIf="documentosFiltrados.length > 0">
+      <div class="documentos-card">
+        <div class="card-header">
+          <h3>Mis documentos</h3>
+          <span class="documentos-count">{{ documentosFiltrados.length }} documentos</span>
+        </div>
+        
+        <div class="documentos-list">
+          <div class="doc-row" *ngFor="let doc of documentosFiltrados" (click)="abrirVistaPrevia(doc)">
+            <div class="doc-left">
+              <i class="fas" [class]="getIconoPorTipo(doc.tipo, doc.categoria)"></i>
+              <div>
+                <strong>{{ doc.nombre }}</strong>
+                <p>{{ formatFecha(doc.created_at || doc.fecha) }} · {{ doc.tamano }}</p>
+              </div>
+            </div>
+            <div class="doc-right" (click)="$event.stopPropagation()">
+              <span class="tag" [style.background]="getColorPorTipo(doc.categoria) + '15'" [style.color]="getColorPorTipo(doc.categoria)">
+                <i class="fas" [class]="getIconoPorTipo(doc.tipo, doc.categoria)"></i>
+                {{ doc.categoria === 'receta' ? 'Receta' : doc.categoria === 'estudio' ? 'Estudio' : doc.categoria === 'informe' ? 'Informe' : 'Otro' }}
+              </span>
+              <button class="btn-download" (click)="descargarDocumento(doc)" title="Descargar">
+                <i class="fas fa-download"></i>
+              </button>
+              <button class="btn-delete" (click)="eliminarDocumento(doc.id)" title="Eliminar">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== VACÍO ==================== -->
+    <div class="empty-documentos" *ngIf="documentosFiltrados.length === 0">
+      <i class="fas fa-folder-open"></i>
+      <p>No hay documentos que coincidan con tu búsqueda</p>
+    </div>
+  </ng-container>
+</div>
+
+<!-- ==================== MODAL: SUBIR DOCUMENTO ==================== -->
+<div class="modal-overlay" *ngIf="mostrarModal" (click)="cerrarModal()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-cloud-upload-alt"></i> Subir documento</h3>
+      <button class="modal-close" (click)="cerrarModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="error-message" *ngIf="errorMessage">
+        <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
+      </div>
+
+      <div class="upload-area" (click)="fileInput.click()" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+        <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*,application/pdf" style="display: none;">
+        
+        <div *ngIf="!archivoSeleccionado && !camaraActiva" class="upload-placeholder">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Arrastra y suelta tu archivo aquí</p>
+          <span>o haz clic para seleccionar</span>
+        </div>
+        
+        <div *ngIf="archivoSeleccionado && !camaraActiva" class="upload-preview">
+          <img *ngIf="previewUrl && archivoSeleccionado.type.startsWith('image/')" [src]="previewUrl" alt="Vista previa">
+          <i *ngIf="!previewUrl || archivoSeleccionado.type === 'application/pdf'" class="fas fa-file-pdf" style="font-size: 48px; color: #dc2626;"></i>
+          <p>{{ archivoSeleccionado.name }}</p>
+          <span>{{ (archivoSeleccionado.size / 1024 / 1024).toFixed(2) }} MB</span>
+          <button class="btn-remove-file" (click)="resetFormulario(); $event.stopPropagation()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div *ngIf="camaraActiva" class="camera-preview">
+          <video #cameraVideo autoplay playsinline></video>
+          <canvas #cameraCanvas style="display: none;"></canvas>
+          <div class="camera-controls">
+            <button class="btn-cancel" (click)="detenerCamara()"><i class="fas fa-times"></i> Cancelar</button>
+            <button class="btn-primary" (click)="tomarFoto()"><i class="fas fa-camera"></i> Tomar foto</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="camera-option" *ngIf="!camaraActiva && !archivoSeleccionado">
+        <button class="btn-outline" (click)="iniciarCamara()">
+          <i class="fas fa-camera"></i> Tomar foto con la cámara
+        </button>
+      </div>
+      
+      <div class="form-group" *ngIf="archivoSeleccionado || camaraActiva">
+        <label>Nombre del documento *</label>
+        <input type="text" [(ngModel)]="nuevoDocumento.nombre" placeholder="Ej: Receta médica abril">
+      </div>
+      
+      <div class="form-group" *ngIf="archivoSeleccionado || camaraActiva">
+        <label>Descripción</label>
+        <input type="text" [(ngModel)]="nuevoDocumento.descripcion" placeholder="Breve descripción del documento">
+      </div>
+      
+      <div class="form-group" *ngIf="archivoSeleccionado || camaraActiva">
+        <label>Categoría</label>
+        <div class="categoria-buttons">
+          <button type="button" class="categoria-btn" [class.active]="nuevoDocumento.categoria === 'receta'" (click)="nuevoDocumento.categoria = 'receta'">
+            <i class="fas fa-prescription-bottle"></i> Receta
+          </button>
+          <button type="button" class="categoria-btn" [class.active]="nuevoDocumento.categoria === 'estudio'" (click)="nuevoDocumento.categoria = 'estudio'">
+            <i class="fas fa-microscope"></i> Estudio
+          </button>
+          <button type="button" class="categoria-btn" [class.active]="nuevoDocumento.categoria === 'informe'" (click)="nuevoDocumento.categoria = 'informe'">
+            <i class="fas fa-file-alt"></i> Informe
+          </button>
+          <button type="button" class="categoria-btn" [class.active]="nuevoDocumento.categoria === 'otro'" (click)="nuevoDocumento.categoria = 'otro'">
+            <i class="fas fa-file"></i> Otro
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cerrarModal()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarDocumento()" [disabled]="!archivoSeleccionado || isLoadingSubida">
+        <span *ngIf="isLoadingSubida" class="spinner-in-button"></span>
+        {{ isLoadingSubida ? 'Subiendo...' : 'Subir documento' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL: VISTA PREVIA ==================== -->
+<div class="modal-overlay" *ngIf="mostrarVistaPrevia" (click)="cerrarVistaPrevia()">
+  <div class="modal-container modal-preview" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-file-alt"></i> {{ documentoActual?.nombre }}</h3>
+      <button class="modal-close" (click)="cerrarVistaPrevia()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body preview-body">
+      <div *ngIf="documentoActual?.tipo?.startsWith('image/') && documentoActual?.url" class="preview-image-container">
+        <img [src]="documentoActual?.url" [alt]="documentoActual?.nombre" class="preview-image">
+      </div>
+      
+      <div *ngIf="documentoActual?.tipo === 'application/pdf' && documentoActual?.url" class="preview-pdf-container">
+        <iframe [src]="(documentoActual?.url || '') | safeUrl" class="preview-pdf"></iframe>
+      </div>
+      
+      <div *ngIf="(!documentoActual?.url || !documentoActual?.tipo?.startsWith('image/')) && documentoActual?.tipo !== 'application/pdf'" class="preview-placeholder">
+        <i class="fas" [class]="getIconoPorTipo(documentoActual?.tipo || '', documentoActual?.categoria || 'otro')" style="font-size: 80px;"></i>
+        <p>No hay vista previa disponible</p>
+        <button class="btn-primary" (click)="descargarDocumento(documentoActual!)">
+          <i class="fas fa-download"></i> Descargar documento
+        </button>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <div class="preview-info">
+        <span><i class="far fa-calendar-alt"></i> {{ formatFecha(documentoActual?.created_at || documentoActual?.fecha || '') }}</span>
+        <span><i class="fas fa-database"></i> {{ documentoActual?.tamano }}</span>
+      </div>
+      <button class="btn-primary" (click)="descargarDocumento(documentoActual!)">
+        <i class="fas fa-download"></i> Descargar
+      </button>
+    </div>
+  </div>
+</div>
