@@ -1,4 +1,3 @@
-// citas.component.ts
 import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -666,7 +665,7 @@ export class CitasComponent implements OnInit {
   cancelarCita(id: string) {
     this.abrirConfirmacion(
       'Cancelar cita',
-      'Seguro que quieres cancelar esta cita? Podras editarla despues.',
+      '¿Seguro que quieres cancelar esta cita? Podrás editarla después.',
       () => {
         this.isLoading = true;
         this.cdr.detectChanges();
@@ -687,7 +686,7 @@ export class CitasComponent implements OnInit {
           }
         });
       },
-      { textoConfirmar: 'Si, cancelar' }
+      { textoConfirmar: 'Sí, cancelar' }
     );
   }
 

@@ -27,6 +27,9 @@
       <button class="filter-btn" [class.active]="filtroActual === 'canceladas'" (click)="cambiarFiltro('canceladas')">
         Canceladas
       </button>
+      <button class="btn-add" (click)="abrirModal()">
+        <i class="fas fa-plus-circle"></i> Nueva cita
+      </button>
     </div>
   </div>
 
@@ -156,6 +159,9 @@
         <p *ngIf="filtroActual === 'pendientes'">No tienes citas pendientes</p>
         <p *ngIf="filtroActual === 'completadas'">No tienes citas completadas</p>
         <p *ngIf="filtroActual === 'canceladas'">No tienes citas canceladas</p>
+        <button class="btn-add-empty" (click)="abrirModal()">
+          <i class="fas fa-plus-circle"></i> Agregar primera cita
+        </button>
       </div>
     </ng-container>
   </div>
