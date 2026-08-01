@@ -27,9 +27,6 @@
       <button class="filter-btn" [class.active]="filtroActual === 'canceladas'" (click)="cambiarFiltro('canceladas')">
         Canceladas
       </button>
-      <button class="btn-add" (click)="abrirModal()">
-        <i class="fas fa-plus-circle"></i> Nueva cita
-      </button>
     </div>
   </div>
 
@@ -114,6 +111,10 @@
                 <span class="detalle-label">Notas</span>
                 <span class="detalle-valor">{{ cita.notas }}</span>
               </div>
+              <div class="detalle-item" *ngIf="cita.recordatorio !== undefined">
+                <span class="detalle-label">Recordatorio</span>
+                <span class="detalle-valor">{{ cita.recordatorio ? 'Activado' : 'Desactivado' }}</span>
+              </div>
             </div>
 
             <div class="cita-acciones-body" *ngIf="cita.estado === 'pendiente'">
@@ -155,9 +156,6 @@
         <p *ngIf="filtroActual === 'pendientes'">No tienes citas pendientes</p>
         <p *ngIf="filtroActual === 'completadas'">No tienes citas completadas</p>
         <p *ngIf="filtroActual === 'canceladas'">No tienes citas canceladas</p>
-        <button class="btn-add-empty" (click)="abrirModal()">
-          <i class="fas fa-plus-circle"></i> Agregar primera cita
-        </button>
       </div>
     </ng-container>
   </div>
@@ -347,7 +345,7 @@
         </div>
 
         <div class="detalle-item">
-          <span class="detalle-label">Médico</span>
+          <span class="detalle-label">Titulo</span>
           <span class="detalle-valor">{{ citaSeleccionada.titulo }}</span>
         </div>
 
@@ -379,6 +377,11 @@
         <div class="detalle-item" *ngIf="citaSeleccionada.notas">
           <span class="detalle-label">Notas</span>
           <span class="detalle-valor">{{ citaSeleccionada.notas }}</span>
+        </div>
+
+        <div class="detalle-item" *ngIf="citaSeleccionada.recordatorio !== undefined">
+          <span class="detalle-label">Recordatorio</span>
+          <span class="detalle-valor">{{ citaSeleccionada.recordatorio ? 'Activado' : 'Desactivado' }}</span>
         </div>
 
         <div class="aviso-fecha-pasada" *ngIf="citaSeleccionada.estado === 'pendiente' && citaSeleccionada.fecha < obtenerFechaMinima()">
@@ -448,8 +451,8 @@
       </div>
 
       <div class="form-group">
-        <label>Médico *</label>
-        <input type="text" [(ngModel)]="nuevaCita.titulo" placeholder="Nombre del médico">
+        <label>Titulo *</label>
+        <input type="text" [(ngModel)]="nuevaCita.titulo" placeholder="Titulo de la cita ej. Consulta con Dr. Pérez">
       </div>
       
       <div class="form-group">
@@ -490,6 +493,7 @@
       <div class="form-group">
         <label>Notas</label>
         <textarea [(ngModel)]="nuevaCita.notas" placeholder="Instrucciones, recordatorios..." rows="2"></textarea>
+      </div>
       </div>
     </div>
     
