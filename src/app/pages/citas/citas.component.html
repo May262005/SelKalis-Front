@@ -16,16 +16,19 @@
     </div>
     <div class="filter-buttons">
       <button class="filter-btn" [class.active]="filtroActual === 'todas'" (click)="cambiarFiltro('todas')">
-        Todas
+        <i class="fas fa-list"></i> Todas
       </button>
       <button class="filter-btn" [class.active]="filtroActual === 'pendientes'" (click)="cambiarFiltro('pendientes')">
-        Pendientes
+        <i class="fas fa-clock"></i> Pendientes
       </button>
       <button class="filter-btn" [class.active]="filtroActual === 'completadas'" (click)="cambiarFiltro('completadas')">
-        Completadas
+        <i class="fas fa-check-circle"></i> Completadas
       </button>
       <button class="filter-btn" [class.active]="filtroActual === 'canceladas'" (click)="cambiarFiltro('canceladas')">
-        Canceladas
+        <i class="fas fa-times-circle"></i> Canceladas
+      </button>
+      <button class="btn-add" (click)="abrirModal()">
+        <i class="fas fa-plus-circle"></i> Nueva cita
       </button>
     </div>
   </div>
@@ -45,122 +48,104 @@
     </button>
   </div>
 
-  <!-- ==================== VISTA: LISTA ==================== -->
+  <!-- VISTA: LISTA -->
   <div class="citas-list" *ngIf="vistaActual === 'lista'">
-    <div class="spinner-overlay" *ngIf="isLoading">
-      <div class="spinner"></div>
-      <p class="spinner-text">Cargando citas...</p>
+    <div class="citas-list-container" *ngIf="citasPaginadas.length > 0">
+      <div class="cita-card" *ngFor="let cita of citasPaginadas">
+        <div class="cita-card-header" (click)="toggleCita(cita.id!)">
+          <div class="header-left">
+            <i class="fas" [class.fa-chevron-down]="citaExpandidaId === cita.id" 
+               [class.fa-chevron-right]="citaExpandidaId !== cita.id"></i>
+            <div class="cita-info">
+              <h3>{{ cita.titulo }}</h3>
+              <p>{{ formatearFecha(cita.fecha) }} - {{ formatearHora(cita.hora) }}</p>
+            </div>
+          </div>
+          <div class="header-right">
+            <span class="status-badge" [class.activo]="cita.estado === 'pendiente'">
+              {{ cita.estado === 'pendiente' ? 'Pendiente' : 
+                 cita.estado === 'completada' ? 'Completada' : 'Cancelada' }}
+            </span>
+            <div class="acciones-header" *ngIf="cita.estado === 'pendiente'">
+              <button class="btn-delete" (click)="editarCitaDesdeDetalle(cita)" *ngIf="cita.fecha >= obtenerFechaMinima()">
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <button class="btn-delete" (click)="$event.stopPropagation(); reagendarCitaDesdeDetalle(cita)" title="Reagendar cita">
+                <i class="fas fa-calendar-plus"></i> Reagendar
+              </button>
+              <button class="btn-delete" (click)="$event.stopPropagation(); cancelarCita(cita.id!)" title="Cancelar cita">
+                <i class="fas fa-times-circle"></i> Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cita-card-body" *ngIf="citaExpandidaId === cita.id">
+          <div class="diagnostico" *ngIf="cita.especialidad">
+            <i class="fas fa-stethoscope"></i> {{ cita.especialidad }}
+          </div>
+
+          <div class="cita-detalles">
+            <div class="cita-detalle-item" *ngIf="cita.tipo">
+              <i class="fas" [class.fa-building]="cita.tipo === 'Presencial'" [class.fa-video]="cita.tipo === 'Virtual'"></i>
+              <span>{{ cita.tipo }}</span>
+            </div>
+            <div class="cita-detalle-item" *ngIf="cita.lugar">
+              <i class="fas fa-map-marker-alt"></i>
+              <span>{{ cita.lugar }}</span>
+            </div>
+            <div class="cita-detalle-item" *ngIf="cita.notas">
+              <i class="fas fa-sticky-note"></i>
+              <span>{{ cita.notas }}</span>
+            </div>
+            <div class="cita-detalle-item" *ngIf="cita.recordatorio">
+              <i class="fas fa-bell"></i>
+              <span>Recordatorio activado</span>
+            </div>
+          </div>
+
+          <div class="cita-acciones-body" *ngIf="cita.estado === 'pendiente'">
+            <span class="aviso-edicion" *ngIf="cita.fecha < obtenerFechaMinima()">
+              <i class="fas fa-info-circle"></i> No se puede editar porque la fecha ya pasó
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <ng-container *ngIf="!isLoading">
-      <div class="citas-list-container" *ngIf="citasPaginadas.length > 0">
-        <div class="cita-card" *ngFor="let cita of citasPaginadas">
-          <!-- HEADER -->
-          <div class="cita-card-header" (click)="toggleCita(cita.id!)">
-            <div class="header-left">
-              <i class="fas" [class.fa-chevron-down]="citaExpandidaId === cita.id" 
-                 [class.fa-chevron-right]="citaExpandidaId !== cita.id"></i>
-              <div class="cita-info">
-                <h3>{{ cita.titulo }}</h3>
-                <p>{{ cita.especialidad }}</p>
-              </div>
-            </div>
-            <div class="header-right">
-              <span class="status-badge" [class.activo]="cita.estado === 'pendiente'"
-                                         [class.completado]="cita.estado === 'completada'"
-                                         [class.cancelado]="cita.estado === 'cancelada'">
-                {{ cita.estado === 'pendiente' ? 'Pendiente' : 
-                   cita.estado === 'completada' ? 'Completada' : 'Cancelada' }}
-              </span>
-              
-              <div class="acciones-header" *ngIf="cita.estado === 'pendiente'">
-                <button class="btn-delete" (click)="$event.stopPropagation(); editarCitaDesdeDetalle(cita)" 
-                        *ngIf="cita.fecha >= obtenerFechaMinima()">
-                  Editar
-                </button>
-                <button class="btn-delete" (click)="$event.stopPropagation(); reagendarCitaDesdeDetalle(cita)">
-                  Reagendar
-                </button>
-                <button class="btn-delete" (click)="$event.stopPropagation(); cancelarCita(cita.id!)">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- BODY -->
-          <div class="cita-card-body" *ngIf="citaExpandidaId === cita.id">
-            <div class="cita-detalles-grid">
-              <div class="detalle-item">
-                <span class="detalle-label">Fecha</span>
-                <span class="detalle-valor">{{ formatearFecha(cita.fecha) }}</span>
-              </div>
-              <div class="detalle-item">
-                <span class="detalle-label">Hora</span>
-                <span class="detalle-valor">{{ formatearHora(cita.hora) }}</span>
-              </div>
-              <div class="detalle-item" *ngIf="cita.tipo">
-                <span class="detalle-label">Tipo</span>
-                <span class="detalle-valor">{{ cita.tipo }}</span>
-              </div>
-              <div class="detalle-item" *ngIf="cita.lugar">
-                <span class="detalle-label">Lugar</span>
-                <span class="detalle-valor">{{ cita.lugar }}</span>
-              </div>
-              <div class="detalle-item" *ngIf="cita.notas">
-                <span class="detalle-label">Notas</span>
-                <span class="detalle-valor">{{ cita.notas }}</span>
-              </div>
-              <div class="detalle-item" *ngIf="cita.recordatorio !== undefined">
-                <span class="detalle-label">Recordatorio</span>
-                <span class="detalle-valor">{{ cita.recordatorio ? 'Activado' : 'Desactivado' }}</span>
-              </div>
-            </div>
-
-            <div class="cita-acciones-body" *ngIf="cita.estado === 'pendiente'">
-              <span class="aviso-edicion" *ngIf="cita.fecha < obtenerFechaMinima()">
-                No se puede editar porque la fecha ya pasó
-              </span>
-            </div>
-          </div>
-        </div>
+    <div class="pagination-container" *ngIf="citasFiltradas.length > 0">
+      <div class="pagination-info">
+        <i class="fas fa-info-circle"></i>
+        Mostrando {{ (paginaActual - 1) * itemsPorPagina + 1 }} - 
+        {{ Math.min(paginaActual * itemsPorPagina, citasFiltradas.length) }} 
+        de {{ citasFiltradas.length }} citas
       </div>
-
-      <!-- PAGINACIÓN -->
-      <div class="pagination-container" *ngIf="citasFiltradas.length > 0">
-        <div class="pagination-info">
-          Mostrando {{ (paginaActual - 1) * itemsPorPagina + 1 }} - 
-          {{ Math.min(paginaActual * itemsPorPagina, citasFiltradas.length) }} 
-          de {{ citasFiltradas.length }} citas
-        </div>
-        <div class="pagination-controls">
-          <button class="pagination-btn" [disabled]="paginaActual === 1" (click)="cambiarPagina(paginaActual - 1)">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <button class="pagination-btn" *ngFor="let pagina of obtenerPaginas()" 
-                  [class.active]="pagina === paginaActual" 
-                  [class.separador]="pagina === -1"
-                  (click)="pagina !== -1 && cambiarPagina(pagina)">
-            {{ pagina === -1 ? '…' : pagina }}
-          </button>
-          <button class="pagination-btn" [disabled]="paginaActual === totalPaginas" (click)="cambiarPagina(paginaActual + 1)">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-        </div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" [disabled]="paginaActual === 1" (click)="cambiarPagina(paginaActual - 1)">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="pagination-btn" *ngFor="let pagina of obtenerPaginas()" 
+                [class.active]="pagina === paginaActual" 
+                [class.separador]="pagina === -1"
+                (click)="pagina !== -1 && cambiarPagina(pagina)">
+          {{ pagina === -1 ? '…' : pagina }}
+        </button>
+        <button class="pagination-btn" [disabled]="paginaActual === totalPaginas" (click)="cambiarPagina(paginaActual + 1)">
+          <i class="fas fa-chevron-right"></i>
+        </button>
       </div>
+    </div>
 
-      <!-- VACÍO -->
-      <div class="empty-citas" *ngIf="citasFiltradas.length === 0">
-        <i class="fas fa-calendar-times"></i>
-        <p *ngIf="filtroActual === 'todas'">No tienes citas registradas</p>
-        <p *ngIf="filtroActual === 'pendientes'">No tienes citas pendientes</p>
-        <p *ngIf="filtroActual === 'completadas'">No tienes citas completadas</p>
-        <p *ngIf="filtroActual === 'canceladas'">No tienes citas canceladas</p>
-      </div>
-    </ng-container>
+    <div class="empty-citas" *ngIf="citasFiltradas.length === 0 && !isLoading">
+      <i class="fas fa-calendar-times"></i>
+      <p *ngIf="filtroActual === 'todas'">No tienes citas registradas</p>
+      <p *ngIf="filtroActual === 'pendientes'">No tienes citas pendientes</p>
+      <p *ngIf="filtroActual === 'completadas'">No tienes citas completadas</p>
+      <p *ngIf="filtroActual === 'canceladas'">No tienes citas canceladas</p>
+    </div>
   </div>
 
-  <!-- ==================== VISTA: MES ==================== -->
+  <!-- VISTA MES -->
   <div class="card" *ngIf="vistaActual === 'mes'">
     <div class="card-header calendario-header">
       <h3><i class="fas fa-calendar-alt"></i> {{ obtenerNombreMes(mesActual) }} {{ anioActual }}</h3>
@@ -217,7 +202,7 @@
     </div>
   </div>
 
-  <!-- ==================== VISTA: SEMANA ==================== -->
+  <!-- VISTA SEMANA -->
   <div class="card" *ngIf="vistaActual === 'semana'">
     <div class="card-header calendario-header">
       <h3><i class="fas fa-calendar-week"></i> Semana</h3>
@@ -273,7 +258,7 @@
     </div>
   </div>
 
-  <!-- ==================== VISTA: DÍA ==================== -->
+  <!-- VISTA DÍA -->
   <div class="card" *ngIf="vistaActual === 'dia'">
     <div class="card-header calendario-header">
       <h3><i class="fas fa-calendar-day"></i> {{ formatearFecha(formatearFechaLocal(fechaSeleccionada)) }}</h3>
@@ -323,7 +308,7 @@
 
 <!-- ==================== MODALES ==================== -->
 
-<!-- MODAL: DETALLE -->
+<!-- MODAL: DETALLE DE CITA -->
 <div class="modal-overlay" *ngIf="mostrarModalDetalle" (click)="cerrarModalDetalle()">
   <div class="modal-container" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -339,53 +324,52 @@
           <span class="estado-badge-grande" [class.estado-pendiente]="citaSeleccionada.estado === 'pendiente'"
                                             [class.estado-completada]="citaSeleccionada.estado === 'completada'"
                                             [class.estado-cancelada]="citaSeleccionada.estado === 'cancelada'">
+            <i class="fas" [class.fa-clock]="citaSeleccionada.estado === 'pendiente'"
+                          [class.fa-check-circle]="citaSeleccionada.estado === 'completada'"
+                          [class.fa-times-circle]="citaSeleccionada.estado === 'cancelada'"></i>
             {{ citaSeleccionada.estado === 'pendiente' ? 'Pendiente' : 
                citaSeleccionada.estado === 'completada' ? 'Completada' : 'Cancelada' }}
           </span>
         </div>
 
         <div class="detalle-item">
-          <span class="detalle-label">Titulo</span>
+          <span class="detalle-label"><i class="fas fa-user-md"></i> Médico</span>
           <span class="detalle-valor">{{ citaSeleccionada.titulo }}</span>
         </div>
 
         <div class="detalle-item">
-          <span class="detalle-label">Especialidad</span>
+          <span class="detalle-label"><i class="fas fa-stethoscope"></i> Especialidad</span>
           <span class="detalle-valor">{{ citaSeleccionada.especialidad }}</span>
         </div>
 
         <div class="detalle-item">
-          <span class="detalle-label">Fecha</span>
-          <span class="detalle-valor">{{ formatearFecha(citaSeleccionada.fecha) }}</span>
-        </div>
-
-        <div class="detalle-item">
-          <span class="detalle-label">Hora</span>
-          <span class="detalle-valor">{{ formatearHora(citaSeleccionada.hora) }}</span>
+          <span class="detalle-label"><i class="fas fa-calendar-day"></i> Fecha y hora</span>
+          <span class="detalle-valor">{{ formatearFecha(citaSeleccionada.fecha) }} - {{ formatearHora(citaSeleccionada.hora) }}</span>
         </div>
 
         <div class="detalle-item" *ngIf="citaSeleccionada.tipo">
-          <span class="detalle-label">Tipo</span>
+          <span class="detalle-label"><i class="fas" [class.fa-building]="citaSeleccionada.tipo === 'Presencial'"
+                                           [class.fa-video]="citaSeleccionada.tipo === 'Virtual'"></i> Tipo</span>
           <span class="detalle-valor">{{ citaSeleccionada.tipo }}</span>
         </div>
 
         <div class="detalle-item" *ngIf="citaSeleccionada.lugar">
-          <span class="detalle-label">Lugar</span>
+          <span class="detalle-label"><i class="fas fa-map-marker-alt"></i> Lugar</span>
           <span class="detalle-valor">{{ citaSeleccionada.lugar }}</span>
         </div>
 
         <div class="detalle-item" *ngIf="citaSeleccionada.notas">
-          <span class="detalle-label">Notas</span>
+          <span class="detalle-label"><i class="fas fa-sticky-note"></i> Notas</span>
           <span class="detalle-valor">{{ citaSeleccionada.notas }}</span>
         </div>
 
         <div class="detalle-item" *ngIf="citaSeleccionada.recordatorio !== undefined">
-          <span class="detalle-label">Recordatorio</span>
+          <span class="detalle-label"><i class="fas fa-bell"></i> Recordatorio</span>
           <span class="detalle-valor">{{ citaSeleccionada.recordatorio ? 'Activado' : 'Desactivado' }}</span>
         </div>
 
         <div class="aviso-fecha-pasada" *ngIf="citaSeleccionada.estado === 'pendiente' && citaSeleccionada.fecha < obtenerFechaMinima()">
-          <i class="fas fa-info-circle"></i> Se marcará como completada automáticamente
+          <i class="fas fa-info-circle"></i> Esta cita se marcará como completada automáticamente porque la fecha ya pasó.
         </div>
       </div>
     </div>
@@ -397,34 +381,34 @@
         <button *ngIf="citaSeleccionada.estado === 'pendiente'" 
                 class="btn-cancelar" 
                 (click)="cancelarCitaDesdeDetalle(citaSeleccionada.id!)">
-          Cancelar
+          <i class="fas fa-times-circle"></i> Cancelar
         </button>
         <button *ngIf="citaSeleccionada.estado === 'pendiente'" 
                 class="btn-reagendar" 
                 (click)="reagendarCitaDesdeDetalle(citaSeleccionada)">
-          Reagendar
+          <i class="fas fa-calendar-plus"></i> Reagendar
         </button>
         <button *ngIf="citaSeleccionada.estado === 'pendiente' && citaSeleccionada.fecha >= obtenerFechaMinima()" 
                 class="btn-edit" 
                 (click)="editarCitaDesdeDetalle(citaSeleccionada)">
-          Editar
+          <i class="fas fa-edit"></i> Editar
         </button>
         <button *ngIf="citaSeleccionada.estado === 'completada'" 
                 class="btn-primary" 
                 (click)="cerrarModalDetalle()">
-          Aceptar
+          <i class="fas fa-check"></i> Aceptar
         </button>
         <button *ngIf="citaSeleccionada.estado === 'cancelada'" 
                 class="btn-edit" 
                 (click)="editarCitaDesdeDetalle(citaSeleccionada)">
-          Editar
+          <i class="fas fa-edit"></i> Editar
         </button>
       </ng-container>
     </div>
   </div>
 </div>
 
-<!-- MODAL: EDITAR / REAGENDAR -->
+<!-- MODAL: EDITAR / REAGENDAR CITA -->
 <div class="modal-overlay" *ngIf="mostrarModal" (click)="cerrarModal()">
   <div class="modal-container" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -443,21 +427,23 @@
       </div>
 
       <div class="aviso-reagendar" *ngIf="esReagendar">
-        <i class="fas fa-calendar-plus"></i> Selecciona la nueva fecha y hora
+        <i class="fas fa-calendar-plus"></i> 
+        Estás reagendando esta cita. Selecciona la nueva fecha y hora.
       </div>
 
       <div class="aviso-edicion-modal" *ngIf="esEdicion && !esReagendar">
-        <i class="fas fa-info-circle"></i> Solo puedes modificar la información, no la fecha/hora
+        <i class="fas fa-info-circle"></i> 
+        Solo puedes modificar la información de la cita. La fecha y hora no se pueden cambiar.
       </div>
 
       <div class="form-group">
-        <label>Titulo *</label>
-        <input type="text" [(ngModel)]="nuevaCita.titulo" placeholder="Titulo de la cita ej. Consulta con Dr. Pérez">
+        <label>Médico / Título *</label>
+        <input type="text" [(ngModel)]="nuevaCita.titulo" placeholder="Ej: Dr. Sergio Ríos">
       </div>
       
       <div class="form-group">
         <label>Especialidad *</label>
-        <input type="text" [(ngModel)]="nuevaCita.especialidad" placeholder="Especialidad">
+        <input type="text" [(ngModel)]="nuevaCita.especialidad" placeholder="Ej: Cardiología">
       </div>
       
       <div class="form-row">
@@ -467,12 +453,18 @@
                  [(ngModel)]="nuevaCita.fecha" 
                  [min]="fechaMinima"
                  [disabled]="esEdicion && !esReagendar">
+          <small *ngIf="esEdicion && !esReagendar" class="text-muted">
+            <i class="fas fa-info-circle"></i> No modificable en edición
+          </small>
         </div>
         <div class="form-group">
           <label>Hora *</label>
           <input type="time" 
                  [(ngModel)]="nuevaCita.hora"
                  [disabled]="esEdicion && !esReagendar">
+          <small *ngIf="esEdicion && !esReagendar" class="text-muted">
+            <i class="fas fa-info-circle"></i> No modificable en edición
+          </small>
         </div>
       </div>
       
@@ -485,21 +477,28 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Lugar</label>
+          <label>Lugar / Enlace</label>
           <input type="text" [(ngModel)]="nuevaCita.lugar" placeholder="Dirección o enlace">
         </div>
       </div>
 
       <div class="form-group">
-        <label>Notas</label>
+        <label>Notas adicionales</label>
         <textarea [(ngModel)]="nuevaCita.notas" placeholder="Instrucciones, recordatorios..." rows="2"></textarea>
+      </div>
+
+      <div class="form-group checkbox">
+        <label>
+          <input type="checkbox" [(ngModel)]="nuevaCita.recordatorio">
+          Recordarme de esta cita
+        </label>
       </div>
     </div>
     
     <div class="modal-footer">
       <button class="btn-cancel" (click)="cerrarModal()">Cancelar</button>
       <button class="btn-primary" (click)="guardarCita()" [disabled]="isLoading">
-        <span *ngIf="isLoading" class="spinner-in-button"></span>
+        <i class="fas fa-save"></i> 
         {{ isLoading ? 'Guardando...' : (esReagendar ? 'Reagendar' : (editandoId ? 'Actualizar' : 'Guardar')) }}
       </button>
     </div>
