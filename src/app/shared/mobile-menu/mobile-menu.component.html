@@ -1,0 +1,38 @@
+<div class="mobile-menu" [class.open]="isOpen">
+  <div class="mobile-menu-header">
+    <div class="logo">
+      <img src="/logo_mc.png" alt="SelKalis" class="logo-img">
+      <span class="logo-text">Sel<span>Kalis</span></span>
+    </div>
+    <button class="close-menu" (click)="closeMenu()">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <nav class="mobile-nav">
+    <a routerLink="/dashboard" routerLinkActive="active"
+       class="mobile-nav-item" (click)="closeMenu()">
+      <i class="fas fa-chart-line"></i><span>Dashboard</span>
+    </a>
+    <a routerLink="/tratamientos" routerLinkActive="active"
+       class="mobile-nav-item" (click)="closeMenu()">
+      <i class="fas fa-capsules"></i><span>Tratamientos</span>
+    </a>
+    <a routerLink="/citas" routerLinkActive="active"
+       class="mobile-nav-item" (click)="closeMenu()">
+      <i class="fas fa-calendar-alt"></i><span>Citas</span>
+    </a>
+    <a routerLink="/estudios" routerLinkActive="active"
+       class="mobile-nav-item" (click)="closeMenu()">
+      <i class="fas fa-vials"></i><span>Estudios</span>
+    </a>  
+    <a routerLink="/documentos" routerLinkActive="active"
+       class="mobile-nav-item" (click)="closeMenu()">
+      <i class="fas fa-folder-open"></i><span>Documentos</span>
+    </a>
+  </nav>
+
+  <div class="mobile-menu-footer"></div>
+</div>
+
+<div class="mobile-overlay" [class.open]="isOpen" (click)="closeMenu()"></div>

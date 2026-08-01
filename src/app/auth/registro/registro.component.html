@@ -1,0 +1,146 @@
+<div class="auth-container">
+  <div class="auth-card auth-card--wide">
+
+    <div class="auth-header">
+      <h2>Crear cuenta</h2>
+      <p>Comienza a cuidar tu salud con SelKalis</p>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" #registroForm="ngForm" class="auth-form">
+
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" [(ngModel)]="nombre" name="nombre" placeholder="Tu nombre" required [disabled]="isLoading">
+      </div>
+      
+      <div class="form-group">
+        <label>Apellido *</label>
+        <input type="text" [(ngModel)]="apellido" name="apellido" placeholder="Tu apellido" required [disabled]="isLoading">
+      </div>
+
+      <div class="form-group">
+        <label>Correo electrónico *</label>
+        <input type="email" [(ngModel)]="email" name="email" placeholder="tu@email.com" required [disabled]="isLoading">
+      </div>
+
+      <div class="form-group">
+        <label>Teléfono</label>
+        <input type="tel" [(ngModel)]="telefono" name="telefono" placeholder="+52 55 1234 5678" [disabled]="isLoading">
+      </div>
+
+      <div class="form-group">
+        <label>Contraseña *</label>
+          <div class="password-input-wrapper">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            [disabled]="isLoading"
+            (input)="checkPasswordStrength()"
+            (focus)="showPasswordStrength = true"
+            (blur)="showPasswordStrength = false"
+          >
+          <button 
+            type="button" 
+            class="toggle-password-btn"
+            (click)="togglePasswordVisibility()"
+            [disabled]="isLoading"
+            tabindex="-1"
+          >
+            <i class="fas" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
+          </button>
+        </div>
+
+        <!-- Medidor - SOLO visible cuando el input tiene foco -->
+        <div class="password-meter-modern" *ngIf="showPasswordStrength">
+          <div class="meter-bars">
+            <div 
+              *ngFor="let active of getStrengthBars(); let i = index"
+              class="meter-bar"
+              [class.fill]="active"
+              [class.weak]="active && getStrengthLevel().barClass === 'weak'"
+              [class.medium]="active && getStrengthLevel().barClass === 'medium'"
+              [class.strong]="active && getStrengthLevel().barClass === 'strong'"
+              [class.very-strong]="active && getStrengthLevel().barClass === 'very-strong'"
+            ></div>
+          </div>
+              
+          <div class="meter-header">
+            <div class="meter-label" [class]="getStrengthLevel().class">
+              <i class="fas" [class.fa-shield-alt]="getStrengthLevel().level >= 3" [class.fa-lock]="getStrengthLevel().level < 3"></i>
+              <span>{{ getStrengthLevel().text }}</span>
+            </div>
+            <div class="meter-score">
+              {{ passwordStrength }}% seguro
+            </div>
+          </div>
+              
+          <div class="requirements-grid">
+            <div 
+              *ngFor="let req of getRequirements()"
+              class="req-item"
+              [class.met]="req.met"
+            >
+              <i class="fas" [class.fa-check-circle]="req.met" [class.fa-circle]="!req.met"></i>
+              <span>{{ req.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Confirmar contraseña *</label>
+        <div class="password-input-wrapper">
+          <input
+            [type]="showConfirmPassword ? 'text' : 'password'"
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            placeholder="••••••••"
+            required
+            [disabled]="isLoading"
+          >
+          <button 
+            type="button" 
+            class="toggle-password-btn"
+            (click)="toggleConfirmPasswordVisibility()"
+            [disabled]="isLoading"
+            tabindex="-1"
+          >
+            <i class="fas" [class.fa-eye]="!showConfirmPassword" [class.fa-eye-slash]="showConfirmPassword"></i>
+          </button>
+        </div>
+        <div class="confirm-status" [class.success]="passwordsMatch()" [class.error]="passwordsMismatch()" *ngIf="confirmPassword">
+          <span>{{ passwordsMatch() ? '✓' : '✕' }}</span>
+          <span>{{ passwordsMatch() ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden' }}</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="terminos-checkbox">
+          <input 
+            type="checkbox" 
+            [(ngModel)]="aceptaTerminos" 
+            name="aceptaTerminos"
+            [disabled]="isLoading"
+            (change)="onTerminosChange()"
+          >
+          <span class="custom-checkbox-terminos"></span>
+          <span class="terminos-lebel">Acepto los <a routerLink="/terminos" class="link-primary">términos y condiciones</a></span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn-submit" [disabled]="isLoading">
+        <span *ngIf="isLoading">Procesando...</span>
+        <span *ngIf="!isLoading">Crear cuenta</span>
+      </button>
+
+    </form>
+
+    <div class="auth-footer">
+      <p>¿Ya tienes cuenta? <a routerLink="/login" class="link-primary link-bold">Inicia sesión aquí</a></p>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,40 @@
+<header class="header">
+  <div class="header-left">
+    <button class="mobile-menu-btn" (click)="menuService.toggle()">
+      <i class="fas fa-bars"></i>
+    </button>
+    <div class="logo" (click)="goToLanding()">
+      <img src="/logo_mc.png" alt="SelKalis" class="logo-img">
+      <span class="logo-text">Sel<span>Kalis</span></span>
+    </div>
+  </div>
+
+  <nav class="nav-tabs">
+    <a routerLink="/dashboard" routerLinkActive="active" class="tab">Dashboard</a>
+    <a routerLink="/tratamientos" routerLinkActive="active" class="tab">Tratamientos</a>
+    <a routerLink="/citas" routerLinkActive="active" class="tab">Citas</a>
+    <a routerLink="/estudios" routerLinkActive="active" class="tab">Estudios</a>
+    <a routerLink="/documentos" routerLinkActive="active" class="tab">Documentos</a>
+  </nav>
+
+  <div class="header-right">
+    <i class="far fa-bell"></i>
+    <div class="user-menu">
+      <div class="user-avatar" (click)="toggleMenu()">
+        <span>{{ iniciales }}</span>
+      </div>
+      <!-- Dropdown menu -->
+      <div class="dropdown-menu" *ngIf="menuAbierto">
+        <a routerLink="/perfil" class="dropdown-item" (click)="cerrarMenu()">
+          <i class="fas fa-user"></i>
+          <span>Mi Perfil</span>
+        </a>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item logout" (click)="cerrarSesion()">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Cerrar sesión</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>

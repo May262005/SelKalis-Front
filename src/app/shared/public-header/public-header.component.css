@@ -1,0 +1,110 @@
+/* public-header.component.css - SelKalis Modo Claro */
+
+.header {
+  background: #FFFFFF; /* Tarjetas - Blanco */
+  background: 1px solid #D6E2EE; /* Bordes */
+  padding: 0 32px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.logo-img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.logo-text {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: #1F3A5F; /* Texto Principal - Azul Marino */
+}
+
+.logo-text span {
+  color: #4A6FA5; /* Botones Principal - Azul Acero */
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-ghost {
+  background: none;
+  border: 1px solid #D6E2EE; /* Bordes */
+  padding: 8px 20px;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1F3A5F; /* Texto Principal - Azul Marino */
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.btn-ghost:hover {
+  background: #EEF3F8; /* Secciones - Gris Muy Claro */
+  border-color: #4A6FA5; /* Botones Principal - Azul Acero */
+  color: #1F3A5F;
+}
+
+.btn-solid {
+  background: #4A6FA5; /* Botones Principal - Azul Acero */
+  color: white;
+  border: 1px solid #4A6FA5;
+  padding: 8px 20px;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.btn-solid:hover {
+  background: #3D5F91; /* Botones Hover */
+  border-color: #3D5F91;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 500px) {
+  .header {
+    padding: 0 16px;
+  }
+
+  .logo-text {
+    display: none;
+  }
+  
+  .logo-img {
+    width: 60px;
+    height: 60px;
+  }
+
+  .btn-ghost {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
+  .btn-solid {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+}

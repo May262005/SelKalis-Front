@@ -1,0 +1,966 @@
+<div class="tratamientos-container">
+  <div class="hero">
+    <h1>Mis <span>Tratamientos</span></h1>
+    <p>Gestión completa de tus tratamientos médicos.</p>
+  </div>
+
+  <div class="search-section">
+    <div class="search-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        [placeholder]="vistaActual === 'medicamentos' ? 'Buscar medicamento...' : 'Buscar tratamiento...'" 
+        [(ngModel)]="terminoBusqueda"
+        (input)="vistaActual === 'medicamentos' ? cambiarFiltroMedicamentos(filtroMedicamentos) : filtrarTratamientos()"
+      >
+    </div>
+    <div class="filter-buttons">
+      <!-- Filtros para TRATAMIENTOS -->
+      <ng-container *ngIf="vistaActual === 'tratamientos'">
+        <button class="filter-btn" [class.active]="filtroActual === 'todos'" (click)="cambiarFiltro('todos')">
+          Todos
+        </button>
+        <button class="filter-btn" [class.active]="filtroActual === 'en_curso'" (click)="cambiarFiltro('en_curso')">
+          En progreso
+        </button>
+        <button class="filter-btn" [class.active]="filtroActual === 'sin_completar'" (click)="cambiarFiltro('sin_completar')">
+          Sin completar
+        </button>
+        <button class="filter-btn" [class.active]="filtroActual === 'completados'" (click)="cambiarFiltro('completados')">
+          Completados
+        </button>
+        <button class="filter-btn" [class.active]="filtroActual === 'suspendidos'" (click)="cambiarFiltro('suspendidos')">
+          Suspendidos
+        </button>
+        <button class="btn-add" (click)="abrirModalTratamiento()">
+          <i class="fas fa-plus-circle"></i> Nuevo tratamiento
+        </button>
+      </ng-container>
+
+      <!-- Filtros para MEDICAMENTOS -->
+      <ng-container *ngIf="vistaActual === 'medicamentos'">
+        <button class="filter-btn" [class.active]="filtroMedicamentos === 'todos'" (click)="cambiarFiltroMedicamentos('todos')">
+          Todos
+        </button>
+        <button class="filter-btn" [class.active]="filtroMedicamentos === 'en_curso'" (click)="cambiarFiltroMedicamentos('en_curso')">
+          En progreso
+        </button>
+        <button class="filter-btn" [class.active]="filtroMedicamentos === 'sin_completar'" (click)="cambiarFiltroMedicamentos('sin_completar')">
+          Sin completar
+        </button>
+        <button class="filter-btn" [class.active]="filtroMedicamentos === 'completados'" (click)="cambiarFiltroMedicamentos('completados')">
+          Completados
+        </button>
+        <button class="filter-btn" [class.active]="filtroMedicamentos === 'suspendidos'" (click)="cambiarFiltroMedicamentos('suspendidos')">
+          Suspendidos
+        </button>
+        <button class="btn-add" (click)="abrirModalAgregarMedicamentoGlobal()"
+          [disabled]="getTratamientosEnCurso().length === 0"
+          [title]="getTratamientosEnCurso().length === 0 ? 'Necesitas un tratamiento en progreso' : 'Agregar medicamento'">
+          <i class="fas fa-plus-circle"></i> Agregar medicamento
+        </button>
+      </ng-container>
+    </div>
+  </div>
+
+  <div class="vista-tabs">
+    <button class="vista-tab" [class.active]="vistaActual === 'tratamientos'" (click)="cambiarVista('tratamientos')">
+      <i class="fas fa-receipt"></i> Tratamientos
+    </button>
+    <button class="vista-tab" [class.active]="vistaActual === 'medicamentos'" (click)="cambiarVista('medicamentos')">
+      <i class="fas fa-pills"></i> Medicamentos
+    </button>
+  </div>
+
+  <!-- ==================== VISTA: TRATAMIENTOS ==================== -->
+  <div class="spinner-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p class="spinner-text">Cargando tratamientos...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading">
+    <div class="tratamientos-list" *ngIf="vistaActual === 'tratamientos' && tratamientosPaginados.length > 0">
+      <div class="tratamiento-card" *ngFor="let tratamiento of tratamientosPaginados">
+        <div class="tratamiento-header" (click)="toggleTratamiento(tratamiento.id!)">
+          <div class="header-left">
+            <i class="fas" [class.fa-chevron-down]="tratamientoExpandido === tratamiento.id" 
+               [class.fa-chevron-right]="tratamientoExpandido !== tratamiento.id"></i>
+            <div class="tratamiento-info">
+              <h3>{{ tratamiento.nombre }}</h3>
+              <p>{{ tratamiento.fecha_inicio | date:'dd/MM/yyyy' }} - {{ tratamiento.fecha_fin | date:'dd/MM/yyyy' }}</p>
+            </div>
+          </div>
+          <div class="header-right">
+            <div class="progress-small" *ngIf="tratamiento.activo !== false">
+              <div class="progress-fill-small" [style.width.%]="calcularProgresoTratamiento(tratamiento)"></div>
+            </div>
+            <span class="progress-text" *ngIf="tratamiento.activo !== false">
+              {{ obtenerProgresoTratamientoConNumero(tratamiento) }}
+            </span>
+            
+            <!-- ESTADOS -->
+            <span class="status-badge" *ngIf="tratamiento.activo !== false && tratamiento.estado === 'activo'">
+              <ng-container *ngIf="tratamiento.fecha_inicio <= getToday() && tratamiento.fecha_fin >= getToday()">
+                En progreso
+              </ng-container>
+              <ng-container *ngIf="tratamiento.fecha_fin < getToday() && tratamiento.estado === 'activo'">
+                Sin completar
+              </ng-container>
+            </span>
+            <span class="status-badge completado" *ngIf="tratamiento.estado === 'completado'">
+              Completado
+            </span>
+            <span class="status-badge suspendido" *ngIf="tratamiento.activo === false">
+              Suspendido
+            </span>
+            
+            <!-- ACCIONES HEADER (solo en progreso) -->
+            <div class="acciones-header" *ngIf="tratamiento.activo !== false && tratamiento.estado === 'activo' && tratamiento.fecha_inicio <= getToday() && tratamiento.fecha_fin >= getToday()">
+              <button class="btn-delete" (click)="$event.stopPropagation(); abrirModalTratamiento(tratamiento)">
+                Editar
+              </button>
+              <button class="btn-delete" (click)="$event.stopPropagation(); abrirModalSuspenderTratamiento(tratamiento.id!)">
+                Suspender
+              </button>
+            </div>
+            
+            <!-- HISTORIAL DEL TRATAMIENTO SIEMPRE VISIBLE -->
+            <div class="acciones-header">
+              <button class="btn-delete" (click)="$event.stopPropagation(); verHistorialTratamiento(tratamiento.id!)">
+                Historial
+              </button>
+            </div>
+            
+            <!-- Botón Reactivar - solo visible en "Suspendidos" -->
+            <button class="btn-delete" (click)="reactivarTratamiento(tratamiento.id!); $event.stopPropagation()" *ngIf="filtroActual === 'suspendidos' && tratamiento.activo === false">
+              Reactivar
+            </button>
+          </div>
+        </div>
+
+        <div class="tratamiento-body" *ngIf="tratamientoExpandido === tratamiento.id">
+          <div class="diagnostico" *ngIf="tratamiento.diagnostico">
+            <strong>Diagnóstico: {{ tratamiento.diagnostico }}</strong>
+          </div>
+
+          <!-- Razón de suspensión -->
+          <div class="razon-suspension" *ngIf="tratamiento.activo === false && tratamiento.historial_ajustes && tratamiento.historial_ajustes.length > 0">
+            <span><strong>Razón de suspensión:</strong> {{ obtenerRazonSuspension(tratamiento) }}</span>
+          </div>
+
+          <div class="medicamentos-list">
+            <div class="medicamento-card" *ngFor="let med of tratamiento.medicamentos">
+              <div class="med-header">
+                <div class="med-nombre">
+                  <div>
+                    <strong>{{ med.nombre }}</strong>
+                    <span class="med-dosis" *ngIf="med.concentracion || med.dosis">
+                      {{ med.concentracion }}{{ med.concentracion && med.dosis ? ' · ' : '' }}{{ med.dosis ? 'Tomar ' + med.dosis : '' }}
+                    </span>
+                    <span class="med-frecuencia">{{ med.frecuencia }} · {{ med.duracion_dias }} días · Inicio: {{ formatearHora12(med.hora_inicio) }}</span>
+                  </div>
+                </div>
+                <div class="med-actions">
+                  <div class="med-progreso" *ngIf="tratamiento.activo !== false && med.activo !== false">
+                    {{ obtenerProgresoMedicamentoConNumero(med) }}
+                  </div>
+                  <button class="btn-edit-med" (click)="abrirModalEditarMedicamento(med, tratamiento.id!)" 
+                    *ngIf="tratamiento.activo !== false && med.activo !== false && tratamiento.estado === 'activo' && tratamiento.fecha_inicio <= getToday() && tratamiento.fecha_fin >= getToday()"
+                    title="Editar medicamento">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="progress-bar-med" *ngIf="tratamiento.activo !== false && med.activo !== false">
+                <div class="progress-fill-med" [style.width.%]="calcularProgresoMedicamento(med)"></div>
+              </div>
+
+              <div class="horarios-programados">
+                <div class="horarios-title">
+                  Horarios:
+                  <span *ngFor="let hora of med.horariosCalculados; let i = index">
+                    {{ formatearHora12(hora) }}{{ i < (med.horariosCalculados?.length ?? 0) - 1 ? ' · ' : '' }}
+                  </span>
+                </div>
+                <div class="instrucciones" *ngIf="med.instrucciones">
+                  Instrucciones médicas: {{ med.instrucciones }}
+                </div>
+              </div>
+
+              <!-- ACCIONES DE MEDICAMENTOS (solo en progreso) -->
+              <div class="med-acciones-reales" *ngIf="tratamiento.activo !== false && med.activo !== false && tratamiento.estado === 'activo' && tratamiento.fecha_inicio <= getToday() && tratamiento.fecha_fin >= getToday()">
+                <button class="btn-ajuste" (click)="abrirModalAjuste(med.id!, 'extender')">
+                  Extender
+                </button>
+                <button class="btn-ajuste" (click)="abrirModalAjuste(med.id!, 'cambiar_frecuencia')">
+                  Frecuencia
+                </button>
+                <button class="btn-ajuste" (click)="abrirModalAjuste(med.id!, 'suspender')">
+                  Suspender
+                </button>
+              </div>
+
+              <!-- HISTORIAL DEL MEDICAMENTO SIEMPRE VISIBLE -->
+              <div class="med-acciones-reales">
+                <button class="btn-ajuste" (click)="verHistorial(med.id!, med.nombre)">
+                  Historial
+                </button>
+              </div>
+
+              <!-- Reactivar medicamento suspendido -->
+              <div class="med-acciones-reales" *ngIf="tratamiento.activo !== false && med.activo === false">
+                <button class="btn-ajuste btn-reactivar-med" (click)="reactivarMedicamentoDesdeTemplate(med.id!)">
+                  Reactivar
+                </button>
+              </div>
+
+              <!-- TOMAS DEL DÍA ACTUAL -->
+              <div class="tomas-hoy">
+                <!-- Caso 1: Tratamiento activo y en progreso - Mostrar tomas -->
+                <ng-container *ngIf="tratamiento.activo !== false && med.activo !== false && tratamiento.estado === 'activo' && tratamiento.fecha_inicio <= getToday() && tratamiento.fecha_fin >= getToday()">
+                  <div class="tomas-title">
+                    Tomas de hoy ({{ hoy | date:'dd/MM/yyyy' }})
+                  </div>
+                  <div class="tomas-grid" *ngIf="obtenerTomasFuturas(tratamiento.id!, med.id!).length > 0">
+                    <div class="toma-item" *ngFor="let toma of obtenerTomasFuturas(tratamiento.id!, med.id!)">
+                      <div class="toma-hora">
+                        {{ formatearHora12(toma.hora) }}
+                      </div>
+                      <button class="tomar-btn" [class.completado]="toma.completado"
+                        [disabled]="toma.completado || !puedeMarcarToma(toma)"
+                        [title]="toma.completado ? 'Ya fue tomada' : !puedeMarcarToma(toma) ? 'Solo se puede registrar desde la hora programada y hasta 30 min después' : ''"
+                        (click)="marcarTomada(tratamiento.id!, med.id!, toma.fecha, toma.hora, toma.completado)">
+                        <i class="fas" [class.fa-check-circle]="toma.completado" [class.fa-circle]="!toma.completado"></i>
+                        {{ toma.completado ? 'Tomada' : 'Pendiente' }}
+                      </button>
+                    </div>
+                  </div>
+                  <div class="no-tomas-hoy" *ngIf="obtenerTomasFuturas(tratamiento.id!, med.id!).length === 0">
+                    No hay tomas pendientes para hoy
+                  </div>
+                </ng-container>
+
+                <!-- Caso 2: Tratamiento suspendido -->
+                <ng-container *ngIf="tratamiento.activo === false">
+                  <div class="mensaje-info suspendido">
+                    <span>El tratamiento está suspendido. No hay tomas disponibles.</span>
+                  </div>
+                </ng-container>
+
+                <!-- Caso 3: Medicamento suspendido (pero tratamiento activo) -->
+                <ng-container *ngIf="tratamiento.activo !== false && med.activo === false">
+                  <div class="mensaje-info suspendido">
+                    <span>Este medicamento fue suspendido. Consulta el historial para más información.</span>
+                  </div>
+                </ng-container>
+
+                <!-- Caso 4: Tratamiento sin completar -->
+                <ng-container *ngIf="tratamiento.activo !== false && med.activo !== false && tratamiento.estado === 'activo' && tratamiento.fecha_fin < getToday()">
+                  <div class="mensaje-info sin-completar">
+                    <span>Este tratamiento ya finalizó pero no se completó al 100%. Revisa con tu médico.</span>
+                  </div>
+                </ng-container>
+
+                <!-- Caso 5: Tratamiento completado -->
+                <ng-container *ngIf="tratamiento.estado === 'completado'">
+                  <div class="mensaje-info completado">
+                    <span>Este tratamiento fue completado exitosamente. Ya no hay tomas pendientes.</span>
+                  </div>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+
+          <div class="notas-tratamiento" *ngIf="tratamiento.notas">
+            {{ tratamiento.notas }}
+          </div>
+
+          <button class="btn-add-med" (click)="agregarMedicamentoATratamiento(tratamiento.id!)" *ngIf="tratamiento.activo !== false && tratamiento.estado === 'activo' && tratamiento.fecha_inicio <= getToday() && tratamiento.fecha_fin >= getToday()">
+            <i class="fas fa-plus"></i> Agregar medicamento
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pagination-container" *ngIf="vistaActual === 'tratamientos' && tratamientosFiltrados.length > 0">
+      <div class="pagination-info">
+        Mostrando {{ (paginaActual - 1) * itemsPorPagina + 1 }} - 
+        {{ Math.min(paginaActual * itemsPorPagina, tratamientosFiltrados.length) }} 
+        de {{ tratamientosFiltrados.length }} tratamientos
+      </div>
+      <div class="pagination-controls">
+        <button class="pagination-btn" [disabled]="paginaActual === 1" (click)="cambiarPagina(paginaActual - 1)">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="pagination-btn" *ngFor="let pagina of obtenerPaginas()" 
+                [class.active]="pagina === paginaActual" 
+                [class.separador]="pagina === -1"
+                (click)="pagina !== -1 && cambiarPagina(pagina)">
+          {{ pagina === -1 ? '…' : pagina }}
+        </button>
+        <button class="pagination-btn" [disabled]="paginaActual === totalPaginas" (click)="cambiarPagina(paginaActual + 1)">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="empty-tratamientos" *ngIf="vistaActual === 'tratamientos' && tratamientosFiltrados.length === 0">
+      <i class="fas fa-receipt"></i>
+      <p *ngIf="filtroActual === 'todos'">No tienes tratamientos registrados</p>
+      <p *ngIf="filtroActual === 'en_curso'">No tienes tratamientos en progreso</p>
+      <p *ngIf="filtroActual === 'sin_completar'">No tienes tratamientos sin completar</p>
+      <p *ngIf="filtroActual === 'completados'">No tienes tratamientos completados</p>
+      <p *ngIf="filtroActual === 'suspendidos'">No tienes tratamientos suspendidos</p>
+    </div>
+  </ng-container>
+
+  <!-- ==================== VISTA: MEDICAMENTOS ==================== -->
+  <div class="medicamentos-vista" *ngIf="vistaActual === 'medicamentos'">
+    <div class="spinner-overlay" *ngIf="isLoadingMedicamentos">
+      <div class="spinner"></div>
+      <p class="spinner-text">Cargando medicamentos...</p>
+    </div>
+
+    <ng-container *ngIf="!isLoadingMedicamentos">
+      <div class="medicamentos-flat-list" *ngIf="medicamentosPaginados.length > 0">
+        <div class="medicamento-card medicamento-flat" *ngFor="let item of medicamentosPaginados">
+          <div class="med-tratamiento-badge">
+            <span>{{ item.tratamientoNombre }}</span>
+            
+            <span class="status-badge-mini" *ngIf="item.tratamientoEstado === 'activo' && item.medicamento.activo !== false">
+              <ng-container *ngIf="getTratamientoCompleto(item.tratamientoId) as tratamiento">
+                <ng-container *ngIf="tratamiento.fecha_inicio <= getToday() && tratamiento.fecha_fin >= getToday()">
+                  En progreso
+                </ng-container>
+                <ng-container *ngIf="tratamiento.fecha_fin < getToday()">
+                  Sin completar
+                </ng-container>
+              </ng-container>
+            </span>
+            <span class="status-badge-mini completado" *ngIf="item.tratamientoEstado === 'completado'">
+              Completado
+            </span>
+            <span class="status-badge-mini suspendido" *ngIf="item.medicamento.activo === false">
+              Suspendido
+            </span>
+          </div>
+
+          <div class="med-header">
+            <div class="med-nombre">
+              <div>
+                <strong>{{ item.medicamento.nombre }}</strong>
+                <span class="med-dosis" *ngIf="item.medicamento.concentracion || item.medicamento.dosis">
+                  {{ item.medicamento.concentracion }}{{ item.medicamento.concentracion && item.medicamento.dosis ? ' · ' : '' }}{{ item.medicamento.dosis ? 'Tomar ' + item.medicamento.dosis : '' }}
+                </span>
+                <span class="med-frecuencia">{{ item.medicamento.frecuencia }} · {{ item.medicamento.duracion_dias }} días · Inicio: {{ formatearHora12(item.medicamento.hora_inicio) }}</span>
+              </div>
+            </div>
+            <div class="med-actions">
+              <div class="med-progreso" *ngIf="item.medicamento.activo !== false">
+                {{ obtenerProgresoMedicamentoConNumero(item.medicamento) }}
+              </div>
+              <button class="btn-edit-med" (click)="abrirModalEditarMedicamento(item.medicamento, item.tratamientoId)" 
+                *ngIf="item.medicamento.activo !== false && item.tratamientoEstado === 'activo' && isTratamientoEnCurso(item.tratamientoId)"
+                title="Editar medicamento">
+                <i class="fas fa-edit"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="progress-bar-med" *ngIf="item.medicamento.activo !== false">
+            <div class="progress-fill-med" [style.width.%]="calcularProgresoMedicamento(item.medicamento)"></div>
+          </div>
+
+          <div class="horarios-programados">
+            <div class="horarios-title">
+              Horarios:
+              <span *ngFor="let hora of item.medicamento.horariosCalculados; let i = index">
+                {{ formatearHora12(hora) }}{{ i < (item.medicamento.horariosCalculados?.length ?? 0) - 1 ? ' · ' : '' }}
+              </span>
+            </div>
+            <div class="instrucciones" *ngIf="item.medicamento.instrucciones">
+              {{ item.medicamento.instrucciones }}
+            </div>
+          </div>
+
+          <!-- ACCIONES DE MEDICAMENTOS (solo en progreso) -->
+          <div class="med-acciones-reales" *ngIf="item.medicamento.activo !== false && item.tratamientoEstado === 'activo' && isTratamientoEnCurso(item.tratamientoId)">
+            <button class="btn-ajuste" (click)="abrirModalAjuste(item.medicamento.id!, 'extender')">
+              Extender
+            </button>
+            <button class="btn-ajuste" (click)="abrirModalAjuste(item.medicamento.id!, 'cambiar_frecuencia')">
+              Frecuencia
+            </button>
+            <button class="btn-ajuste btn-suspender-med" (click)="abrirModalAjuste(item.medicamento.id!, 'suspender')">
+              Suspender
+            </button>
+          </div>
+
+          <!-- HISTORIAL DEL MEDICAMENTO SIEMPRE VISIBLE -->
+          <div class="med-acciones-reales">
+            <button class="btn-ajuste btn-historial" (click)="verHistorial(item.medicamento.id!, item.medicamento.nombre)">
+              Historial
+            </button>
+          </div>
+
+          <!-- Reactivar medicamento suspendido -->
+          <div class="med-acciones-reales" *ngIf="item.medicamento.activo === false">
+            <button class="btn-ajuste btn-reactivar-med" (click)="reactivarMedicamentoDesdeTemplate(item.medicamento.id!)">
+              Reactivar
+            </button>
+          </div>
+
+          <!-- TOMAS DEL DÍA ACTUAL -->
+          <div class="tomas-hoy">
+            <!-- Caso 1: Tratamiento activo y en progreso -->
+            <ng-container *ngIf="item.medicamento.activo !== false && item.tratamientoEstado === 'activo' && isTratamientoEnCurso(item.tratamientoId)">
+              <div class="tomas-title">
+                Tomas de hoy ({{ hoy | date:'dd/MM/yyyy' }})
+              </div>
+              <div class="tomas-grid" *ngIf="obtenerTomasFuturas(item.tratamientoId, item.medicamento.id!).length > 0">
+                <div class="toma-item" *ngFor="let toma of obtenerTomasFuturas(item.tratamientoId, item.medicamento.id!)">
+                  <div class="toma-hora">
+                    {{ formatearHora12(toma.hora) }}
+                  </div>
+                  <button class="tomar-btn" [class.completado]="toma.completado"
+                    [disabled]="toma.completado || !puedeMarcarToma(toma)"
+                    [title]="toma.completado ? 'Ya fue tomada' : !puedeMarcarToma(toma) ? 'Solo se puede registrar desde la hora programada y hasta 30 min después' : ''"
+                    (click)="marcarTomada(item.tratamientoId, item.medicamento.id!, toma.fecha, toma.hora, toma.completado)">
+                    <i class="fas" [class.fa-check-circle]="toma.completado" [class.fa-circle]="!toma.completado"></i>
+                    {{ toma.completado ? 'Tomada' : 'Pendiente' }}
+                  </button>
+                </div>
+              </div>
+              <div class="no-tomas-hoy" *ngIf="obtenerTomasFuturas(item.tratamientoId, item.medicamento.id!).length === 0">
+                No hay tomas pendientes para hoy
+              </div>
+            </ng-container>
+
+            <!-- Caso 2: Tratamiento suspendido -->
+            <ng-container *ngIf="getTratamientoCompleto(item.tratamientoId)?.activo === false">
+              <div class="mensaje-info suspendido">
+                <span>El tratamiento está suspendido. No hay tomas disponibles.</span>
+              </div>
+            </ng-container>
+
+            <!-- Caso 3: Medicamento suspendido -->
+            <ng-container *ngIf="item.medicamento.activo === false && getTratamientoCompleto(item.tratamientoId)?.activo !== false">
+              <div class="mensaje-info suspendido">
+                <span>Este medicamento fue suspendido. Consulta el historial para más información.</span>
+              </div>
+            </ng-container>
+
+            <!-- Caso 4: Tratamiento sin completar -->
+            <ng-container *ngIf="item.medicamento.activo !== false && item.tratamientoEstado === 'activo' && !isTratamientoEnCurso(item.tratamientoId)">
+              <ng-container *ngIf="getTratamientoCompleto(item.tratamientoId) as tratamiento">
+                <ng-container *ngIf="tratamiento.fecha_fin < getToday()">
+                  <div class="mensaje-info sin-completar">
+                    <span>Este tratamiento ya finalizó pero no se completó al 100%. Revisa con tu médico.</span>
+                  </div>
+                </ng-container>
+              </ng-container>
+            </ng-container>
+
+            <!-- Caso 5: Tratamiento completado -->
+            <ng-container *ngIf="item.tratamientoEstado === 'completado'">
+              <div class="mensaje-info completado">
+                <span>Este tratamiento fue completado exitosamente. Ya no hay tomas pendientes.</span>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+
+      <div class="pagination-container" *ngIf="vistaActual === 'medicamentos' && medicamentosFiltrados.length > 0">
+        <div class="pagination-info">
+          Mostrando {{ (paginaMedicamentos - 1) * itemsPorPagina + 1 }} - 
+          {{ Math.min(paginaMedicamentos * itemsPorPagina, medicamentosFiltrados.length) }} 
+          de {{ medicamentosFiltrados.length }} medicamentos
+        </div>
+        <div class="pagination-controls">
+          <button class="pagination-btn" [disabled]="paginaMedicamentos === 1" (click)="cambiarPaginaMedicamentos(paginaMedicamentos - 1)">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="pagination-btn" *ngFor="let pagina of obtenerPaginasMedicamentos()" 
+                  [class.active]="pagina === paginaMedicamentos" 
+                  [class.separador]="pagina === -1"
+                  (click)="pagina !== -1 && cambiarPaginaMedicamentos(pagina)">
+            {{ pagina === -1 ? '…' : pagina }}
+          </button>
+          <button class="pagination-btn" [disabled]="paginaMedicamentos === totalPaginasMedicamentos" (click)="cambiarPaginaMedicamentos(paginaMedicamentos + 1)">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-tratamientos" *ngIf="medicamentosFiltrados.length === 0">
+        <i class="fas fa-pills"></i>
+        <p *ngIf="filtroMedicamentos === 'todos'">No tienes medicamentos registrados</p>
+        <p *ngIf="filtroMedicamentos === 'en_curso'">No tienes medicamentos en tratamientos en progreso</p>
+        <p *ngIf="filtroMedicamentos === 'sin_completar'">No tienes medicamentos en tratamientos sin completar</p>
+        <p *ngIf="filtroMedicamentos === 'completados'">No tienes medicamentos en tratamientos completados</p>
+        <p *ngIf="filtroMedicamentos === 'suspendidos'">No tienes medicamentos en tratamientos suspendidos</p>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<!-- ==================== MODALES ==================== -->
+
+<!-- MODAL: TRATAMIENTO -->
+<div class="modal-overlay" *ngIf="mostrarModalTratamiento" (click)="cerrarModalTratamiento()">
+  <div class="modal-container modal-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-notes-medical"></i> {{ editandoTratamientoId ? 'Editar tratamiento' : 'Nuevo tratamiento' }}</h3>
+      <button class="modal-close" (click)="cerrarModalTratamiento()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="error-message" *ngIf="errorGuardando">
+        <i class="fas fa-exclamation-circle"></i> {{ errorGuardando }}
+      </div>
+
+      <div class="form-group">
+        <label>Nombre del tratamiento *</label>
+        <input type="text" [(ngModel)]="nuevoTratamiento.nombre" placeholder="Ej: Infección respiratoria">
+      </div>
+      
+      <div class="form-group">
+        <label>Diagnóstico / Motivo</label>
+        <input type="text" [(ngModel)]="nuevoTratamiento.diagnostico" placeholder="Ej: Amigdalitis bacteriana">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha inicio *</label>
+          <div class="hora-fija" *ngIf="!editandoTratamientoId">
+            <i class="far fa-calendar-alt"></i> {{ nuevoTratamiento.fechaInicio | date:'dd/MM/yyyy' }}
+            <span class="hora-fija-tag"><i class="fas fa-lock"></i> automática</span>
+          </div>
+          <input type="date" [(ngModel)]="nuevoTratamiento.fechaInicio" [attr.min]="obtenerFechaMinima()" *ngIf="!editandoTratamientoId" style="display: none;">
+          <div class="hora-fija" *ngIf="editandoTratamientoId">
+            <i class="far fa-calendar-alt"></i> {{ nuevoTratamiento.fechaInicio | date:'dd/MM/yyyy' }}
+            <span class="hora-fija-tag"><i class="fas fa-lock"></i> no modificable</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notas adicionales</label>
+          <input type="text" [(ngModel)]="nuevoTratamiento.notas" placeholder="Recomendaciones generales...">
+        </div>
+      </div>
+      
+      <div class="medicamentos-section" *ngIf="!editandoTratamientoId">
+        <h4><i class="fas fa-capsules"></i> Medicamentos del tratamiento</h4>
+        <small class="hint">La duración del tratamiento será la del medicamento con más días</small>
+        
+        <div class="medicamento-temp" *ngFor="let med of medicamentosTemp; let i = index">
+          <div class="med-temp-header">
+            <strong>{{ med.nombre || 'Nuevo medicamento' }}</strong>
+            <button class="btn-remove-med" (click)="eliminarMedicamentoTemp(i)">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+          
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" [(ngModel)]="med.nombre" placeholder="Ej: Paracetamol, Amoxicilina">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Concentración</label>
+              <input type="text" [(ngModel)]="med.concentracion" placeholder="Ej: 500mg, 40mg, 250ml">
+              <small class="hint">Ej: 500mg, 40mg, 250ml</small>
+            </div>
+            <div class="form-group">
+              <label>Dosis a tomar</label>
+              <input type="text" [(ngModel)]="med.dosis" placeholder="Ej: 1 tableta, 2 comprimidos, 15ml">
+              <small class="hint">Ej: 1 tableta, 2 comprimidos, 15ml</small>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Frecuencia *</label>
+              <select [(ngModel)]="med.frecuencia">
+                <option value="Cada 4 horas">Cada 4 horas (6 tomas/día)</option>
+                <option value="Cada 6 horas">Cada 6 horas (4 tomas/día)</option>
+                <option value="Cada 8 horas">Cada 8 horas (3 tomas/día)</option>
+                <option value="Cada 12 horas">Cada 12 horas (2 tomas/día)</option>
+                <option value="Una vez al día">Una vez al día (1 toma/día)</option>
+                <option value="Según necesidad">Según necesidad (PRN)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Hora de inicio</label>
+              <div class="hora-fija">
+                <i class="far fa-clock"></i> {{ formatearHora12(med.horaInicio) }}
+                <span class="hora-fija-tag"><i class="fas fa-lock"></i> automática</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Duración (días) *</label>
+            <input type="number" [(ngModel)]="med.duracionDias" min="1" placeholder="Ej: 7">
+          </div>
+          
+          <div class="form-group">
+            <label>Instrucciones</label>
+            <input type="text" [(ngModel)]="med.instrucciones" placeholder="Ej: Tomar con comida">
+          </div>
+        </div>
+        
+        <button class="btn-add-med" (click)="agregarMedicamentoTemp()">
+          <i class="fas fa-plus"></i> Agregar otro medicamento
+        </button>
+      </div>
+
+      <div class="edit-info" *ngIf="editandoTratamientoId">
+        <div class="info-box">
+          <i class="fas fa-info-circle"></i>
+          <span>Para agregar o modificar medicamentos, usa los botones dentro del tratamiento.</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cerrarModalTratamiento()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarTratamiento()" [disabled]="isLoadingTratamiento">
+        <span *ngIf="isLoadingTratamiento" class="spinner-in-button"></span>
+        {{ isLoadingTratamiento ? 'Guardando...' : (editandoTratamientoId ? 'Actualizar' : 'Guardar') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: MEDICAMENTO -->
+<div class="modal-overlay" *ngIf="mostrarModalMedicamento" (click)="cerrarModalMedicamento()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-capsules"></i> Agregar medicamento</h3>
+      <button class="modal-close" (click)="cerrarModalMedicamento()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="error-message" *ngIf="errorGuardando">
+        <i class="fas fa-exclamation-circle"></i> {{ errorGuardando }}
+      </div>
+
+      <div class="form-group">
+        <label>Tratamiento *</label>
+        <select [(ngModel)]="tratamientoIdActivo">
+          <option value="">Selecciona un tratamiento...</option>
+          <option *ngFor="let tratamiento of getTratamientosEnCurso()" [value]="tratamiento.id">
+            {{ tratamiento.nombre }} ({{ tratamiento.fecha_inicio | date:'dd/MM/yyyy' }})
+          </option>
+        </select>
+        <small class="hint" *ngIf="getTratamientosEnCurso().length === 0">
+          <i class="fas fa-info-circle"></i> No hay tratamientos en progreso. Crea uno primero.
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label>Nombre del medicamento *</label>
+        <input type="text" [(ngModel)]="nuevoMedicamentoSimple.nombre" placeholder="Ej: Paracetamol, Amoxicilina">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Concentración</label>
+          <input type="text" [(ngModel)]="nuevoMedicamentoSimple.concentracion" placeholder="Ej: 500mg, 40mg, 250ml">
+          <small class="hint">Ej: 500mg, 40mg, 250ml</small>
+        </div>
+        <div class="form-group">
+          <label>Dosis a tomar</label>
+          <input type="text" [(ngModel)]="nuevoMedicamentoSimple.dosis" placeholder="Ej: 1 tableta, 2 comprimidos, 15ml">
+          <small class="hint">Ej: 1 tableta, 2 comprimidos, 15ml</small>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Frecuencia *</label>
+          <select [(ngModel)]="nuevoMedicamentoSimple.frecuencia">
+            <option value="Cada 4 horas">Cada 4 horas (6 tomas/día)</option>
+            <option value="Cada 6 horas">Cada 6 horas (4 tomas/día)</option>
+            <option value="Cada 8 horas">Cada 8 horas (3 tomas/día)</option>
+            <option value="Cada 12 horas">Cada 12 horas (2 tomas/día)</option>
+            <option value="Una vez al día">Una vez al día (1 toma/día)</option>
+            <option value="Según necesidad">Según necesidad (PRN)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Hora de inicio</label>
+          <div class="hora-fija">
+            <i class="far fa-clock"></i> {{ formatearHora12(nuevoMedicamentoSimple.horaInicio) }}
+            <span class="hora-fija-tag"><i class="fas fa-lock"></i> automática</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Duración (días) *</label>
+        <input type="number" [(ngModel)]="nuevoMedicamentoSimple.duracionDias" min="1" placeholder="Ej: 7">
+      </div>
+      
+      <div class="form-group">
+        <label>Instrucciones</label>
+        <input type="text" [(ngModel)]="nuevoMedicamentoSimple.instrucciones" placeholder="Ej: Tomar después de comer, con suficiente agua">
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cerrarModalMedicamento()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarMedicamentoEnTratamiento()" [disabled]="isLoadingMedicamento">
+        <span *ngIf="isLoadingMedicamento" class="spinner-in-button"></span>
+        {{ isLoadingMedicamento ? 'Guardando...' : 'Agregar' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EDITAR MEDICAMENTO -->
+<div class="modal-overlay" *ngIf="mostrarModalEditarMedicamento" (click)="cerrarModalEditarMedicamento()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-edit"></i> Editar medicamento</h3>
+      <button class="modal-close" (click)="cerrarModalEditarMedicamento()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="error-message" *ngIf="errorGuardando">
+        <i class="fas fa-exclamation-circle"></i> {{ errorGuardando }}
+      </div>
+
+      <div class="info-box" style="margin-bottom: 16px;">
+        <i class="fas fa-info-circle"></i>
+        <span>En edición solo puedes modificar el nombre, concentración, dosis e instrucciones. Frecuencia, duración y hora de inicio no son modificables.</span>
+      </div>
+
+      <div class="form-group">
+        <label>Nombre del medicamento *</label>
+        <input type="text" [(ngModel)]="medicamentoEditandoData.nombre" placeholder="Ej: Paracetamol, Amoxicilina">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Concentración</label>
+          <input type="text" [(ngModel)]="medicamentoEditandoData.concentracion" placeholder="Ej: 500mg, 40mg, 250ml">
+          <small class="hint">Ej: 500mg, 40mg, 250ml</small>
+        </div>
+        <div class="form-group">
+          <label>Dosis a tomar</label>
+          <input type="text" [(ngModel)]="medicamentoEditandoData.dosis" placeholder="Ej: 1 tableta, 2 comprimidos, 15ml">
+          <small class="hint">Ej: 1 tableta, 2 comprimidos, 15ml</small>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Frecuencia *</label>
+          <select [(ngModel)]="medicamentoEditandoData.frecuencia" disabled>
+            <option value="Cada 4 horas">Cada 4 horas (6 tomas/día)</option>
+            <option value="Cada 6 horas">Cada 6 horas (4 tomas/día)</option>
+            <option value="Cada 8 horas">Cada 8 horas (3 tomas/día)</option>
+            <option value="Cada 12 horas">Cada 12 horas (2 tomas/día)</option>
+            <option value="Una vez al día">Una vez al día (1 toma/día)</option>
+            <option value="Según necesidad">Según necesidad (PRN)</option>
+          </select>
+          <small class="hint text-muted"><i class="fas fa-lock"></i> No modificable en edición</small>
+        </div>
+        <div class="form-group">
+          <label>Hora de inicio</label>
+          <input type="time" [(ngModel)]="medicamentoEditandoData.horaInicio" disabled>
+          <small class="hint text-muted"><i class="fas fa-lock"></i> No modificable en edición</small>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Duración (días) *</label>
+        <input type="number" [(ngModel)]="medicamentoEditandoData.duracionDias" min="1" disabled>
+        <small class="hint text-muted"><i class="fas fa-lock"></i> No modificable en edición</small>
+      </div>
+      
+      <div class="form-group">
+        <label>Instrucciones</label>
+        <input type="text" [(ngModel)]="medicamentoEditandoData.instrucciones" placeholder="Ej: Tomar después de comer, con suficiente agua">
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cerrarModalEditarMedicamento()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarEditarMedicamento()" [disabled]="isLoadingEditarMedicamento">
+        <span *ngIf="isLoadingEditarMedicamento" class="spinner-in-button"></span>
+        {{ isLoadingEditarMedicamento ? 'Guardando...' : 'Actualizar' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SUSPENDER TRATAMIENTO -->
+<div class="modal-overlay" *ngIf="mostrarModalSuspenderTratamiento" (click)="cerrarModalSuspenderTratamiento()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-pause-circle"></i> Suspender tratamiento</h3>
+      <button class="modal-close" (click)="cerrarModalSuspenderTratamiento()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="error-message" *ngIf="errorGuardando">
+        <i class="fas fa-exclamation-circle"></i> {{ errorGuardando }}
+      </div>
+
+      <div class="warning-box" style="margin-bottom: 16px;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Al suspender este tratamiento, todos los medicamentos se suspenderán y no se podrán registrar nuevas tomas.</span>
+      </div>
+
+      <div class="form-group">
+        <label>Razón de suspensión *</label>
+        <input type="text" [(ngModel)]="datosSuspension.razon" placeholder="Ej: Tratamiento completado, Cambio de medicación, Efectos secundarios">
+        <small class="hint">Esta razón quedará registrada en el historial del tratamiento</small>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cerrarModalSuspenderTratamiento()">Cancelar</button>
+      <button class="btn-primary" (click)="confirmarSuspenderTratamiento()" [disabled]="isLoadingSuspension">
+        <span *ngIf="isLoadingSuspension" class="spinner-in-button"></span>
+        {{ isLoadingSuspension ? 'Guardando...' : 'Suspender' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AJUSTE REALISTA -->
+<div class="modal-overlay" *ngIf="mostrarModalAjuste" (click)="cerrarModalAjuste()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>
+        <i class="fas" [class.fa-clock]="tipoAjuste === 'extender'"
+                      [class.fa-exchange-alt]="tipoAjuste === 'cambiar_frecuencia'"
+                      [class.fa-stop-circle]="tipoAjuste === 'suspender'"></i>
+        {{ tipoAjuste === 'extender' ? 'Extender duración' :
+           tipoAjuste === 'cambiar_frecuencia' ? 'Cambiar frecuencia' :
+           'Suspender medicamento' }}
+      </h3>
+      <button class="modal-close" (click)="cerrarModalAjuste()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="form-group" *ngIf="tipoAjuste === 'extender'">
+        <label>Días extra *</label>
+        <input type="number" [(ngModel)]="datosAjuste.diasExtra" min="1" placeholder="Ej: 7">
+        <small class="hint">Se extenderá el tratamiento desde hoy</small>
+      </div>
+
+      <div class="form-group" *ngIf="tipoAjuste === 'cambiar_frecuencia'">
+        <label>Nueva frecuencia *</label>
+        <select [(ngModel)]="datosAjuste.nuevaFrecuencia">
+          <option value="Cada 4 horas">Cada 4 horas (6 tomas/día)</option>
+          <option value="Cada 6 horas">Cada 6 horas (4 tomas/día)</option>
+          <option value="Cada 8 horas">Cada 8 horas (3 tomas/día)</option>
+          <option value="Cada 12 horas">Cada 12 horas (2 tomas/día)</option>
+          <option value="Una vez al día">Una vez al día (1 toma/día)</option>
+          <option value="Según necesidad">Según necesidad (PRN)</option>
+        </select>
+        <small class="hint">El cambio aplicará desde hoy en adelante</small>
+      </div>
+
+      <div class="form-group" *ngIf="tipoAjuste === 'suspender'">
+        <div class="warning-box">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>Se conservará todo el historial de tomas, pero no se podrán registrar nuevas tomas.</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Razón médica *</label>
+        <input type="text" [(ngModel)]="datosAjuste.razon" placeholder="Ej: Ajuste indicado por el médico">
+        <small class="hint">Este motivo quedará registrado en el historial</small>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="cerrarModalAjuste()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarAjuste()" [disabled]="isLoadingAjuste">
+        <span *ngIf="isLoadingAjuste" class="spinner-in-button"></span>
+        {{ isLoadingAjuste ? 'Guardando...' : 'Realizar ajuste' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HISTORIAL -->
+<div class="modal-overlay" *ngIf="mostrarModalHistorial" (click)="cerrarModalHistorial()">
+  <div class="modal-container modal-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3><i class="fas fa-history"></i> Historial - {{ nombreMedicamentoHistorial }}</h3>
+      <button class="modal-close" (click)="cerrarModalHistorial()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="modal-loading" *ngIf="isLoadingHistorial">
+        <div class="spinner-modal"></div>
+        <p>Cargando historial...</p>
+      </div>
+
+      <ng-container *ngIf="!isLoadingHistorial">
+        <div class="historial-list" *ngIf="historialMedicamento.length > 0">
+          <div class="historial-item" *ngFor="let ajuste of historialMedicamento">
+            <div class="historial-fecha">
+              <i class="far fa-calendar-alt"></i> {{ ajuste.fecha | date:'dd/MM/yyyy HH:mm' }}
+            </div>
+            <div class="historial-tipo" [class]="ajuste.tipo">
+              <i class="fas" [class.fa-clock]="ajuste.tipo === 'extender'"
+                            [class.fa-exchange-alt]="ajuste.tipo === 'cambiar_frecuencia'"
+                            [class.fa-stop-circle]="ajuste.tipo === 'suspender'"
+                            [class.fa-rotate-left]="ajuste.tipo === 'reactivar'"></i>
+              {{ obtenerTextoAjuste(ajuste) }}
+            </div>
+            <div class="historial-razon" *ngIf="ajuste.razon">
+              <i class="fas fa-comment"></i> {{ ajuste.razon }}
+            </div>
+          </div>
+        </div>
+        <div class="empty-historial" *ngIf="historialMedicamento.length === 0">
+          <i class="fas fa-info-circle"></i>
+          <p>No hay ajustes registrados</p>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMACIÓN -->
+<div class="modal-overlay confirm-overlay" *ngIf="mostrarModalConfirmacion" (click)="cerrarModalConfirmacion()">
+  <div class="confirm-container" (click)="$event.stopPropagation()">
+    <div class="confirm-icon">
+      <i class="fas fa-pause-circle"></i>
+    </div>
+    <h3 class="confirm-title">{{ confirmacion.titulo }}</h3>
+    <p class="confirm-message">{{ confirmacion.mensaje }}</p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" (click)="cerrarModalConfirmacion()">
+        {{ confirmacion.textoCancelar }}
+      </button>
+      <button class="btn-confirm" (click)="confirmarAccion()">
+        {{ confirmacion.textoConfirmar }}
+      </button>
+    </div>
+  </div>
+</div>

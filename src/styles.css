@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   SELKALIS - TOAST GLOBAL STYLES
+   ============================================ */
+
+/* Toast - SelKalis */
+.selkalis-toast {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  box-shadow: 0 8px 24px rgba(31, 58, 95, 0.2);
+  opacity: 0;
+  transform: translateX(30px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 99999;
+  max-width: 380px;
+  border-left: 4px solid;
+}
+
+.selkalis-toast.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Success */
+.selkalis-toast--success {
+  background: #7CA6D8;
+  color: #FFFFFF;
+  border-left-color: #1F3A5F;
+}
+
+/* Error */
+.selkalis-toast--error {
+  background: #5A7DB3;
+  color: #FFFFFF;
+  border-left-color: #1F3A5F;
+}
+
+/* Warning */
+.selkalis-toast--warning {
+  background: #8FB5E5;
+  color: #1F3A5F;
+  border-left-color: #1F3A5F;
+}
+
+/* Info */
+.selkalis-toast--info {
+  background: #6FA8DC;
+  color: #FFFFFF;
+  border-left-color: #1F3A5F;
+}
+
+/* Responsive toasts */
+@media (max-width: 768px) {
+  .selkalis-toast {
+    top: 80px;
+    right: 16px;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    padding: 14px 20px;
+  }
+}

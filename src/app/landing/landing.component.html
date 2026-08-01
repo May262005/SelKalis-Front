@@ -1,0 +1,292 @@
+<!-- landing.component.html -->
+<div class="landing">
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Organiza tu salud<br><em>con un asistente personal</em></h1>
+    <p>Registra tus tratamientos, citas y documentos médicos. Recibe recordatorios automáticos y mantén todo bajo control.</p>
+    <div class="hero-ctas">
+      <a routerLink="/registro" class="cta-primary">Comenzar gratis</a>
+      <a routerLink="/login" class="cta-secondary">Ya tengo cuenta</a>
+    </div>
+  </section>
+
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-n">12 mil+</span>
+      <span class="stat-l">Usuarios activos</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-n">98%</span>
+      <span class="stat-l">Satisfacción</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-n">4.9 estrellas</span>
+      <span class="stat-l">Calificación</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-n">3 minutos</span>
+      <span class="stat-l">Para empezar</span>
+    </div>
+  </div>
+
+  <!-- QUÉ OFRECEMOS -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-label">Qué ofrecemos</div>
+      <h2>Tu salud, siempre al día</h2>
+    </div>
+    <div class="cards-grid">
+      <div class="info-card">
+        <div class="info-icon"><i class="fas fa-brain"></i></div>
+        <h3>No olvides nada</h3>
+        <p>Registra tus medicamentos y recibe recordatorios para cada toma. SelKalis se encarga de que nunca te falte una dosis.</p>
+      </div>
+      <div class="info-card">
+        <div class="info-icon"><i class="fas fa-clock"></i></div>
+        <h3>Ahorra tiempo</h3>
+        <p>Todo tu historial médico en un solo lugar. Olvídate de buscar papeles, recetas o fechas de citas.</p>
+      </div>
+      <div class="info-card">
+        <div class="info-icon"><i class="fas fa-shield-alt"></i></div>
+        <h3>Tus datos seguros</h3>
+        <p>Tu información médica está cifrada y bajo tu control. SelKalis respeta tu privacidad y no comparte tus datos.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- CARACTERÍSTICAS -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-label">Características</div>
+      <h2>Todo lo que necesitas en un solo lugar</h2>
+    </div>
+
+    <div class="carousel-container">
+      <div class="carousel-arrows">
+        <button class="arr-btn" (click)="moveFeat(-1)" aria-label="Anterior">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <button class="arr-btn" (click)="moveFeat(1)" aria-label="Siguiente">
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <div class="carousel-viewport">
+        <div class="carousel-track" [style.transform]="'translateX(-' + featIndex * 100 + '%)'">
+
+          <div class="carousel-slide">
+            <div class="cards-grid">
+              <div class="info-card">
+                <div class="info-icon"><i class="fas fa-pills"></i></div>
+                <h3>Registra tus tratamientos</h3>
+                <p>Guarda tus medicamentos con dosis, frecuencia y horarios. SelKalis te recordará cada toma.</p>
+              </div>
+              <div class="info-card">
+                <div class="info-icon"><i class="fas fa-calendar-check"></i></div>
+                <h3>Citas que te dan los médicos</h3>
+                <p>Registra las citas que tus doctores te asignan. Recibirás un recordatorio veinticuatro horas antes.</p>
+              </div>
+              <div class="info-card">
+                <div class="info-icon"><i class="fas fa-file-medical"></i></div>
+                <h3>Estudios y documentos</h3>
+                <p>Sube tus recetas médicas, resultados de estudios y análisis. Todo organizado y siempre accesible.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="carousel-slide">
+            <div class="cards-grid">
+              <div class="info-card">
+                <div class="info-icon"><i class="fas fa-allergies"></i></div>
+                <h3>Alergias y condiciones</h3>
+                <p>Registra tus alergias a medicamentos, alimentos y cualquier condición médica importante.</p>
+              </div>
+              <div class="info-card">
+                <div class="info-icon"><i class="fas fa-history"></i></div>
+                <h3>Historial médico completo</h3>
+                <p>Construye tu expediente médico digital con toda tu información en un solo lugar.</p>
+              </div>
+              <div class="info-card">
+                <div class="info-icon"><i class="fas fa-bell"></i></div>
+                <h3>Recordatorios inteligentes</h3>
+                <p>Notificaciones automáticas para tomas de medicamentos, citas médicas y renovación de recetas.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="carousel-dots">
+        <button
+          *ngFor="let slide of [0,1]; let i = index"
+          class="dot"
+          [class.active]="featIndex === i"
+          (click)="featIndex = i"
+          [attr.aria-label]="'Slide ' + (i + 1)"
+        ></button>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- CÓMO FUNCIONA -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-label">Cómo funciona</div>
+      <h2>Cuatro pasos para tener tu salud bajo control</h2>
+    </div>
+
+    <div class="flow">
+
+      <div class="flow-step">
+        <div class="step-top">
+          <div class="step-circle">
+            <i class="fas fa-user-plus"></i>
+          </div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-num">Paso 01</div>
+          <div class="step-title">Regístrate en la aplicación</div>
+          <p class="step-desc">Crea tu cuenta en segundos. Solo necesitas tu correo electrónico y una contraseña para empezar.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-top">
+          <div class="step-circle">
+            <i class="fas fa-file-medical-alt"></i>
+          </div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-num">Paso 02</div>
+          <div class="step-title">Registra tu información</div>
+          <p class="step-desc">Agrega tus medicamentos, citas médicas, recetas y documentos. Todo en un solo lugar.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-top">
+          <div class="step-circle">
+            <i class="fas fa-bell"></i>
+          </div>
+          <div class="step-line"></div>
+        </div>
+        <div class="step-body">
+          <div class="step-num">Paso 03</div>
+          <div class="step-title">Recibe alertas y notificaciones</div>
+          <p class="step-desc">Te notificamos cuándo tomar tus medicamentos, antes de cada cita médica y al vencer una receta.</p>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="step-top">
+          <div class="step-circle">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="step-num">Paso 04</div>
+          <div class="step-title">Mantén tu información organizada</div>
+          <p class="step-desc">Tu historial médico crece contigo. Accede a todo desde cualquier dispositivo, cuando lo necesites.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- TESTIMONIOS -->
+  <section class="section">
+    <div class="section-header">
+      <div class="section-label">Testimonios</div>
+      <h2>Lo que dicen nuestros usuarios</h2>
+    </div>
+
+    <div class="carousel-container">
+      <div class="carousel-arrows">
+        <button class="arr-btn" (click)="moveTesti(-1)" aria-label="Anterior">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <button class="arr-btn" (click)="moveTesti(1)" aria-label="Siguiente">
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <div class="carousel-viewport">
+        <div class="carousel-track" [style.transform]="'translateX(-' + testiIndex * 100 + '%)'">
+          <div class="carousel-slide" *ngFor="let t of testimonios">
+            <div class="testi-card">
+              <div class="testi-stars">★★★★★</div>
+              <p class="testi-text">"{{ t.texto }}"</p>
+              <div class="testi-author">
+                <div class="avatar">{{ t.iniciales }}</div>
+                <div>
+                  <div class="author-name">{{ t.nombre }}</div>
+                  <div class="author-role">{{ t.rol }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="carousel-dots">
+        <button
+          *ngFor="let t of testimonios; let i = index"
+          class="dot"
+          [class.active]="testiIndex === i"
+          (click)="testiIndex = i"
+          [attr.aria-label]="'Testimonio ' + (i + 1)"
+        ></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER OPTIMIZADO -->
+  <footer class="ns-footer">
+    <div class="footer-inner">
+      <div class="footer-logo" (click)="goToLanding()">
+        <img src="/logo_mo.png" alt="SelKalis" style="width: 28px; height: 28px; object-fit: contain;">
+        <span>Sel<span>Kalis</span></span>
+      </div>
+      
+      <div class="footer-links">
+        <div class="footer-links-group">
+          <span class="footer-links-title">Legal</span>
+          <a routerLink="/terminos">Términos y condiciones</a>
+          <a routerLink="/privacidad">Política de privacidad</a>
+          <a routerLink="/cookies">Política de cookies</a>
+          <!-- 👇 ESTE ES EL ENLACE CON EL EVENTO 👇 -->
+          <a (click)="abrirConfiguracionCookies()" style="cursor: pointer;"> Configurar cookies </a>
+          <a routerLink="/aviso-legal">Aviso legal</a>
+          <a routerLink="/proteccion-datos">Protección de datos</a>
+        </div>
+        
+        <div class="footer-links-group">
+          <span class="footer-links-title">Soporte</span>
+          <a href="mailto:selkalis26@gmail.com">Contacto</a>
+          <a routerLink="/ayuda">Ayuda</a>
+          <a routerLink="/faq">Preguntas frecuentes</a>
+        </div>
+        
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© 2026 SelKalis. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+</div>

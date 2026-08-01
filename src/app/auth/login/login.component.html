@@ -1,0 +1,78 @@
+<div class="auth-container">
+  <div class="auth-card">
+
+    <div class="auth-header">
+      <h2>Iniciar sesión</h2>
+      <p>Bienvenido de nuevo a SelKalis</p>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" class="auth-form" #loginForm="ngForm">
+
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input
+          type="email"
+          [(ngModel)]="email"
+          name="email"
+          placeholder="tu@email.com"
+          required
+          [disabled]="isLoading"
+          autocomplete="email"
+          (input)="onInputChange()"
+        >
+      </div>
+
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="password-input-wrapper">
+          <input
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            [disabled]="isLoading"
+            autocomplete="current-password"
+            (input)="onInputChange()"
+          >
+          <button
+            type="button"
+            class="toggle-password-btn"
+            (click)="togglePassword()"
+            [disabled]="isLoading"
+            tabindex="-1"
+          >
+            <i class="fas" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-options">
+        <label class="remember-checkbox">
+          <input
+            type="checkbox"
+            [(ngModel)]="rememberMe"
+            name="rememberMe"
+            [disabled]="isLoading"
+            (change)="onRememberMeChange()"
+          >
+          <span class="custom-checkbox-remember"></span>
+          <span class="remember-label">Recordarme</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn-submit" [disabled]="isLoading">
+        <i *ngIf="isLoading" class="fas fa-spinner fa-spin"></i>
+        <span *ngIf="!isLoading">Ingresar</span>
+        <span *ngIf="isLoading">Iniciando sesión...</span>
+      </button>
+
+    </form>
+
+    <div class="auth-footer">
+      <p>¿No tienes cuenta? <a routerLink="/registro" class="link-primary link-bold">Regístrate aquí</a></p>
+      <a class="link-primary link-bold" routerLink="/recuperar">¿Olvidaste tu contraseña?</a>
+    </div>
+
+  </div>
+</div>
