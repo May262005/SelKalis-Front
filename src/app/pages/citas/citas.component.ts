@@ -1,3 +1,4 @@
+// citas.component.ts
 import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -57,7 +58,8 @@ export class CitasComponent implements OnInit {
     hora: '',
     tipo: 'Presencial' as 'Presencial' | 'Virtual',
     lugar: '',
-    notas: ''
+    notas: '',
+    recordatorio: true
   };
 
   constructor(
@@ -455,7 +457,8 @@ export class CitasComponent implements OnInit {
         hora: cita.hora,
         tipo: cita.tipo,
         lugar: cita.lugar || '',
-        notas: cita.notas || ''
+        notas: cita.notas || '',
+        recordatorio: cita.recordatorio !== undefined ? cita.recordatorio : true
       };
     } else {
       this.editandoId = null;
@@ -479,7 +482,8 @@ export class CitasComponent implements OnInit {
       hora: cita.hora,
       tipo: cita.tipo,
       lugar: cita.lugar || '',
-      notas: cita.notas || ''
+      notas: cita.notas || '',
+      recordatorio: cita.recordatorio !== undefined ? cita.recordatorio : true
     };
     this.mostrarModal = true;
     if (isPlatformBrowser(this.platformId)) {
@@ -513,7 +517,8 @@ export class CitasComponent implements OnInit {
       hora: '09:00',
       tipo: 'Presencial',
       lugar: '',
-      notas: ''
+      notas: '',
+      recordatorio: true
     };
   }
 
@@ -530,7 +535,8 @@ export class CitasComponent implements OnInit {
         especialidad: this.nuevaCita.especialidad,
         tipo: this.nuevaCita.tipo,
         lugar: this.nuevaCita.lugar,
-        notas: this.nuevaCita.notas
+        notas: this.nuevaCita.notas,
+        recordatorio: this.nuevaCita.recordatorio
       };
 
       this.isLoading = true;
@@ -570,7 +576,8 @@ export class CitasComponent implements OnInit {
       hora: this.nuevaCita.hora,
       tipo: this.nuevaCita.tipo,
       lugar: this.nuevaCita.lugar,
-      notas: this.nuevaCita.notas
+      notas: this.nuevaCita.notas,
+      recordatorio: this.nuevaCita.recordatorio
     };
 
     this.isLoading = true;
@@ -659,7 +666,7 @@ export class CitasComponent implements OnInit {
   cancelarCita(id: string) {
     this.abrirConfirmacion(
       'Cancelar cita',
-      '¿Seguro que quieres cancelar esta cita? Podrás editarla después.',
+      'Seguro que quieres cancelar esta cita? Podras editarla despues.',
       () => {
         this.isLoading = true;
         this.cdr.detectChanges();
@@ -680,7 +687,7 @@ export class CitasComponent implements OnInit {
           }
         });
       },
-      { textoConfirmar: 'Sí, cancelar' }
+      { textoConfirmar: 'Si, cancelar' }
     );
   }
 
