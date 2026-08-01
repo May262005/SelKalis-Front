@@ -15,9 +15,9 @@ export class AuthInterceptor implements HttpInterceptor {
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     const token = this.authService.getToken();
-    
+
     let authReq = req;
-    
+
     const apiUrls = [
       'localhost:3000',
       'selkalis-auth-service.onrender.com',
@@ -28,27 +28,37 @@ export class AuthInterceptor implements HttpInterceptor {
     ];
 
     const esApiUrl = apiUrls.some(url => req.url.includes(url));
+    const esFormData = req.body instanceof FormData;
 
     if (token && esApiUrl) {
+      const headers: { [name: string]: string } = {
+        'Authorization': `Bearer ${token}`
+      };
+
+      // No fijar Content-Type cuando el body es FormData.
+      // El navegador debe generarlo automaticamente junto con el boundary
+      // (multipart/form-data; boundary=...), de lo contrario el backend
+      // no puede leer el archivo correctamente.
+      if (!esFormData) {
+        headers['Content-Type'] = 'application/json';
+      }
+
       authReq = req.clone({
-        setHeaders: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        setHeaders: headers
       });
     }
-    
+
     return next.handle(authReq).pipe(
       catchError((error: HttpErrorResponse) => {
         const currentUrl = this.router.url;
         const isLoginPage = currentUrl.includes('/login') || currentUrl.includes('/auth');
         const isDocumentosPage = currentUrl.includes('/documentos');
-        
+
         if (error.status === 401 && !isLoginPage) {
           if (isDocumentosPage) {
             return throwError(() => error);
           }
-          
+
           this.authService.logout();
           this.router.navigate(['/login']);
         }
