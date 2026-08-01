@@ -1,7 +1,6 @@
-// documentos.service.ts
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, throwError, timeout, TimeoutError } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { isPlatformBrowser } from '@angular/common';
 
@@ -20,7 +19,6 @@ export interface Documento {
 @Injectable({ providedIn: 'root' })
 export class DocumentosService {
   private apiUrl = 'https://selkalis-documentos-service.onrender.com';
-  private readonly REQUEST_TIMEOUT = 30000;
 
   constructor(
     private http: HttpClient,
@@ -43,19 +41,32 @@ export class DocumentosService {
   }
 
   private handleError(error: any): Observable<never> {
-    let errorMessage = 'Error en el servidor';
+    // Extraer el mensaje amable del backend
+    let userMessage = 'Ocurrió un error. Intenta de nuevo.';
     
-    if (error instanceof TimeoutError) {
-      errorMessage = 'La solicitud tardo demasiado. Intenta de nuevo.';
-    } else if (error.error?.error) {
-      errorMessage = error.error.error;
+    // Si el backend envió un mensaje de error amable
+    if (error.error?.error) {
+      userMessage = error.error.error;
     } else if (error.error?.message) {
-      errorMessage = error.error.message;
+      userMessage = error.error.message;
     } else if (error.message) {
-      errorMessage = error.message;
+      // Si es un error de red o timeout
+      if (error.message.includes('timeout')) {
+        userMessage = 'La conexión está tardando demasiado. Verifica tu internet.';
+      } else if (error.message.includes('Network')) {
+        userMessage = 'No hay conexión con el servidor. Verifica tu internet.';
+      } else {
+        userMessage = error.message;
+      }
     }
     
-    return throwError(() => ({ ...error, userMessage: errorMessage }));
+    console.error('Error del servicio:', { error, userMessage });
+    
+    // Devolver el error con el mensaje amable
+    return throwError(() => ({ 
+      ...error, 
+      userMessage: userMessage 
+    }));
   }
 
   getDocumentos(categoria?: string): Observable<any> {
@@ -66,7 +77,6 @@ export class DocumentosService {
     return this.http.get(url, {
       headers: this.getAuthHeaders()
     }).pipe(
-      timeout(this.REQUEST_TIMEOUT),
       catchError(this.handleError)
     );
   }
@@ -75,7 +85,6 @@ export class DocumentosService {
     return this.http.get(`${this.apiUrl}/documentos/${id}`, {
       headers: this.getAuthHeaders()
     }).pipe(
-      timeout(this.REQUEST_TIMEOUT),
       catchError(this.handleError)
     );
   }
@@ -98,11 +107,11 @@ export class DocumentosService {
     if (token) {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
+    // NO establecer Content-Type - el navegador lo hace automáticamente con FormData
 
     return this.http.post(`${this.apiUrl}/documentos/upload`, formData, {
       headers: headers
     }).pipe(
-      timeout(60000),
       catchError(this.handleError)
     );
   }
@@ -112,7 +121,6 @@ export class DocumentosService {
       headers: this.getAuthHeaders(),
       responseType: 'blob'
     }).pipe(
-      timeout(this.REQUEST_TIMEOUT),
       catchError(this.handleError)
     );
   }
@@ -121,7 +129,6 @@ export class DocumentosService {
     return this.http.delete(`${this.apiUrl}/documentos/${id}`, {
       headers: this.getAuthHeaders()
     }).pipe(
-      timeout(this.REQUEST_TIMEOUT),
       catchError(this.handleError)
     );
   }
