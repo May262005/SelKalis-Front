@@ -114,10 +114,6 @@
                 <span class="detalle-label">Notas</span>
                 <span class="detalle-valor">{{ cita.notas }}</span>
               </div>
-              <div class="detalle-item" *ngIf="cita.recordatorio !== undefined">
-                <span class="detalle-label">Recordatorio</span>
-                <span class="detalle-valor">{{ cita.recordatorio ? 'Activado' : 'Desactivado' }}</span>
-              </div>
             </div>
 
             <div class="cita-acciones-body" *ngIf="cita.estado === 'pendiente'">
@@ -385,11 +381,6 @@
           <span class="detalle-valor">{{ citaSeleccionada.notas }}</span>
         </div>
 
-        <div class="detalle-item" *ngIf="citaSeleccionada.recordatorio !== undefined">
-          <span class="detalle-label">Recordatorio</span>
-          <span class="detalle-valor">{{ citaSeleccionada.recordatorio ? 'Activado' : 'Desactivado' }}</span>
-        </div>
-
         <div class="aviso-fecha-pasada" *ngIf="citaSeleccionada.estado === 'pendiente' && citaSeleccionada.fecha < obtenerFechaMinima()">
           <i class="fas fa-info-circle"></i> Se marcará como completada automáticamente
         </div>
@@ -499,13 +490,6 @@
       <div class="form-group">
         <label>Notas</label>
         <textarea [(ngModel)]="nuevaCita.notas" placeholder="Instrucciones, recordatorios..." rows="2"></textarea>
-      </div>
-
-      <div class="form-group checkbox">
-        <label>
-          <input type="checkbox" [(ngModel)]="nuevaCita.recordatorio">
-          Recordatorio
-        </label>
       </div>
     </div>
     

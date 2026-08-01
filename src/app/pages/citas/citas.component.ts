@@ -57,8 +57,7 @@ export class CitasComponent implements OnInit {
     hora: '',
     tipo: 'Presencial' as 'Presencial' | 'Virtual',
     lugar: '',
-    notas: '',
-    recordatorio: true
+    notas: ''
   };
 
   constructor(
@@ -456,8 +455,7 @@ export class CitasComponent implements OnInit {
         hora: cita.hora,
         tipo: cita.tipo,
         lugar: cita.lugar || '',
-        notas: cita.notas || '',
-        recordatorio: cita.recordatorio !== undefined ? cita.recordatorio : true
+        notas: cita.notas || ''
       };
     } else {
       this.editandoId = null;
@@ -481,8 +479,7 @@ export class CitasComponent implements OnInit {
       hora: cita.hora,
       tipo: cita.tipo,
       lugar: cita.lugar || '',
-      notas: cita.notas || '',
-      recordatorio: cita.recordatorio !== undefined ? cita.recordatorio : true
+      notas: cita.notas || ''
     };
     this.mostrarModal = true;
     if (isPlatformBrowser(this.platformId)) {
@@ -516,8 +513,7 @@ export class CitasComponent implements OnInit {
       hora: '09:00',
       tipo: 'Presencial',
       lugar: '',
-      notas: '',
-      recordatorio: true
+      notas: ''
     };
   }
 
@@ -534,8 +530,7 @@ export class CitasComponent implements OnInit {
         especialidad: this.nuevaCita.especialidad,
         tipo: this.nuevaCita.tipo,
         lugar: this.nuevaCita.lugar,
-        notas: this.nuevaCita.notas,
-        recordatorio: this.nuevaCita.recordatorio
+        notas: this.nuevaCita.notas
       };
 
       this.isLoading = true;
@@ -575,8 +570,7 @@ export class CitasComponent implements OnInit {
       hora: this.nuevaCita.hora,
       tipo: this.nuevaCita.tipo,
       lugar: this.nuevaCita.lugar,
-      notas: this.nuevaCita.notas,
-      recordatorio: this.nuevaCita.recordatorio
+      notas: this.nuevaCita.notas
     };
 
     this.isLoading = true;
