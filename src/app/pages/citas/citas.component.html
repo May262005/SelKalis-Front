@@ -114,10 +114,6 @@
                 <span class="detalle-label">Notas</span>
                 <span class="detalle-valor">{{ cita.notas }}</span>
               </div>
-              <div class="detalle-item" *ngIf="cita.recordatorio !== undefined">
-                <span class="detalle-label">Recordatorio</span>
-                <span class="detalle-valor">{{ cita.recordatorio ? 'Activado' : 'Desactivado' }}</span>
-              </div>
             </div>
 
             <div class="cita-acciones-body" *ngIf="cita.estado === 'pendiente'">
