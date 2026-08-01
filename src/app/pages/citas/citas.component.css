@@ -160,6 +160,62 @@
   color: white;
 }
 
+.btn-add {
+  background: #4A6FA5;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 40px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-add i {
+  color: white;
+  font-size: 14px;
+}
+
+.btn-add:hover:not(:disabled) {
+  background: #3D5F91;
+  transform: translateY(-1px);
+}
+
+.btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-add-empty {
+  background: #4A6FA5;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-add-empty i {
+  color: white;
+  font-size: 16px;
+}
+
+.btn-add-empty:hover {
+  background: #3D5F91;
+  transform: translateY(-1px);
+}
+
 /* =================== LISTA =================== */
 .citas-list {
   display: flex;
@@ -677,7 +733,7 @@
   padding: 12px 0;
 }
 
-/* ==================== VISTA DÍA ==================== */
+/* ==================== VISTA DIA ==================== */
 .dia-grid {
   margin-top: 4px;
 }
@@ -766,7 +822,7 @@
   padding: 4px 0;
 }
 
-/* ==================== PAGINACIÓN ==================== */
+/* ==================== PAGINACION ==================== */
 .pagination-container {
   display: flex;
   justify-content: space-between;
@@ -832,7 +888,7 @@
   color: #7B8CA8;
 }
 
-/* ==================== VACÍO ==================== */
+/* ==================== VACIO ==================== */
 .empty-citas {
   text-align: center;
   padding: 60px 20px;
@@ -990,6 +1046,8 @@
   font-weight: 500;
   color: #4F6B8A;
   margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .form-group input,
@@ -1031,20 +1089,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-}
-
-.form-group.checkbox label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-transform: none;
-  font-weight: 400;
-  cursor: pointer;
-}
-
-.form-group.checkbox input[type="checkbox"] {
-  width: auto;
-  cursor: pointer;
 }
 
 /* ==================== BOTONES ==================== */
@@ -1139,7 +1183,7 @@
   transform: translateY(-1px);
 }
 
-/* ==================== CONFIRMACIÓN ==================== */
+/* ==================== CONFIRMACION ==================== */
 .confirm-overlay .confirm-container {
   background: #FFFFFF;
   border-radius: 16px;
@@ -1528,6 +1572,11 @@
     padding: 6px 12px;
   }
   
+  .btn-add {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+  
   .cita-card-header {
     padding: 10px 14px;
   }
@@ -1594,61 +1643,4 @@
     font-size: 10px;
     padding: 3px 8px;
   }
-}
-
-/* ========== BOTÓN AGREGAR ========== */
-.btn-add {
-  background: #4A6FA5;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 40px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: white;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.btn-add i {
-  color: white;
-  font-size: 14px;
-}
-
-.btn-add:hover:not(:disabled) {
-  background: #3D5F91;
-  transform: translateY(-1px);
-}
-
-.btn-add:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-add-empty {
-  background: #4A6FA5;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 40px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  color: white;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-add-empty i {
-  color: white;
-  font-size: 16px;
-}
-
-.btn-add-empty:hover {
-  background: #3D5F91;
-  transform: translateY(-1px);
 }
