@@ -1,4 +1,3 @@
-// dashboard.component.ts
 import { Component, OnInit, Inject, PLATFORM_ID, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
@@ -20,13 +19,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isLoading: boolean = true;
   private intervalId: any = null;
   
-  // Datos del dashboard
   proximaToma: { nombre: string; hora: string } | null = null;
   proximaCita: { doctor: string; fecha: string; hora?: string } | null = null;
   tratamientosActivos: number = 0;
   completadosHoy: number = 0;
   
-  // Listas para los cards
   tratamientosActivosLista: any[] = [];
   proximasCitas: any[] = [];
   proximosEstudios: any[] = [];
@@ -116,6 +113,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     this.dashboardService.getDashboardData().subscribe({
       next: (data: DashboardData) => {
+        console.log('✅ [Component] DATOS RECIBIDOS:', data);
+        console.log('✅ [Component] tomasCompletadasHoy:', data.tomasCompletadasHoy);
+        console.log('✅ [Component] totalTratamientosActivos:', data.totalTratamientosActivos);
+        
         this.isLoading = false;
         
         this.proximaToma = data.proximaToma;
@@ -131,15 +132,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
         
         this.tratamientosActivos = data.totalTratamientosActivos;
-        this.completadosHoy = data.tomasCompletadasHoy;
+        this.completadosHoy = data.tomasCompletadasHoy; // ✅ Aquí se asigna
+        
+        console.log('✅ [Component] completadosHoy asignado:', this.completadosHoy);
+        
         this.tratamientosActivosLista = data.tratamientosActivos;
         this.proximasCitas = data.proximaCita ? [data.proximaCita] : [];
         this.proximosEstudios = data.proximosEstudios;
         this.documentosRecientes = data.documentosRecientes;
         
+        console.log('✅ [Component] Estado final:', {
+          tratamientosActivos: this.tratamientosActivos,
+          completadosHoy: this.completadosHoy,
+          tratamientosActivosLista: this.tratamientosActivosLista.length
+        });
+        
         this.cdr.detectChanges();
       },
       error: (error: any) => {
+        console.error('❌ [Component] Error en cargarDashboard:', error);
         this.isLoading = false;
         this.cargarDatosFallback();
         this.cdr.detectChanges();
@@ -161,7 +172,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }));
         this.cdr.detectChanges();
       } catch (e) {
-        // Error silencioso
+        console.error('Error parsing localStorage:', e);
       }
     }
   }
