@@ -14,6 +14,8 @@ import { SearchService } from '../../services/search.service';
   styleUrls: ['./citas.component.css']
 })
 export class CitasComponent implements OnInit {
+  // ✅ Guardar copia original de las citas para restaurar después de búsqueda
+  citasOriginales: Cita[] = [];
   citas: Cita[] = [];
   citasFiltradas: Cita[] = [];
   terminoBusqueda: string = '';
@@ -92,7 +94,11 @@ export class CitasComponent implements OnInit {
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
-          this.buscarLocal();
+          // ✅ RESTAURAR citas originales cuando se limpia la búsqueda
+          this.citas = [...this.citasOriginales];
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
           return [];
         }
         this.isLoadingBusqueda = true;
@@ -115,17 +121,26 @@ export class CitasComponent implements OnInit {
             recordatorio: r.datos?.recordatorio || false
           }));
           
+          // ✅ Reemplazar citas con resultados de búsqueda
           this.citas = resultados;
           this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
         } else {
-          this.buscarLocal();
+          // ✅ Si no hay resultados, restaurar citas originales
+          this.citas = [...this.citasOriginales];
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
         }
       },
       error: () => {
         this.isLoadingBusqueda = false;
-        this.buscarLocal();
+        // ✅ En caso de error, restaurar citas originales
+        this.citas = [...this.citasOriginales];
+        this.aplicarFiltrosLocales();
+        this.actualizarVista();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -286,11 +301,14 @@ export class CitasComponent implements OnInit {
       next: (response: any) => {
         this.isLoading = false;
         if (response.success && response.data) {
+          // ✅ Guardar copia original
+          this.citasOriginales = response.data;
           this.citas = response.data;
           this.marcarCitasVencidasComoCompletadas();
           // Indexar en Elasticsearch (en segundo plano)
           this.indexarCitasEnElasticsearch(response.data);
         } else {
+          this.citasOriginales = [];
           this.citas = [];
           this.aplicarFiltros();
           this.actualizarVista();
@@ -300,6 +318,7 @@ export class CitasComponent implements OnInit {
       error: (error: any) => {
         this.isLoading = false;
         this.errorMessage = error?.error?.error || 'Error al cargar las citas';
+        this.citasOriginales = [];
         this.citas = [];
         this.aplicarFiltros();
         this.actualizarVista();
@@ -344,6 +363,8 @@ export class CitasComponent implements OnInit {
       this.searchSubject.next(this.terminoBusqueda);
       return;
     }
+    // ✅ Si no hay búsqueda, restaurar citas originales
+    this.citas = [...this.citasOriginales];
     this.buscarLocal();
   }
 
