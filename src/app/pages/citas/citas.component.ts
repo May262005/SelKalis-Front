@@ -266,6 +266,7 @@ export class CitasComponent implements OnInit {
           this.citasOriginales = response.data;
           this.citas = response.data;
           this.marcarCitasVencidasComoCompletadas();
+          // ✅ ESTA ES LA LÍNEA QUE FALTABA - INDEXA AUTOMÁTICAMENTE
           this.indexarCitasEnElasticsearch(response.data);
           this.aplicarFiltros();
           this.actualizarVista();
