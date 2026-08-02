@@ -847,7 +847,18 @@ export class TratamientosComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  // ✅ Valida que la hora tenga formato HH:mm antes de operar con ella
+  private esHoraValida(hora: string): boolean {
+    if (!hora) return false;
+    const [h, m] = hora.split(':').map(Number);
+    return !isNaN(h) && !isNaN(m) && h >= 0 && h <= 23 && m >= 0 && m <= 59;
+  }
+
   sumarHoras(hora: string, horasASumar: number): string {
+    // ✅ Si la hora no es válida (vacía, mal formada, dato de prueba incompleto),
+    // no intentamos calcular: devolvemos '' en vez de arrastrar NaN:NaN a la vista.
+    if (!this.esHoraValida(hora)) return '';
+
     const [h, m] = hora.split(':').map(Number);
     const fecha = new Date();
     fecha.setHours(h, m);
@@ -856,8 +867,14 @@ export class TratamientosComponent implements OnInit {
   }
 
   calcularHorarios(frecuencia: string, horaInicio: string): string[] {
+    // ✅ Sin hora de inicio válida no hay horarios que calcular
+    if (!this.esHoraValida(horaInicio)) return [];
+
     const calcular = this.horariosPorFrecuencia[frecuencia];
-    return calcular ? calcular(horaInicio) : [horaInicio];
+    const horarios = calcular ? calcular(horaInicio) : [horaInicio];
+    // ✅ Filtramos cualquier resultado vacío que haya podido colarse (ej. si sumarHoras
+    // encontró una hora intermedia inválida)
+    return horarios.filter(h => !!h);
   }
 
   showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info'): void {
