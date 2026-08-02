@@ -167,6 +167,7 @@ export class CitasComponent implements OnInit {
     this.paginaActual = 1;
   }
 
+  // ✅ Indexación automática igual que en tratamientos
   private indexarCitasEnElasticsearch(citas: Cita[]) {
     for (const cita of citas) {
       if (cita.id) {
@@ -267,6 +268,7 @@ export class CitasComponent implements OnInit {
           this.citasOriginales = response.data;
           this.citas = response.data;
           this.marcarCitasVencidasComoCompletadas();
+          // ✅ Indexación automática igual que en tratamientos
           this.indexarCitasEnElasticsearch(response.data);
           this.aplicarFiltros();
           this.actualizarVista();
