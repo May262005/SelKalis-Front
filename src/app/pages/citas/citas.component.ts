@@ -55,7 +55,7 @@ export class CitasComponent implements OnInit {
   Math = Math;
 
   private searchSubject = new Subject<string>();
-  private readonly MIN_SEARCH_CHARS = 2;
+  private readonly MIN_SEARCH_CHARS = 1;
 
   nuevaCita = {
     titulo: '',
@@ -86,7 +86,7 @@ export class CitasComponent implements OnInit {
     }
 
     this.searchSubject.pipe(
-      debounceTime(400),
+      debounceTime(300),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
