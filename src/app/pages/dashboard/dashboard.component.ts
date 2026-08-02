@@ -113,10 +113,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     this.dashboardService.getDashboardData().subscribe({
       next: (data: DashboardData) => {
-        console.log('✅ [Component] DATOS RECIBIDOS:', data);
-        console.log('✅ [Component] tomasCompletadasHoy:', data.tomasCompletadasHoy);
-        console.log('✅ [Component] totalTratamientosActivos:', data.totalTratamientosActivos);
-        
         this.isLoading = false;
         
         this.proximaToma = data.proximaToma;
@@ -132,25 +128,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
         
         this.tratamientosActivos = data.totalTratamientosActivos;
-        this.completadosHoy = data.tomasCompletadasHoy; // ✅ Aquí se asigna
-        
-        console.log('✅ [Component] completadosHoy asignado:', this.completadosHoy);
+        this.completadosHoy = data.tomasCompletadasHoy;
         
         this.tratamientosActivosLista = data.tratamientosActivos;
         this.proximasCitas = data.proximaCita ? [data.proximaCita] : [];
         this.proximosEstudios = data.proximosEstudios;
         this.documentosRecientes = data.documentosRecientes;
         
-        console.log('✅ [Component] Estado final:', {
-          tratamientosActivos: this.tratamientosActivos,
-          completadosHoy: this.completadosHoy,
-          tratamientosActivosLista: this.tratamientosActivosLista.length
-        });
-        
         this.cdr.detectChanges();
       },
       error: (error: any) => {
-        console.error('❌ [Component] Error en cargarDashboard:', error);
         this.isLoading = false;
         this.cargarDatosFallback();
         this.cdr.detectChanges();
@@ -172,7 +159,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }));
         this.cdr.detectChanges();
       } catch (e) {
-        console.error('Error parsing localStorage:', e);
+        // Error silencioso
       }
     }
   }
