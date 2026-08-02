@@ -92,33 +92,46 @@ export class DashboardService {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
 
-    // ✅ Agregar zona horaria
-    const timezone = this.getTimezone();
-    headers = headers.set('X-Timezone', timezone);
-
     return headers;
-  }
-
-  private getTimezone(): string {
-    if (!isPlatformBrowser(this.platformId)) return 'UTC';
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    } catch {
-      return 'UTC';
-    }
-  }
-
-  private getFechaLocal(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
   }
 
   private handleError(error: any): Observable<never> {
     console.error('❌ DashboardService Error:', error);
     return throwError(() => error);
+  }
+
+  // ==================== OBTENER TOMAS DEL DÍA ====================
+  getTomasHoy(): Observable<TomasHoy> {
+    const headers = this.getAuthHeaders();
+    
+    console.log('🔍 [Service] Solicitando tomas del día...');
+    
+    return this.http.get(`${this.TRATAMIENTOS_URL}/tomas/hoy`, { headers })
+      .pipe(
+        timeout(this.TIMEOUT),
+        tap((response: any) => {
+          console.log('📊 [Service] Respuesta RAW de /tomas/hoy:', JSON.stringify(response, null, 2));
+        }),
+        map((response: any) => {
+          // ✅ CORREGIDO: Usar los nombres correctos del endpoint
+          if (response.success && response.data) {
+            const result = {
+              total: response.data.totalTomasHoy || 0,
+              completadas: response.data.completadasHoy || 0,  // ✅ Nombre correcto
+              progreso: response.data.progresoHoy || 0,
+              fecha: response.data.fecha || new Date().toISOString().split('T')[0]
+            };
+            console.log('📤 [Service] tomasHoy procesado:', result);
+            return result;
+          }
+          console.warn('⚠️ [Service] Respuesta sin datos:', response);
+          return { total: 0, completadas: 0, progreso: 0, fecha: new Date().toISOString().split('T')[0] };
+        }),
+        catchError((error) => {
+          console.error('❌ [Service] Error en getTomasHoy:', error);
+          return of({ total: 0, completadas: 0, progreso: 0, fecha: new Date().toISOString().split('T')[0] });
+        })
+      );
   }
 
   getDashboardData(): Observable<DashboardData> {
@@ -174,46 +187,31 @@ export class DashboardService {
         })
       );
 
-    // ✅ Calcular tomas localmente en lugar de usar /tomas/hoy
+    const tomasHoy$ = this.getTomasHoy();
+
     return forkJoin({
       tratamientos: tratamientos$,
       citas: citas$,
       estudios: estudios$,
-      documentos: documentos$
+      documentos: documentos$,
+      tomasHoy: tomasHoy$
     }).pipe(
       map((result: any) => {
+        console.log('📦 [Service] RESULTADO COMPLETO de forkJoin:', result);
+        
         const tratamientos = result.tratamientos?.data || [];
         const citas = result.citas?.data || [];
         const estudios = result.estudios?.data || [];
         const documentos = result.documentos?.data || [];
+        
+        // ✅ CORREGIDO: Extraer correctamente el valor
+        const tomasHoy = result.tomasHoy;
+        const tomasCompletadas = tomasHoy?.completadas || 0;  // ✅ Usar "completadas"
+        const totalTomas = tomasHoy?.total || 0;
 
-        console.log('📦 [Service] Procesando datos...');
-
-        // ✅ Calcular tomas completadas localmente (misma lógica que tratamientos.component)
-        const hoy = this.getFechaLocal();
-        let totalTomasHoy = 0;
-        let completadasHoy = 0;
-
-        console.log(`📅 [Service] Fecha local: ${hoy}`);
-
-        for (const tratamiento of tratamientos) {
-          // Verificar si el tratamiento está activo
-          if (tratamiento.estado !== 'activo' || tratamiento.activo === false) continue;
-
-          const medicamentos = tratamiento.medicamentos || [];
-          for (const med of medicamentos) {
-            if (med.activo === false) continue;
-
-            const tomas = med.tomas || [];
-            const tomasDeHoy = tomas.filter((t: any) => t.fecha === hoy);
-            const completadasDeHoy = tomasDeHoy.filter((t: any) => t.completado === true);
-
-            totalTomasHoy += tomasDeHoy.length;
-            completadasHoy += completadasDeHoy.length;
-          }
-        }
-
-        console.log(`✅ [Service] Tomas calculadas: ${completadasHoy}/${totalTomasHoy} completadas`);
+        console.log('✅ [Service] tomasCompletadas extraídas:', tomasCompletadas);
+        console.log('✅ [Service] totalTomas extraídas:', totalTomas);
+        console.log('✅ [Service] tomasHoy completo:', tomasHoy);
 
         const tratamientosActivos = this.obtenerTratamientosActivos(tratamientos);
         const totalTratamientosActivos = this.contarTratamientosActivos(tratamientos);
@@ -225,9 +223,10 @@ export class DashboardService {
           proximosEstudios: this.obtenerProximosEstudios(estudios),
           documentosRecientes: this.obtenerDocumentosRecientes(documentos),
           totalTratamientosActivos: totalTratamientosActivos,
-          tomasCompletadasHoy: completadasHoy
+          tomasCompletadasHoy: tomasCompletadas  // ✅ AQUÍ SE ASIGNA EL VALOR
         };
 
+        console.log('📤 [Service] DATOS FINALES DEL SERVICE:', dashboardData);
         console.log('📤 [Service] tomasCompletadasHoy ENVIADO:', dashboardData.tomasCompletadasHoy);
         
         return dashboardData;
@@ -269,22 +268,8 @@ export class DashboardService {
         const estudios = result.estudios?.data || [];
         const documentos = result.documentos?.data || [];
 
-        // ✅ Calcular tomas localmente también en el fallback
-        const hoy = this.getFechaLocal();
-        let completadas = 0;
-
-        for (const tratamiento of tratamientos) {
-          if (tratamiento.estado !== 'activo' || tratamiento.activo === false) continue;
-          const medicamentos = tratamiento.medicamentos || [];
-          for (const med of medicamentos) {
-            if (med.activo === false) continue;
-            const tomas = med.tomas || [];
-            const tomasHoy = tomas.filter((t: any) => t.fecha === hoy);
-            completadas += tomasHoy.filter((t: any) => t.completado === true).length;
-          }
-        }
-
-        console.log('🔄 [Service] Fallback - tomas completadas:', completadas);
+        const tomasCompletadas = this.contarTomasCompletadasHoy(tratamientos);
+        console.log('🔄 [Service] Fallback - tomasCompletadas calculadas:', tomasCompletadas);
 
         return {
           proximaToma: this.obtenerProximaToma(tratamientos),
@@ -293,7 +278,7 @@ export class DashboardService {
           proximosEstudios: this.obtenerProximosEstudios(estudios),
           documentosRecientes: this.obtenerDocumentosRecientes(documentos),
           totalTratamientosActivos: this.contarTratamientosActivos(tratamientos),
-          tomasCompletadasHoy: completadas
+          tomasCompletadasHoy: tomasCompletadas
         };
       }),
       catchError(this.handleError)
@@ -312,7 +297,7 @@ export class DashboardService {
 
         const tomas = med.tomas || [];
         const ahora = new Date();
-        const hoy = this.getFechaLocal();
+        const hoy = ahora.toISOString().split('T')[0];
 
         const proximaToma = tomas
           .filter((t: any) => t.fecha === hoy && !t.completado)
@@ -342,7 +327,7 @@ export class DashboardService {
     if (!citas || citas.length === 0) return null;
 
     const ahora = new Date();
-    const hoy = this.getFechaLocal();
+    const hoy = ahora.toISOString().split('T')[0];
 
     const proximas = citas
       .filter((c: any) => c.estado === 'pendiente')
@@ -369,7 +354,7 @@ export class DashboardService {
   private obtenerTratamientosActivos(tratamientos: any[]): TratamientoActivo[] {
     if (!tratamientos || tratamientos.length === 0) return [];
 
-    const hoy = this.getFechaLocal();
+    const hoy = new Date().toISOString().split('T')[0];
 
     return tratamientos
       .filter((t: any) => t.estado === 'activo' && t.activo !== false)
@@ -388,7 +373,7 @@ export class DashboardService {
     if (!estudios || estudios.length === 0) return [];
 
     const ahora = new Date();
-    const hoy = this.getFechaLocal();
+    const hoy = ahora.toISOString().split('T')[0];
 
     return estudios
       .filter((e: any) => e.estado === 'pendiente')
@@ -431,12 +416,32 @@ export class DashboardService {
   private contarTratamientosActivos(tratamientos: any[]): number {
     if (!tratamientos || tratamientos.length === 0) return 0;
 
-    const hoy = this.getFechaLocal();
+    const hoy = new Date().toISOString().split('T')[0];
 
     return tratamientos
       .filter((t: any) => t.estado === 'activo' && t.activo !== false)
       .filter((t: any) => t.fecha_inicio <= hoy && t.fecha_fin >= hoy)
       .length;
+  }
+
+  private contarTomasCompletadasHoy(tratamientos: any[]): number {
+    if (!tratamientos || tratamientos.length === 0) return 0;
+
+    const hoy = new Date().toISOString().split('T')[0];
+    let total = 0;
+
+    for (const tratamiento of tratamientos) {
+      if (tratamiento.estado !== 'activo' || tratamiento.activo === false) continue;
+
+      const medicamentos = tratamiento.medicamentos || [];
+      for (const med of medicamentos) {
+        if (med.activo === false) continue;
+        const tomas = med.tomas || [];
+        total += tomas.filter((t: any) => t.fecha === hoy && t.completado).length;
+      }
+    }
+
+    return total;
   }
 
   private calcularProgresoTratamiento(tratamiento: any): number {
