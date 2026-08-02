@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
+import { forkJoin, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { TratamientosService, Tratamiento, Medicamento, TomaRealizada, HistorialAjuste } from '../../services/tratamientos.service';
 import { SearchService } from '../../services/search.service';
@@ -44,6 +44,9 @@ export class TratamientosComponent implements OnInit {
   private searchSubject = new Subject<string>();
   private searchMedSubject = new Subject<string>();
   private readonly MIN_SEARCH_CHARS = 2;
+
+  // ✅ Resultados de Elasticsearch para medicamentos
+  medicamentosResultados: { tratamientoId: string; tratamientoNombre: string; tratamientoEstado: string; medicamento: Medicamento }[] = [];
 
   // Modal Tratamiento
   mostrarModalTratamiento: boolean = false;
@@ -219,13 +222,14 @@ export class TratamientosComponent implements OnInit {
       }
     });
 
-    // Configurar búsqueda de MEDICAMENTOS con Elasticsearch
+    // ✅ Configurar búsqueda de MEDICAMENTOS con Elasticsearch (CORREGIDO)
     this.searchMedSubject.pipe(
       debounceTime(400),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
+          this.medicamentosResultados = [];
           return [];
         }
         this.isLoadingBusqueda = true;
@@ -234,14 +238,50 @@ export class TratamientosComponent implements OnInit {
     ).subscribe({
       next: (response: any) => {
         this.isLoadingBusqueda = false;
+        
         if (response && response.success && response.data?.resultados?.length > 0) {
-          // Actualizar la lista de medicamentos filtrados
+          // ✅ Transformar resultados de Elasticsearch a medicamentos
+          this.medicamentosResultados = response.data.resultados.map((r: any) => {
+            const datos = r.datos || r;
+            const tratamientoId = datos.tratamiento_id || '';
+            const tratamiento = this.tratamientos.find(t => t.id === tratamientoId);
+            
+            return {
+              tratamientoId: tratamientoId,
+              tratamientoNombre: tratamiento?.nombre || datos.tratamiento_nombre || 'Sin tratamiento',
+              tratamientoEstado: tratamiento?.estado || 'activo',
+              medicamento: {
+                id: r.id,
+                nombre: datos.nombre || r.titulo || '',
+                concentracion: datos.concentracion || '',
+                dosis: datos.dosis || '',
+                frecuencia: datos.frecuencia || '',
+                hora_inicio: datos.hora_inicio || '',
+                duracion_dias: datos.duracion_dias || 0,
+                instrucciones: datos.instrucciones || '',
+                activo: datos.activo !== false,
+                tomas: datos.tomas || [],
+                horariosCalculados: this.calcularHorarios(datos.frecuencia || '', datos.hora_inicio || ''),
+                historial_ajustes: datos.historial_ajustes || []
+              }
+            };
+          });
+          
+          // ✅ Si hay resultados, cambiar a vista de medicamentos automáticamente
+          if (this.medicamentosResultados.length > 0 && this.vistaActual === 'tratamientos') {
+            this.vistaActual = 'medicamentos';
+            this.paginaMedicamentos = 1;
+          }
+          
+          this.cdr.detectChanges();
+        } else {
+          this.medicamentosResultados = [];
           this.cdr.detectChanges();
         }
-        this.cdr.detectChanges();
       },
       error: () => {
         this.isLoadingBusqueda = false;
+        this.medicamentosResultados = [];
         this.cdr.detectChanges();
       }
     });
@@ -345,7 +385,14 @@ export class TratamientosComponent implements OnInit {
     return this.tratamientosFiltrados.slice(inicio, inicio + this.itemsPorPagina);
   }
 
+  // ✅ GETTER MODIFICADO PARA USAR RESULTADOS DE ELASTICSEARCH
   get medicamentosFiltrados(): { tratamientoId: string; tratamientoNombre: string; tratamientoEstado: string; medicamento: Medicamento }[] {
+    // ✅ Si hay resultados de Elasticsearch, usarlos
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS && this.medicamentosResultados.length > 0) {
+      return this.medicamentosResultados;
+    }
+    
+    // Si no, usar la búsqueda local
     let resultado: { tratamientoId: string; tratamientoNombre: string; tratamientoEstado: string; medicamento: Medicamento }[] = [];
     const hoy = this.formatearFechaLocal(new Date());
 
@@ -614,6 +661,8 @@ export class TratamientosComponent implements OnInit {
     this.vistaActual = vista;
     this.paginaActual = 1;
     this.paginaMedicamentos = 1;
+    // ✅ Limpiar resultados de Elasticsearch al cambiar de vista
+    this.medicamentosResultados = [];
     this.cdr.detectChanges();
   }
 
@@ -789,12 +838,17 @@ export class TratamientosComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // ✅ Método para búsqueda con Elasticsearch
+  // ✅ Método para búsqueda con Elasticsearch (MODIFICADO)
   onSearchChange(termino: string) {
     this.terminoBusqueda = termino;
+    
     if (this.vistaActual === 'tratamientos') {
+      // ✅ En tratamientos, buscar en ambos: tratamientos y medicamentos
       this.searchSubject.next(termino);
+      // También buscar en medicamentos para mostrar resultados si hay
+      this.searchMedSubject.next(termino);
     } else {
+      // En medicamentos, solo buscar medicamentos
       this.searchMedSubject.next(termino);
     }
   }
