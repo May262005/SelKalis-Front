@@ -165,6 +165,7 @@ export class CitasComponent implements OnInit {
     filtradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
     this.citasFiltradas = filtradas;
     this.paginaActual = 1;
+    this.cdr.detectChanges();
   }
 
   private indexarCitasEnElasticsearch(citas: Cita[]) {
@@ -327,7 +328,9 @@ export class CitasComponent implements OnInit {
       return;
     }
     this.citas = [...this.citasOriginales];
-    this.buscarLocal();
+    this.aplicarFiltrosLocales();
+    this.actualizarVista();
+    this.cdr.detectChanges();
   }
 
   buscarLocal() {
