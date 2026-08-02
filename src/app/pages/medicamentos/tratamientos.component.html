@@ -11,8 +11,12 @@
         type="text" 
         [placeholder]="vistaActual === 'medicamentos' ? 'Buscar medicamento...' : 'Buscar tratamiento...'" 
         [(ngModel)]="terminoBusqueda"
-        (input)="vistaActual === 'medicamentos' ? cambiarFiltroMedicamentos(filtroMedicamentos) : filtrarTratamientos()"
+        (input)="onSearchChange(terminoBusqueda)"
       >
+      <!-- ✅ INDICADOR DE BÚSQUEDA EN ELASTICSEARCH -->
+      <div class="search-indicator" *ngIf="isLoadingBusqueda">
+        <div class="spinner-small"></div>
+      </div>
     </div>
     <div class="filter-buttons">
       <!-- Filtros para TRATAMIENTOS -->

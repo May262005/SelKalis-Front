@@ -1,9 +1,10 @@
-// estudios.component.ts
 import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { EstudiosService, Estudio } from '../../services/estudios.service';
+import { SearchService } from '../../services/search.service';
 
 @Component({
   selector: 'app-estudios',
@@ -18,6 +19,7 @@ export class EstudiosComponent implements OnInit {
   terminoBusqueda: string = '';
   filtroActual: string = 'todos';
   isLoading: boolean = false;
+  isLoadingBusqueda: boolean = false;
   errorMessage: string = '';
   errorGuardando: string = '';
   hoy: Date = new Date();
@@ -44,6 +46,10 @@ export class EstudiosComponent implements OnInit {
   semanaActual: Date[] = [];
   estudiosPorHora: { hora: string; estudios: Estudio[] }[] = [];
   diasDelMes: { fecha: Date; dia: number; estudios: Estudio[] }[] = [];
+
+  // Subject para búsqueda con debounce
+  private searchSubject = new Subject<string>();
+  private readonly MIN_SEARCH_CHARS = 2;
 
   nuevoEstudio = {
     titulo: '',
@@ -77,6 +83,7 @@ export class EstudiosComponent implements OnInit {
 
   constructor(
     private estudiosService: EstudiosService,
+    private searchService: SearchService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {}
@@ -92,7 +99,116 @@ export class EstudiosComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       this.cargarEstudios();
     }
+
+    // Configurar búsqueda con Elasticsearch
+    this.searchSubject.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      switchMap((termino) => {
+        if (termino.trim().length < this.MIN_SEARCH_CHARS) {
+          this.isLoadingBusqueda = false;
+          this.filtrarEstudios();
+          return [];
+        }
+        this.isLoadingBusqueda = true;
+        return this.searchService.buscarModulo('estudios', termino, this.getFiltrosElasticsearch());
+      })
+    ).subscribe({
+      next: (response: any) => {
+        this.isLoadingBusqueda = false;
+        if (response && response.success && response.data?.resultados?.length > 0) {
+          const resultados = response.data.resultados.map((r: any) => ({
+            id: r.id,
+            titulo: r.datos?.titulo || r.titulo || '',
+            tipo: r.datos?.tipo || r.tipo || '',
+            fecha: r.datos?.fecha || r.fecha || '',
+            hora: r.datos?.hora || r.hora || '',
+            lugar: r.datos?.lugar || r.lugar || '',
+            notas: r.datos?.notas || r.notas || '',
+            estado: r.datos?.estado || r.estado || 'pendiente'
+          }));
+          
+          this.estudios = resultados;
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
+        } else {
+          this.filtrarEstudios();
+        }
+      },
+      error: () => {
+        this.isLoadingBusqueda = false;
+        this.filtrarEstudios();
+      }
+    });
   }
+
+  // ==================== BÚSQUEDA CON ELASTICSEARCH ====================
+  private getFiltrosElasticsearch(): any {
+    const filtros: any = {};
+    if (this.filtroActual === 'pendientes') {
+      filtros.estado = 'pendiente';
+    } else if (this.filtroActual === 'completados') {
+      filtros.estado = 'completado';
+    } else if (this.filtroActual === 'cancelados') {
+      filtros.estado = 'cancelado';
+    }
+    return filtros;
+  }
+
+  private aplicarFiltrosLocales() {
+    let filtrados = [...this.estudios];
+
+    if (this.filtroActual === 'pendientes') {
+      filtrados = filtrados.filter(e => e.estado === 'pendiente');
+    } else if (this.filtroActual === 'completados') {
+      filtrados = filtrados.filter(e => e.estado === 'completado');
+    } else if (this.filtroActual === 'cancelados') {
+      filtrados = filtrados.filter(e => e.estado === 'cancelado');
+    }
+
+    filtrados.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    this.estudiosFiltrados = filtrados;
+    this.paginaActual = 1;
+    this.cdr.detectChanges();
+  }
+
+  // ==================== INDEXAR EN ELASTICSEARCH ====================
+  private indexarEstudiosEnElasticsearch(estudios: Estudio[]) {
+    for (const estudio of estudios) {
+      if (estudio.id) {
+        const documento = {
+          id: estudio.id,
+          titulo: estudio.titulo,
+          tipo: estudio.tipo,
+          fecha: estudio.fecha,
+          hora: estudio.hora,
+          lugar: estudio.lugar || '',
+          notas: estudio.notas || '',
+          estado: estudio.estado
+        };
+        this.searchService.indexar('estudios', documento).subscribe();
+      }
+    }
+  }
+
+  private indexarEstudio(estudio: Estudio) {
+    if (estudio.id) {
+      const documento = {
+        id: estudio.id,
+        titulo: estudio.titulo,
+        tipo: estudio.tipo,
+        fecha: estudio.fecha,
+        hora: estudio.hora,
+        lugar: estudio.lugar || '',
+        notas: estudio.notas || '',
+        estado: estudio.estado
+      };
+      this.searchService.indexar('estudios', documento).subscribe();
+    }
+  }
+
+  // ==================== MÉTODOS EXISTENTES (MODIFICADOS) ====================
 
   get totalPaginas(): number {
     return Math.ceil(this.estudiosFiltrados.length / this.itemsPorPagina);
@@ -143,6 +259,12 @@ export class EstudiosComponent implements OnInit {
 
   toggleEstudio(id: string) {
     this.estudioExpandidoId = this.estudioExpandidoId === id ? null : id;
+  }
+
+  // ✅ Método para búsqueda con Elasticsearch
+  onSearchChange(termino: string) {
+    this.terminoBusqueda = termino;
+    this.searchSubject.next(termino);
   }
 
   cambiarVista(vista: 'lista' | 'mes' | 'semana' | 'dia') {
@@ -376,6 +498,8 @@ export class EstudiosComponent implements OnInit {
         if (response.success && response.data) {
           this.estudios = response.data;
           this.marcarEstudiosVencidosComoCompletados();
+          // Indexar en Elasticsearch
+          this.indexarEstudiosEnElasticsearch(response.data);
         } else {
           this.estudios = [];
           this.filtrarEstudios();
@@ -413,6 +537,8 @@ export class EstudiosComponent implements OnInit {
         this.filtrarEstudios();
         this.actualizarVista();
         this.cdr.detectChanges();
+        // Re-indexar estudios actualizados
+        this.indexarEstudiosEnElasticsearch(vencidos);
       },
       error: () => {
         this.filtrarEstudios();
@@ -423,6 +549,12 @@ export class EstudiosComponent implements OnInit {
   }
 
   filtrarEstudios() {
+    // Si hay término de búsqueda con más de 2 caracteres, usar Elasticsearch
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      this.searchSubject.next(this.terminoBusqueda);
+      return;
+    }
+    
     let filtrados = [...this.estudios];
 
     if (this.filtroActual === 'pendientes') {
@@ -650,6 +782,10 @@ export class EstudiosComponent implements OnInit {
                           this.editandoId ? 'Estudio actualizado correctamente' :
                           'Estudio registrado correctamente';
           this.showToast(mensaje, 'success');
+          // Indexar en Elasticsearch
+          if (response.data) {
+            this.indexarEstudio(response.data);
+          }
         } else {
           this.errorGuardando = response.error || 'Error al guardar';
           this.showToast(this.errorGuardando, 'error');
