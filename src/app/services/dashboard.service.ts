@@ -71,6 +71,14 @@ export class DashboardService {
     @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
+  private getFechaLocal(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   private getAuthHeaders(): HttpHeaders {
     let token = null;
     if (isPlatformBrowser(this.platformId)) {
@@ -85,28 +93,7 @@ export class DashboardService {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
 
-    // ✅ Enviar zona horaria del usuario
-    const timezone = this.getTimezone();
-    headers = headers.set('X-Timezone', timezone);
-
     return headers;
-  }
-
-  private getTimezone(): string {
-    if (!isPlatformBrowser(this.platformId)) return 'UTC';
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    } catch {
-      return 'UTC';
-    }
-  }
-
-  private getFechaLocal(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
   }
 
   private handleError(error: any): Observable<never> {
@@ -152,8 +139,7 @@ export class DashboardService {
         const estudios = result.estudios?.data || [];
         const documentos = result.documentos?.data || [];
 
-        // ✅ Calcular tomas completadas usando fecha local del usuario
-        const hoy = this.getFechaLocal();
+        const hoyLocal = this.getFechaLocal();
         let tomasCompletadas = 0;
 
         for (const tratamiento of tratamientos) {
@@ -162,7 +148,7 @@ export class DashboardService {
           for (const med of medicamentos) {
             if (med.activo === false) continue;
             const tomas = med.tomas || [];
-            const tomasHoy = tomas.filter((t: any) => t.fecha === hoy);
+            const tomasHoy = tomas.filter((t: any) => t.fecha === hoyLocal);
             tomasCompletadas += tomasHoy.filter((t: any) => t.completado === true).length;
           }
         }
@@ -213,7 +199,7 @@ export class DashboardService {
         const estudios = result.estudios?.data || [];
         const documentos = result.documentos?.data || [];
 
-        const hoy = this.getFechaLocal();
+        const hoyLocal = this.getFechaLocal();
         let tomasCompletadas = 0;
 
         for (const tratamiento of tratamientos) {
@@ -222,7 +208,7 @@ export class DashboardService {
           for (const med of medicamentos) {
             if (med.activo === false) continue;
             const tomas = med.tomas || [];
-            const tomasHoy = tomas.filter((t: any) => t.fecha === hoy);
+            const tomasHoy = tomas.filter((t: any) => t.fecha === hoyLocal);
             tomasCompletadas += tomasHoy.filter((t: any) => t.completado === true).length;
           }
         }
@@ -245,7 +231,7 @@ export class DashboardService {
     if (!tratamientos || tratamientos.length === 0) return null;
 
     const ahora = new Date();
-    const hoy = this.getFechaLocal();
+    const hoyLocal = this.getFechaLocal();
 
     for (const tratamiento of tratamientos) {
       if (tratamiento.estado !== 'activo' || tratamiento.activo === false) continue;
@@ -257,7 +243,7 @@ export class DashboardService {
         const tomas = med.tomas || [];
 
         const proximaToma = tomas
-          .filter((t: any) => t.fecha === hoy && !t.completado)
+          .filter((t: any) => t.fecha === hoyLocal && !t.completado)
           .sort((a: any, b: any) => a.hora.localeCompare(b.hora))
           .find((t: any) => {
             const [h, m] = t.hora.split(':').map(Number);
@@ -283,11 +269,11 @@ export class DashboardService {
   private obtenerProximaCita(citas: any[]): ProximaCita | null {
     if (!citas || citas.length === 0) return null;
 
-    const hoy = this.getFechaLocal();
+    const hoyLocal = this.getFechaLocal();
 
     const proximas = citas
       .filter((c: any) => c.estado === 'pendiente')
-      .filter((c: any) => c.fecha >= hoy)
+      .filter((c: any) => c.fecha >= hoyLocal)
       .sort((a: any, b: any) => {
         if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
         return a.hora.localeCompare(b.hora);
@@ -310,11 +296,11 @@ export class DashboardService {
   private obtenerTratamientosActivos(tratamientos: any[]): TratamientoActivo[] {
     if (!tratamientos || tratamientos.length === 0) return [];
 
-    const hoy = this.getFechaLocal();
+    const hoyLocal = this.getFechaLocal();
 
     return tratamientos
       .filter((t: any) => t.estado === 'activo' && t.activo !== false)
-      .filter((t: any) => t.fecha_inicio <= hoy && t.fecha_fin >= hoy)
+      .filter((t: any) => t.fecha_inicio <= hoyLocal && t.fecha_fin >= hoyLocal)
       .map((t: any) => ({
         id: t.id,
         nombre: t.nombre,
@@ -328,11 +314,11 @@ export class DashboardService {
   private obtenerProximosEstudios(estudios: any[]): ProximoEstudio[] {
     if (!estudios || estudios.length === 0) return [];
 
-    const hoy = this.getFechaLocal();
+    const hoyLocal = this.getFechaLocal();
 
     return estudios
       .filter((e: any) => e.estado === 'pendiente')
-      .filter((e: any) => e.fecha >= hoy)
+      .filter((e: any) => e.fecha >= hoyLocal)
       .sort((a: any, b: any) => {
         if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
         return a.hora.localeCompare(b.hora);
@@ -371,11 +357,11 @@ export class DashboardService {
   private contarTratamientosActivos(tratamientos: any[]): number {
     if (!tratamientos || tratamientos.length === 0) return 0;
 
-    const hoy = this.getFechaLocal();
+    const hoyLocal = this.getFechaLocal();
 
     return tratamientos
       .filter((t: any) => t.estado === 'activo' && t.activo !== false)
-      .filter((t: any) => t.fecha_inicio <= hoy && t.fecha_fin >= hoy)
+      .filter((t: any) => t.fecha_inicio <= hoyLocal && t.fecha_fin >= hoyLocal)
       .length;
   }
 
