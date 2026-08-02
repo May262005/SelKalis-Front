@@ -208,7 +208,19 @@ export class TratamientosComponent implements OnInit {
             notas: r.datos?.notas || '',
             estado: r.datos?.estado || r.estado || 'activo',
             activo: r.datos?.activo !== false,
-            medicamentos: r.datos?.medicamentos || [],
+            medicamentos: (r.datos?.medicamentos || []).map((med: any) => ({
+              id: med.id,
+              nombre: med.nombre,
+              concentracion: med.concentracion || '',
+              dosis: med.dosis || '',
+              frecuencia: med.frecuencia,
+              hora_inicio: med.hora_inicio || '',
+              duracion_dias: med.duracion_dias || 0,
+              instrucciones: med.instrucciones || '',
+              activo: med.activo !== false,
+              tomas: med.tomas || [],
+              horariosCalculados: this.calcularHorarios(med.frecuencia, med.hora_inicio)
+            })),
             historial_ajustes: r.datos?.historial_ajustes || [],
             ultimo_ajuste: r.datos?.ultimo_ajuste || ''
           }));
@@ -269,7 +281,6 @@ export class TratamientosComponent implements OnInit {
             };
           });
 
-          // ✅ Ya NO cambiamos de vista automáticamente
           this.cdr.detectChanges();
         } else {
           this.medicamentosResultados = [];
@@ -310,7 +321,18 @@ export class TratamientosComponent implements OnInit {
           fecha_fin: tratamiento.fecha_fin || '',
           notas: tratamiento.notas || '',
           estado: tratamiento.estado,
-          activo: tratamiento.activo !== false
+          activo: tratamiento.activo !== false,
+          medicamentos: (tratamiento.medicamentos || []).map((med: any) => ({
+            id: med.id,
+            nombre: med.nombre,
+            concentracion: med.concentracion || '',
+            dosis: med.dosis || '',
+            frecuencia: med.frecuencia,
+            hora_inicio: med.hora_inicio || '',
+            duracion_dias: med.duracion_dias || 0,
+            instrucciones: med.instrucciones || '',
+            activo: med.activo !== false
+          }))
         };
         this.searchService.indexar('tratamientos', documento).subscribe();
 
@@ -323,6 +345,7 @@ export class TratamientosComponent implements OnInit {
                 concentracion: med.concentracion || '',
                 dosis: med.dosis || '',
                 frecuencia: med.frecuencia,
+                hora_inicio: med.hora_inicio || '',
                 duracion_dias: med.duracion_dias,
                 instrucciones: med.instrucciones || '',
                 tratamiento_id: tratamiento.id,
@@ -347,7 +370,18 @@ export class TratamientosComponent implements OnInit {
         fecha_fin: tratamiento.fecha_fin || '',
         notas: tratamiento.notas || '',
         estado: tratamiento.estado,
-        activo: tratamiento.activo !== false
+        activo: tratamiento.activo !== false,
+        medicamentos: (tratamiento.medicamentos || []).map((med: any) => ({
+          id: med.id,
+          nombre: med.nombre,
+          concentracion: med.concentracion || '',
+          dosis: med.dosis || '',
+          frecuencia: med.frecuencia,
+          hora_inicio: med.hora_inicio || '',
+          duracion_dias: med.duracion_dias || 0,
+          instrucciones: med.instrucciones || '',
+          activo: med.activo !== false
+        }))
       };
       this.searchService.indexar('tratamientos', documento).subscribe();
     }
@@ -361,6 +395,7 @@ export class TratamientosComponent implements OnInit {
         concentracion: medicamento.concentracion || '',
         dosis: medicamento.dosis || '',
         frecuencia: medicamento.frecuencia,
+        hora_inicio: medicamento.hora_inicio || '',
         duracion_dias: medicamento.duracion_dias,
         instrucciones: medicamento.instrucciones || '',
         tratamiento_id: tratamientoId,
@@ -855,8 +890,6 @@ export class TratamientosComponent implements OnInit {
   }
 
   sumarHoras(hora: string, horasASumar: number): string {
-    // ✅ Si la hora no es válida (vacía, mal formada, dato de prueba incompleto),
-    // no intentamos calcular: devolvemos '' en vez de arrastrar NaN:NaN a la vista.
     if (!this.esHoraValida(hora)) return '';
 
     const [h, m] = hora.split(':').map(Number);
@@ -867,13 +900,10 @@ export class TratamientosComponent implements OnInit {
   }
 
   calcularHorarios(frecuencia: string, horaInicio: string): string[] {
-    // ✅ Sin hora de inicio válida no hay horarios que calcular
     if (!this.esHoraValida(horaInicio)) return [];
 
     const calcular = this.horariosPorFrecuencia[frecuencia];
     const horarios = calcular ? calcular(horaInicio) : [horaInicio];
-    // ✅ Filtramos cualquier resultado vacío que haya podido colarse (ej. si sumarHoras
-    // encontró una hora intermedia inválida)
     return horarios.filter(h => !!h);
   }
 
