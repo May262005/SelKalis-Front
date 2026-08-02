@@ -167,13 +167,12 @@ export class CitasComponent implements OnInit {
     this.paginaActual = 1;
   }
 
-  // ✅ Indexación automática igual que en tratamientos
   private indexarCitasEnElasticsearch(citas: Cita[]) {
     for (const cita of citas) {
       if (cita.id) {
         const documento = {
           id: cita.id,
-          titulo: cita.titulo,
+          titulo: cita.titulo.replace(/\./g, ' '),
           especialidad: cita.especialidad,
           fecha: cita.fecha,
           hora: cita.hora,
@@ -192,7 +191,7 @@ export class CitasComponent implements OnInit {
     if (cita.id) {
       const documento = {
         id: cita.id,
-        titulo: cita.titulo,
+        titulo: cita.titulo.replace(/\./g, ' '),
         especialidad: cita.especialidad,
         fecha: cita.fecha,
         hora: cita.hora,
@@ -268,7 +267,6 @@ export class CitasComponent implements OnInit {
           this.citasOriginales = response.data;
           this.citas = response.data;
           this.marcarCitasVencidasComoCompletadas();
-          // ✅ Indexación automática igual que en tratamientos
           this.indexarCitasEnElasticsearch(response.data);
           this.aplicarFiltros();
           this.actualizarVista();
