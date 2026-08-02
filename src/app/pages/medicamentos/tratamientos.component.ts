@@ -15,6 +15,7 @@ import { SearchService } from '../../services/search.service';
 })
 export class TratamientosComponent implements OnInit {
   tratamientos: Tratamiento[] = [];
+  tratamientosOriginal: Tratamiento[] = [];
   tratamientosFiltrados: Tratamiento[] = [];
   terminoBusqueda: string = '';
   filtroActual: string = 'todos';
@@ -40,12 +41,9 @@ export class TratamientosComponent implements OnInit {
   paginaMedicamentos: number = 1;
   Math = Math;
 
-  // Subject para búsqueda con debounce
   private searchSubject = new Subject<string>();
-  private searchMedSubject = new Subject<string>();
   private readonly MIN_SEARCH_CHARS = 2;
 
-  // ✅ Resultados de Elasticsearch para medicamentos
   medicamentosResultados: { tratamientoId: string; tratamientoNombre: string; tratamientoEstado: string; medicamento: Medicamento }[] = [];
 
   // Modal Tratamiento
@@ -178,24 +176,29 @@ export class TratamientosComponent implements OnInit {
       }, 60000);
     }
 
-    // Configurar búsqueda de TRATAMIENTOS con Elasticsearch
     this.searchSubject.pipe(
       debounceTime(400),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
-          this.filtrarTratamientos();
+          this.medicamentosResultados = [];
+          this.restaurarListaOriginal();
           return [];
         }
         this.isLoadingBusqueda = true;
-        return this.searchService.buscarModulo('tratamientos', termino, this.getFiltrosTratamientos());
+        return forkJoin({
+          tratamientos: this.searchService.buscarModulo('tratamientos', termino, this.getFiltrosTratamientos()),
+          medicamentos: this.searchService.buscarModulo('medicamentos', termino)
+        });
       })
     ).subscribe({
       next: (response: any) => {
         this.isLoadingBusqueda = false;
-        if (response && response.success && response.data?.resultados?.length > 0) {
-          const resultados = response.data.resultados.map((r: any) => ({
+        
+        let resultadosTratamientos: any[] = [];
+        if (response.tratamientos?.success && response.tratamientos?.data?.resultados?.length > 0) {
+          resultadosTratamientos = response.tratamientos.data.resultados.map((r: any) => ({
             id: r.id,
             nombre: r.datos?.nombre || r.titulo || '',
             diagnostico: r.datos?.diagnostico || r.descripcion || '',
@@ -208,43 +211,14 @@ export class TratamientosComponent implements OnInit {
             historial_ajustes: r.datos?.historial_ajustes || [],
             ultimo_ajuste: r.datos?.ultimo_ajuste || ''
           }));
-          
-          this.tratamientos = resultados;
-          this.filtrarTratamientos();
-          this.cdr.detectChanges();
-        } else {
-          this.filtrarTratamientos();
         }
-      },
-      error: () => {
-        this.isLoadingBusqueda = false;
-        this.filtrarTratamientos();
-      }
-    });
-
-    // ✅ Configurar búsqueda de MEDICAMENTOS con Elasticsearch (CORREGIDO)
-    this.searchMedSubject.pipe(
-      debounceTime(400),
-      distinctUntilChanged(),
-      switchMap((termino) => {
-        if (termino.trim().length < this.MIN_SEARCH_CHARS) {
-          this.isLoadingBusqueda = false;
-          this.medicamentosResultados = [];
-          return [];
-        }
-        this.isLoadingBusqueda = true;
-        return this.searchService.buscarModulo('medicamentos', termino);
-      })
-    ).subscribe({
-      next: (response: any) => {
-        this.isLoadingBusqueda = false;
         
-        if (response && response.success && response.data?.resultados?.length > 0) {
-          // ✅ Transformar resultados de Elasticsearch a medicamentos
-          this.medicamentosResultados = response.data.resultados.map((r: any) => {
+        let resultadosMedicamentos: any[] = [];
+        if (response.medicamentos?.success && response.medicamentos?.data?.resultados?.length > 0) {
+          resultadosMedicamentos = response.medicamentos.data.resultados.map((r: any) => {
             const datos = r.datos || r;
             const tratamientoId = datos.tratamiento_id || '';
-            const tratamiento = this.tratamientos.find(t => t.id === tratamientoId);
+            const tratamiento = this.tratamientosOriginal.find(t => t.id === tratamientoId);
             
             return {
               tratamientoId: tratamientoId,
@@ -266,28 +240,76 @@ export class TratamientosComponent implements OnInit {
               }
             };
           });
+        }
+        
+        if (resultadosTratamientos.length > 0 || resultadosMedicamentos.length > 0) {
+          if (resultadosTratamientos.length > 0) {
+            this.tratamientos = resultadosTratamientos;
+            this.aplicarFiltrosLocales();
+          } else {
+            this.tratamientos = [];
+            this.tratamientosFiltrados = [];
+          }
           
-          // ✅ Si hay resultados, cambiar a vista de medicamentos automáticamente
-          if (this.medicamentosResultados.length > 0 && this.vistaActual === 'tratamientos') {
+          this.medicamentosResultados = resultadosMedicamentos;
+          
+          if (resultadosMedicamentos.length > 0 && this.vistaActual === 'tratamientos') {
             this.vistaActual = 'medicamentos';
             this.paginaMedicamentos = 1;
           }
           
           this.cdr.detectChanges();
         } else {
+          this.tratamientos = [];
+          this.tratamientosFiltrados = [];
           this.medicamentosResultados = [];
           this.cdr.detectChanges();
         }
       },
       error: () => {
         this.isLoadingBusqueda = false;
-        this.medicamentosResultados = [];
+        this.restaurarListaOriginal();
         this.cdr.detectChanges();
       }
     });
   }
 
-  // ==================== BÚSQUEDA CON ELASTICSEARCH ====================
+  private restaurarListaOriginal() {
+    this.tratamientos = [...this.tratamientosOriginal];
+    this.medicamentosResultados = [];
+    this.aplicarFiltrosLocales();
+    this.cdr.detectChanges();
+  }
+
+  private aplicarFiltrosLocales() {
+    let filtrados = [...this.tratamientos];
+    const hoy = this.formatearFechaLocal(new Date());
+
+    if (this.filtroActual === 'suspendidos') {
+      filtrados = filtrados.filter((t: Tratamiento) => t.activo === false);
+    } else if (this.filtroActual === 'sin_completar') {
+      filtrados = filtrados.filter((t: Tratamiento) => {
+        if (t.activo === false) return false;
+        if (t.estado !== 'activo') return false;
+        if (t.fecha_fin >= hoy) return false;
+        const progreso = this.calcularProgresoTratamiento(t);
+        return progreso < 100;
+      });
+    } else if (this.filtroActual === 'en_curso') {
+      filtrados = filtrados.filter((t: Tratamiento) => {
+        if (t.activo === false) return false;
+        if (t.estado !== 'activo') return false;
+        return t.fecha_inicio <= hoy && t.fecha_fin >= hoy;
+      });
+    } else if (this.filtroActual === 'completados') {
+      filtrados = filtrados.filter((t: Tratamiento) => t.estado === 'completado');
+    }
+
+    this.tratamientosFiltrados = filtrados;
+    this.paginaActual = 1;
+    this.cdr.detectChanges();
+  }
+
   private getFiltrosTratamientos(): any {
     const filtros: any = {};
     if (this.filtroActual === 'en_curso') {
@@ -301,7 +323,6 @@ export class TratamientosComponent implements OnInit {
     return filtros;
   }
 
-  // ==================== INDEXAR EN ELASTICSEARCH ====================
   private indexarTratamientosEnElasticsearch(tratamientos: any[]) {
     for (const tratamiento of tratamientos) {
       if (tratamiento.id) {
@@ -374,8 +395,6 @@ export class TratamientosComponent implements OnInit {
     }
   }
 
-  // ==================== MÉTODOS EXISTENTES (MODIFICADOS) ====================
-
   get totalPaginas(): number {
     return Math.ceil(this.tratamientosFiltrados.length / this.itemsPorPagina);
   }
@@ -385,14 +404,11 @@ export class TratamientosComponent implements OnInit {
     return this.tratamientosFiltrados.slice(inicio, inicio + this.itemsPorPagina);
   }
 
-  // ✅ GETTER MODIFICADO PARA USAR RESULTADOS DE ELASTICSEARCH
   get medicamentosFiltrados(): { tratamientoId: string; tratamientoNombre: string; tratamientoEstado: string; medicamento: Medicamento }[] {
-    // ✅ Si hay resultados de Elasticsearch, usarlos
     if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS && this.medicamentosResultados.length > 0) {
       return this.medicamentosResultados;
     }
     
-    // Si no, usar la búsqueda local
     let resultado: { tratamientoId: string; tratamientoNombre: string; tratamientoEstado: string; medicamento: Medicamento }[] = [];
     const hoy = this.formatearFechaLocal(new Date());
 
@@ -661,8 +677,9 @@ export class TratamientosComponent implements OnInit {
     this.vistaActual = vista;
     this.paginaActual = 1;
     this.paginaMedicamentos = 1;
-    // ✅ Limpiar resultados de Elasticsearch al cambiar de vista
-    this.medicamentosResultados = [];
+    if (vista === 'tratamientos') {
+      this.restaurarListaOriginal();
+    }
     this.cdr.detectChanges();
   }
 
@@ -670,7 +687,11 @@ export class TratamientosComponent implements OnInit {
     this.filtroActual = filtro;
     this.paginaActual = 1;
     this.paginaMedicamentos = 1;
-    this.filtrarTratamientos();
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      this.searchSubject.next(this.terminoBusqueda);
+    } else {
+      this.aplicarFiltrosLocales();
+    }
   }
 
   cambiarFiltroMedicamentos(filtro: string) {
@@ -723,16 +744,18 @@ export class TratamientosComponent implements OnInit {
       next: (response: any) => {
         this.isLoading = false;
         if (response.success && response.data) {
-          this.tratamientos = this.transformarTratamientos(response.data);
+          const transformados = this.transformarTratamientos(response.data);
+          this.tratamientosOriginal = transformados;
+          this.tratamientos = transformados;
           this.verificarYActualizarEstados();
-          this.filtrarTratamientos();
-          // Indexar en Elasticsearch
+          this.aplicarFiltrosLocales();
           this.indexarTratamientosEnElasticsearch(response.data);
           this.cdr.detectChanges();
           setTimeout(() => this.cdr.detectChanges(), 50);
         } else {
           this.tratamientos = [];
-          this.filtrarTratamientos();
+          this.tratamientosOriginal = [];
+          this.aplicarFiltrosLocales();
           this.cdr.detectChanges();
         }
       },
@@ -740,7 +763,8 @@ export class TratamientosComponent implements OnInit {
         this.isLoading = false;
         this.errorMessage = 'Error al cargar los tratamientos: ' + (this.obtenerMensajeError(error));
         this.tratamientos = [];
-        this.filtrarTratamientos();
+        this.tratamientosOriginal = [];
+        this.aplicarFiltrosLocales();
         this.cdr.detectChanges();
         this.showToast('Error al cargar los tratamientos', 'error');
       }
@@ -800,57 +824,15 @@ export class TratamientosComponent implements OnInit {
     }));
   }
 
-  filtrarTratamientos() {
-    let filtrados = [...this.tratamientos];
-    const hoy = this.formatearFechaLocal(new Date());
-
-    if (this.filtroActual === 'suspendidos') {
-      filtrados = filtrados.filter((t: Tratamiento) => t.activo === false);
-    } else if (this.filtroActual === 'sin_completar') {
-      filtrados = filtrados.filter((t: Tratamiento) => {
-        if (t.activo === false) return false;
-        if (t.estado !== 'activo') return false;
-        if (t.fecha_fin >= hoy) return false;
-        const progreso = this.calcularProgresoTratamiento(t);
-        return progreso < 100;
-      });
-    } else if (this.filtroActual === 'en_curso') {
-      filtrados = filtrados.filter((t: Tratamiento) => {
-        if (t.activo === false) return false;
-        if (t.estado !== 'activo') return false;
-        return t.fecha_inicio <= hoy && t.fecha_fin >= hoy;
-      });
-    } else if (this.filtroActual === 'completados') {
-      filtrados = filtrados.filter((t: Tratamiento) => t.estado === 'completado');
-    }
-
-    if (this.terminoBusqueda.trim()) {
-      const term = this.terminoBusqueda.toLowerCase();
-      filtrados = filtrados.filter((t: Tratamiento) =>
-        t.nombre.toLowerCase().includes(term) ||
-        (t.diagnostico && t.diagnostico.toLowerCase().includes(term))
-      );
-    }
-
-    this.tratamientosFiltrados = filtrados;
-    this.paginaActual = 1;
-    this.paginaMedicamentos = 1;
-    this.cdr.detectChanges();
-  }
-
-  // ✅ Método para búsqueda con Elasticsearch (MODIFICADO)
   onSearchChange(termino: string) {
     this.terminoBusqueda = termino;
     
-    if (this.vistaActual === 'tratamientos') {
-      // ✅ En tratamientos, buscar en ambos: tratamientos y medicamentos
-      this.searchSubject.next(termino);
-      // También buscar en medicamentos para mostrar resultados si hay
-      this.searchMedSubject.next(termino);
-    } else {
-      // En medicamentos, solo buscar medicamentos
-      this.searchMedSubject.next(termino);
+    if (termino.trim().length === 0) {
+      this.restaurarListaOriginal();
+      return;
     }
+    
+    this.searchSubject.next(termino);
   }
 
   toggleTratamiento(id: string | number) {
@@ -951,6 +933,8 @@ export class TratamientosComponent implements OnInit {
       }, 400);
     }, 4000);
   }
+
+  // ==================== MODALES Y GUARDADO ====================
 
   abrirModalTratamiento(tratamiento?: Tratamiento) {
     this.errorGuardando = '';
@@ -1119,7 +1103,6 @@ export class TratamientosComponent implements OnInit {
           this.cargarTratamientos();
           this.cerrarModalTratamiento();
           this.showToast('Tratamiento guardado correctamente', 'success');
-          // Indexar en Elasticsearch
           if (response.data) {
             this.indexarTratamiento(response.data);
             if (response.data.medicamentos) {
@@ -1338,7 +1321,6 @@ export class TratamientosComponent implements OnInit {
           this.cargarTratamientos();
           this.cerrarModalMedicamento();
           this.showToast('Medicamento agregado al tratamiento', 'success');
-          // Indexar en Elasticsearch
           if (response.data) {
             const tratamiento = this.tratamientos.find(t => t.id === this.tratamientoIdActivo);
             this.indexarMedicamento(response.data, this.tratamientoIdActivo!, tratamiento?.nombre || '');
@@ -1436,7 +1418,6 @@ export class TratamientosComponent implements OnInit {
           this.cargarTratamientos();
           this.cerrarModalEditarMedicamento();
           this.showToast('Medicamento actualizado correctamente', 'success');
-          // Re-indexar
           if (response.data) {
             const tratamiento = this.tratamientos.find(t => t.id === this.medicamentoEditandoTratamientoId);
             this.indexarMedicamento(response.data, this.medicamentoEditandoTratamientoId!, tratamiento?.nombre || '');
