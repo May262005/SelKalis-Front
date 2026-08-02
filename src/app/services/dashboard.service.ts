@@ -1,4 +1,3 @@
-// services/dashboard.service.ts
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError, forkJoin, of } from 'rxjs';
@@ -48,6 +47,13 @@ export interface DocumentoReciente {
   categoria?: string;
 }
 
+export interface TomasHoy {
+  total: number;
+  completadas: number;
+  progreso: number;
+  fecha: string;
+}
+
 export interface DashboardData {
   proximaToma: ProximaToma | null;
   proximaCita: ProximaCita | null;
@@ -93,7 +99,79 @@ export class DashboardService {
     return throwError(() => error);
   }
 
+  // ==================== NUEVO MÉTODO PARA OBTENER TOMAS DEL DÍA ====================
+  getTomasHoy(): Observable<TomasHoy> {
+    const headers = this.getAuthHeaders();
+    return this.http.get(`${this.TRATAMIENTOS_URL}/tomas/hoy`, { headers })
+      .pipe(
+        timeout(this.TIMEOUT),
+        map((response: any) => {
+          if (response.success && response.data) {
+            return {
+              total: response.data.totalTomasHoy || 0,
+              completadas: response.data.completadasHoy || 0,
+              progreso: response.data.progresoHoy || 0,
+              fecha: response.data.fecha || new Date().toISOString().split('T')[0]
+            };
+          }
+          return { total: 0, completadas: 0, progreso: 0, fecha: new Date().toISOString().split('T')[0] };
+        }),
+        catchError(() => of({ total: 0, completadas: 0, progreso: 0, fecha: new Date().toISOString().split('T')[0] }))
+      );
+  }
+
   getDashboardData(): Observable<DashboardData> {
+    const headers = this.getAuthHeaders();
+
+    const tratamientos$ = this.http.get(`${this.TRATAMIENTOS_URL}/tratamientos`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    const citas$ = this.http.get(`${this.CITAS_URL}/citas`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    const estudios$ = this.http.get(`${this.ESTUDIOS_URL}/estudios`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    const documentos$ = this.http.get(`${this.DOCUMENTOS_URL}/documentos`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    // ✅ NUEVO: Obtener tomas del día desde el endpoint específico
+    const tomasHoy$ = this.getTomasHoy();
+
+    return forkJoin({
+      tratamientos: tratamientos$,
+      citas: citas$,
+      estudios: estudios$,
+      documentos: documentos$,
+      tomasHoy: tomasHoy$
+    }).pipe(
+      map((result: any) => {
+        const tratamientos = result.tratamientos?.data || [];
+        const citas = result.citas?.data || [];
+        const estudios = result.estudios?.data || [];
+        const documentos = result.documentos?.data || [];
+        const tomasHoy = result.tomasHoy || { total: 0, completadas: 0 };
+
+        return {
+          proximaToma: this.obtenerProximaToma(tratamientos),
+          proximaCita: this.obtenerProximaCita(citas),
+          tratamientosActivos: this.obtenerTratamientosActivos(tratamientos),
+          proximosEstudios: this.obtenerProximosEstudios(estudios),
+          documentosRecientes: this.obtenerDocumentosRecientes(documentos),
+          totalTratamientosActivos: this.contarTratamientosActivos(tratamientos),
+          // ✅ Usamos el valor del endpoint específico
+          tomasCompletadasHoy: tomasHoy.completadas
+        };
+      }),
+      catchError((error) => {
+        // Fallback: calcular desde tratamientos
+        return this.getDashboardDataFallback();
+      })
+    );
+  }
+
+  // ==================== FALLBACK: Si falla el endpoint nuevo ====================
+  private getDashboardDataFallback(): Observable<DashboardData> {
     const headers = this.getAuthHeaders();
 
     const tratamientos$ = this.http.get(`${this.TRATAMIENTOS_URL}/tratamientos`, { headers })
@@ -273,6 +351,7 @@ export class DashboardService {
       .length;
   }
 
+  // ==================== MÉTODO DE FALLBACK PARA CONTAR TOMAS ====================
   private contarTomasCompletadasHoy(tratamientos: any[]): number {
     if (!tratamientos || tratamientos.length === 0) return 0;
 
