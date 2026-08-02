@@ -103,15 +103,8 @@ export class CitasComponent implements OnInit {
     ).subscribe({
       next: (response: any) => {
         this.isLoadingBusqueda = false;
-
-        // ✅ FIX: distinguimos "búsqueda exitosa sin resultados" de "error real".
-        // Antes: si resultados.length === 0 caía al else y regresaba TODAS las citas,
-        // dando la impresión de que cualquier búsqueda "encontraba todo".
         if (response && response.success) {
           const resultadosRaw = response.data?.resultados || [];
-
-          console.log(`🔍 Búsqueda "${this.terminoBusqueda}" => ${resultadosRaw.length} resultado(s) de ES`);
-
           const resultados = resultadosRaw.map((r: any) => ({
             id: r.id,
             titulo: r.datos?.titulo || r.titulo || '',
@@ -124,27 +117,20 @@ export class CitasComponent implements OnInit {
             estado: r.datos?.estado || r.estado || 'pendiente',
             recordatorio: r.datos?.recordatorio || false
           }));
-
-          // Aquí this.citas puede quedar en [] si no hubo resultados,
-          // y aplicarFiltrosLocales() dejará citasFiltradas también en [],
-          // que es lo correcto: mostrar "sin resultados" en el HTML.
+          
           this.citas = resultados;
           this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
         } else {
-          // Esto sí es un error real de la API (success:false), ahí es razonable
-          // hacer fallback a la lista completa para no dejar la pantalla en blanco.
-          console.warn('⚠️ La búsqueda no fue exitosa, usando fallback local', response);
           this.citas = [...this.citasOriginales];
           this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
         }
       },
-      error: (error: any) => {
+      error: () => {
         this.isLoadingBusqueda = false;
-        console.error('❌ Error llamando al search-service:', error);
         this.citas = [...this.citasOriginales];
         this.aplicarFiltrosLocales();
         this.actualizarVista();
@@ -181,8 +167,6 @@ export class CitasComponent implements OnInit {
     this.paginaActual = 1;
   }
 
-  // ✅ FIX: log de warning si a alguna cita le falta id (no se indexará),
-  // y manejo de error explícito en el subscribe para no fallar en silencio.
   private indexarCitasEnElasticsearch(citas: Cita[]) {
     for (const cita of citas) {
       if (cita.id) {
@@ -198,12 +182,7 @@ export class CitasComponent implements OnInit {
           estado: cita.estado,
           recordatorio: cita.recordatorio || false
         };
-        this.searchService.indexar('citas', documento).subscribe({
-          next: () => console.log(`✅ Indexado OK en ES: ${cita.id} - "${cita.titulo}"`),
-          error: (err) => console.error(`❌ Falló indexado en ES para ${cita.id}:`, err)
-        });
-      } else {
-        console.warn('⚠️ Cita sin id, no se pudo indexar en Elasticsearch:', cita);
+        this.searchService.indexar('citas', documento).subscribe();
       }
     }
   }
@@ -222,12 +201,7 @@ export class CitasComponent implements OnInit {
         estado: cita.estado,
         recordatorio: cita.recordatorio || false
       };
-      this.searchService.indexar('citas', documento).subscribe({
-        next: () => console.log(`✅ Indexado OK en ES: ${cita.id} - "${cita.titulo}"`),
-        error: (err) => console.error(`❌ Falló indexado en ES para ${cita.id}:`, err)
-      });
-    } else {
-      console.warn('⚠️ Cita sin id, no se pudo indexar en Elasticsearch:', cita);
+      this.searchService.indexar('citas', documento).subscribe();
     }
   }
 
@@ -293,7 +267,6 @@ export class CitasComponent implements OnInit {
           this.citasOriginales = response.data;
           this.citas = response.data;
           this.marcarCitasVencidasComoCompletadas();
-          // ✅ Indexa automáticamente todas las citas al cargar
           this.indexarCitasEnElasticsearch(response.data);
           this.aplicarFiltros();
           this.actualizarVista();
