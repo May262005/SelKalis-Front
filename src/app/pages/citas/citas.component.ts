@@ -14,7 +14,6 @@ import { SearchService } from '../../services/search.service';
   styleUrls: ['./citas.component.css']
 })
 export class CitasComponent implements OnInit {
-  // ✅ Guardar copia original de las citas para restaurar después de búsqueda
   citasOriginales: Cita[] = [];
   citas: Cita[] = [];
   citasFiltradas: Cita[] = [];
@@ -55,7 +54,6 @@ export class CitasComponent implements OnInit {
   paginaActual: number = 1;
   Math = Math;
 
-  // Subject para búsqueda con debounce
   private searchSubject = new Subject<string>();
   private readonly MIN_SEARCH_CHARS = 2;
 
@@ -87,14 +85,12 @@ export class CitasComponent implements OnInit {
       this.cargarCitas();
     }
 
-    // Configurar búsqueda con Elasticsearch
     this.searchSubject.pipe(
       debounceTime(400),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
-          // ✅ RESTAURAR citas originales cuando se limpia la búsqueda
           this.citas = [...this.citasOriginales];
           this.aplicarFiltrosLocales();
           this.actualizarVista();
@@ -121,13 +117,11 @@ export class CitasComponent implements OnInit {
             recordatorio: r.datos?.recordatorio || false
           }));
           
-          // ✅ Reemplazar citas con resultados de búsqueda
           this.citas = resultados;
           this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
         } else {
-          // ✅ Si no hay resultados, restaurar citas originales
           this.citas = [...this.citasOriginales];
           this.aplicarFiltrosLocales();
           this.actualizarVista();
@@ -136,7 +130,6 @@ export class CitasComponent implements OnInit {
       },
       error: () => {
         this.isLoadingBusqueda = false;
-        // ✅ En caso de error, restaurar citas originales
         this.citas = [...this.citasOriginales];
         this.aplicarFiltrosLocales();
         this.actualizarVista();
@@ -145,34 +138,6 @@ export class CitasComponent implements OnInit {
     });
   }
 
-  // ==================== BÚSQUEDA LOCAL (FALLBACK) ====================
-  buscarLocal() {
-    let filtradas = [...this.citas];
-
-    if (this.filtroActual === 'pendientes') {
-      filtradas = filtradas.filter(c => c.estado === 'pendiente');
-    } else if (this.filtroActual === 'completadas') {
-      filtradas = filtradas.filter(c => c.estado === 'completada');
-    } else if (this.filtroActual === 'canceladas') {
-      filtradas = filtradas.filter(c => c.estado === 'cancelada');
-    }
-
-    if (this.terminoBusqueda.trim()) {
-      const term = this.terminoBusqueda.toLowerCase();
-      filtradas = filtradas.filter(c =>
-        c.titulo.toLowerCase().includes(term) ||
-        c.especialidad.toLowerCase().includes(term) ||
-        (c.lugar && c.lugar.toLowerCase().includes(term))
-      );
-    }
-
-    filtradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    this.citasFiltradas = filtradas;
-    this.paginaActual = 1;
-    this.cdr.detectChanges();
-  }
-
-  // ==================== FILTROS PARA ELASTICSEARCH ====================
   private getFiltrosElasticsearch(): any {
     const filtros: any = {};
     if (this.filtroActual === 'pendientes') {
@@ -201,7 +166,6 @@ export class CitasComponent implements OnInit {
     this.paginaActual = 1;
   }
 
-  // ==================== INDEXAR EN ELASTICSEARCH ====================
   private indexarCitasEnElasticsearch(citas: Cita[]) {
     for (const cita of citas) {
       if (cita.id) {
@@ -239,8 +203,6 @@ export class CitasComponent implements OnInit {
       this.searchService.indexar('citas', documento).subscribe();
     }
   }
-
-  // ==================== MÉTODOS EXISTENTES (MODIFICADOS) ====================
 
   get totalPaginas(): number {
     return Math.ceil(this.citasFiltradas.length / this.itemsPorPagina);
@@ -301,12 +263,14 @@ export class CitasComponent implements OnInit {
       next: (response: any) => {
         this.isLoading = false;
         if (response.success && response.data) {
-          // ✅ Guardar copia original
           this.citasOriginales = response.data;
           this.citas = response.data;
           this.marcarCitasVencidasComoCompletadas();
-          // Indexar en Elasticsearch (en segundo plano)
           this.indexarCitasEnElasticsearch(response.data);
+          this.aplicarFiltros();
+          this.actualizarVista();
+          this.cdr.detectChanges();
+          setTimeout(() => this.cdr.detectChanges(), 50);
         } else {
           this.citasOriginales = [];
           this.citas = [];
@@ -343,11 +307,10 @@ export class CitasComponent implements OnInit {
     forkJoin(cambios).subscribe({
       next: () => {
         vencidas.forEach(v => { v.estado = 'completada'; });
+        this.indexarCitasEnElasticsearch(vencidas);
         this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
-        // Re-indexar citas actualizadas
-        this.indexarCitasEnElasticsearch(vencidas);
       },
       error: () => {
         this.aplicarFiltros();
@@ -358,14 +321,38 @@ export class CitasComponent implements OnInit {
   }
 
   aplicarFiltros() {
-    // Si hay término de búsqueda con más de 2 caracteres, usar Elasticsearch
     if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
       this.searchSubject.next(this.terminoBusqueda);
       return;
     }
-    // ✅ Si no hay búsqueda, restaurar citas originales
     this.citas = [...this.citasOriginales];
     this.buscarLocal();
+  }
+
+  buscarLocal() {
+    let filtradas = [...this.citas];
+
+    if (this.filtroActual === 'pendientes') {
+      filtradas = filtradas.filter(c => c.estado === 'pendiente');
+    } else if (this.filtroActual === 'completadas') {
+      filtradas = filtradas.filter(c => c.estado === 'completada');
+    } else if (this.filtroActual === 'canceladas') {
+      filtradas = filtradas.filter(c => c.estado === 'cancelada');
+    }
+
+    if (this.terminoBusqueda.trim()) {
+      const term = this.terminoBusqueda.toLowerCase();
+      filtradas = filtradas.filter(c =>
+        c.titulo.toLowerCase().includes(term) ||
+        c.especialidad.toLowerCase().includes(term) ||
+        (c.lugar && c.lugar.toLowerCase().includes(term))
+      );
+    }
+
+    filtradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    this.citasFiltradas = filtradas;
+    this.paginaActual = 1;
+    this.cdr.detectChanges();
   }
 
   cambiarFiltro(filtro: string) {
@@ -750,7 +737,6 @@ export class CitasComponent implements OnInit {
               this.esReagendar ? 'Cita reagendada correctamente' : 'Cita actualizada correctamente',
               'success'
             );
-            // Indexar en Elasticsearch
             if (response.data) {
               this.indexarCita(response.data);
             }
@@ -773,7 +759,6 @@ export class CitasComponent implements OnInit {
             this.cargarCitas();
             this.cerrarModal();
             this.showToast('Cita registrada correctamente', 'success');
-            // Indexar en Elasticsearch
             if (response.data) {
               this.indexarCita(response.data);
             }
@@ -841,7 +826,6 @@ export class CitasComponent implements OnInit {
               this.cargarCitas();
               this.cerrarModalDetalle();
               this.showToast('Cita cancelada', 'success');
-              // Actualizar índice
               const cita = this.citas.find(c => c.id === id);
               if (cita) {
                 this.indexarCita(cita);
