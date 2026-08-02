@@ -110,13 +110,14 @@ export class DashboardService {
       .pipe(
         timeout(this.TIMEOUT),
         tap((response: any) => {
-          console.log('📊 [Service] Respuesta tomas/hoy:', response);
+          console.log('📊 [Service] Respuesta RAW de /tomas/hoy:', JSON.stringify(response, null, 2));
         }),
         map((response: any) => {
+          // ✅ CORREGIDO: Usar los nombres correctos del endpoint
           if (response.success && response.data) {
             const result = {
               total: response.data.totalTomasHoy || 0,
-              completadas: response.data.completadasHoy || 0,
+              completadas: response.data.completadasHoy || 0,  // ✅ Nombre correcto
               progreso: response.data.progresoHoy || 0,
               fecha: response.data.fecha || new Date().toISOString().split('T')[0]
             };
@@ -197,20 +198,20 @@ export class DashboardService {
     }).pipe(
       map((result: any) => {
         console.log('📦 [Service] RESULTADO COMPLETO de forkJoin:', result);
-        console.log('📦 [Service] tomasHoy:', result.tomasHoy);
         
         const tratamientos = result.tratamientos?.data || [];
         const citas = result.citas?.data || [];
         const estudios = result.estudios?.data || [];
         const documentos = result.documentos?.data || [];
         
-        // ✅ OBTENER EL VALOR CORRECTO
+        // ✅ CORREGIDO: Extraer correctamente el valor
         const tomasHoy = result.tomasHoy;
-        const tomasCompletadas = tomasHoy?.completadas || 0;
+        const tomasCompletadas = tomasHoy?.completadas || 0;  // ✅ Usar "completadas"
         const totalTomas = tomasHoy?.total || 0;
 
         console.log('✅ [Service] tomasCompletadas extraídas:', tomasCompletadas);
         console.log('✅ [Service] totalTomas extraídas:', totalTomas);
+        console.log('✅ [Service] tomasHoy completo:', tomasHoy);
 
         const tratamientosActivos = this.obtenerTratamientosActivos(tratamientos);
         const totalTratamientosActivos = this.contarTratamientosActivos(tratamientos);
@@ -222,7 +223,7 @@ export class DashboardService {
           proximosEstudios: this.obtenerProximosEstudios(estudios),
           documentosRecientes: this.obtenerDocumentosRecientes(documentos),
           totalTratamientosActivos: totalTratamientosActivos,
-          tomasCompletadasHoy: tomasCompletadas // ✅ AQUÍ SE ASIGNA EL VALOR
+          tomasCompletadasHoy: tomasCompletadas  // ✅ AQUÍ SE ASIGNA EL VALOR
         };
 
         console.log('📤 [Service] DATOS FINALES DEL SERVICE:', dashboardData);
@@ -232,13 +233,12 @@ export class DashboardService {
       }),
       catchError((error) => {
         console.error('❌ [Service] Error en getDashboardData:', error);
-        // Fallback: calcular desde tratamientos
         return this.getDashboardDataFallback();
       })
     );
   }
 
-  // ==================== FALLBACK: Si falla el endpoint nuevo ====================
+  // ==================== FALLBACK ====================
   private getDashboardDataFallback(): Observable<DashboardData> {
     console.log('🔄 [Service] Usando fallback para dashboard...');
     
