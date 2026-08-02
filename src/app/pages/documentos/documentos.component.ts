@@ -1,10 +1,12 @@
-// documentos.component.ts
 import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { SafeUrlPipe } from './safe-url.pipe';
 import { DocumentosService, Documento } from '../../services/documentos.service';
+import { SearchService } from '../../services/search.service';
 
 @Component({
   selector: 'app-documentos',
@@ -20,10 +22,15 @@ export class DocumentosComponent implements OnInit, OnDestroy {
   filtroActual: string = 'todos';
   mostrarModal: boolean = false;
   isLoading: boolean = false;
+  isLoadingBusqueda: boolean = false;
   isLoadingSubida: boolean = false;
   errorMessage: string = '';
   
   private loadingTimeout: any = null;
+  
+  // Subject para búsqueda con debounce
+  private searchSubject = new Subject<string>();
+  private readonly MIN_SEARCH_CHARS = 2;
   
   // Vista previa
   mostrarVistaPrevia: boolean = false;
@@ -54,6 +61,7 @@ export class DocumentosComponent implements OnInit, OnDestroy {
 
   constructor(
     private documentosService: DocumentosService,
+    private searchService: SearchService,
     private cdr: ChangeDetectorRef,
     private sanitizer: DomSanitizer,
     @Inject(PLATFORM_ID) private platformId: Object
@@ -61,11 +69,112 @@ export class DocumentosComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.cargarDocumentos();
+
+    // Configurar búsqueda con Elasticsearch
+    this.searchSubject.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      switchMap((termino) => {
+        if (termino.trim().length < this.MIN_SEARCH_CHARS) {
+          this.isLoadingBusqueda = false;
+          this.filtrarDocumentos();
+          return [];
+        }
+        this.isLoadingBusqueda = true;
+        return this.searchService.buscarModulo('documentos', termino, this.getFiltrosElasticsearch());
+      })
+    ).subscribe({
+      next: (response: any) => {
+        this.isLoadingBusqueda = false;
+        if (response && response.success && response.data?.resultados?.length > 0) {
+          const resultados = response.data.resultados.map((r: any) => ({
+            id: r.id,
+            nombre: r.datos?.nombre || r.titulo || '',
+            categoria: r.datos?.categoria || 'otro',
+            descripcion: r.datos?.descripcion || '',
+            tipo: r.datos?.tipo || '',
+            url: r.datos?.url || '',
+            tamano: r.datos?.tamano || '',
+            created_at: r.datos?.created_at || r.fecha || '',
+            fecha: r.datos?.fecha || ''
+          }));
+          
+          this.documentos = resultados;
+          this.aplicarFiltrosLocales();
+          this.cdr.detectChanges();
+        } else {
+          this.filtrarDocumentos();
+        }
+      },
+      error: () => {
+        this.isLoadingBusqueda = false;
+        this.filtrarDocumentos();
+      }
+    });
   }
 
   ngOnDestroy() {
     this.clearLoadingTimeout();
   }
+
+  // ==================== BÚSQUEDA CON ELASTICSEARCH ====================
+  private getFiltrosElasticsearch(): any {
+    const filtros: any = {};
+    if (this.filtroActual !== 'todos') {
+      filtros.categoria = this.filtroActual;
+    }
+    return filtros;
+  }
+
+  private aplicarFiltrosLocales() {
+    let filtrados = [...this.documentos];
+    
+    if (this.filtroActual !== 'todos') {
+      filtrados = filtrados.filter(d => d.categoria === this.filtroActual);
+    }
+    
+    this.documentosFiltrados = filtrados;
+    this.cdr.detectChanges();
+  }
+
+  // ==================== INDEXAR EN ELASTICSEARCH ====================
+  private indexarDocumentosEnElasticsearch(documentos: Documento[]) {
+    for (const documento of documentos) {
+      if (documento.id) {
+        const doc = {
+          id: documento.id,
+          nombre: documento.nombre,
+          categoria: documento.categoria,
+          descripcion: documento.descripcion || '',
+          tipo: documento.tipo || '',
+          url: documento.url || '',
+          tamano: documento.tamano || '',
+          created_at: documento.created_at || '',
+          fecha: documento.fecha || ''
+        };
+        this.searchService.indexar('documentos', doc).subscribe();
+      }
+    }
+  }
+
+  private indexarDocumento(documento: Documento) {
+    if (documento.id) {
+      const doc = {
+        id: documento.id,
+        nombre: documento.nombre,
+        categoria: documento.categoria,
+        descripcion: documento.descripcion || '',
+        tipo: documento.tipo || '',
+        url: documento.url || '',
+        tamano: documento.tamano || '',
+        created_at: documento.created_at || '',
+        fecha: documento.fecha || ''
+      };
+      this.searchService.indexar('documentos', doc).subscribe();
+    }
+  }
+
+  // ==================== MÉTODOS EXISTENTES (MODIFICADOS) ====================
 
   private clearLoadingTimeout() {
     if (this.loadingTimeout) {
@@ -100,6 +209,8 @@ export class DocumentosComponent implements OnInit, OnDestroy {
         if (response.success && response.data) {
           this.documentos = response.data;
           this.filtrarDocumentos();
+          // Indexar en Elasticsearch
+          this.indexarDocumentosEnElasticsearch(response.data);
         } else {
           this.documentos = [];
           this.filtrarDocumentos();
@@ -119,6 +230,12 @@ export class DocumentosComponent implements OnInit, OnDestroy {
   }
 
   filtrarDocumentos() {
+    // Si hay término de búsqueda con más de 2 caracteres, usar Elasticsearch
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      this.searchSubject.next(this.terminoBusqueda);
+      return;
+    }
+    
     let filtrados = [...this.documentos];
     
     if (this.filtroActual !== 'todos') {
@@ -131,6 +248,12 @@ export class DocumentosComponent implements OnInit, OnDestroy {
     }
     
     this.documentosFiltrados = filtrados;
+  }
+
+  // ✅ Método para búsqueda con Elasticsearch
+  onSearchChange(termino: string) {
+    this.terminoBusqueda = termino;
+    this.searchSubject.next(termino);
   }
 
   cambiarFiltro(filtro: string) {
@@ -326,6 +449,10 @@ export class DocumentosComponent implements OnInit, OnDestroy {
           this.cargarDocumentos();
           this.cerrarModal();
           this.showToast('Documento subido correctamente', 'success');
+          // Indexar en Elasticsearch
+          if (response.data) {
+            this.indexarDocumento(response.data);
+          }
         } else {
           this.errorMessage = response.error || 'Error al subir el documento';
           this.showToast(this.errorMessage, 'error');

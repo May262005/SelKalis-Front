@@ -4,6 +4,7 @@
     <p>Gestiona tus consultas con especialistas</p>
   </div>
 
+  <!-- Solo reemplaza la sección search-box por esta -->
   <div class="search-section">
     <div class="search-box">
       <i class="fas fa-search"></i>
@@ -11,8 +12,12 @@
         type="text" 
         placeholder="Buscar por médico, especialidad o lugar..." 
         [(ngModel)]="terminoBusqueda"
-        (input)="aplicarFiltros(); actualizarVista();"
+        (input)="onSearchChange(terminoBusqueda)"
       >
+      <!-- ✅ INDICADOR DE BÚSQUEDA EN ELASTICSEARCH -->
+      <div class="search-indicator" *ngIf="isLoadingBusqueda">
+        <div class="spinner-small"></div>
+      </div>
     </div>
     <div class="filter-buttons">
       <button class="filter-btn" [class.active]="filtroActual === 'todas'" (click)="cambiarFiltro('todas')">

@@ -1,8 +1,10 @@
 import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { CitasService, Cita } from '../../services/citas.service';
+import { SearchService } from '../../services/search.service';
 
 @Component({
   selector: 'app-citas',
@@ -23,6 +25,7 @@ export class CitasComponent implements OnInit {
   esReagendar: boolean = false;
   esEdicion: boolean = false;
   isLoading: boolean = false;
+  isLoadingBusqueda: boolean = false;
   errorMessage: string = '';
   fechaMinima: string = '';
 
@@ -50,6 +53,10 @@ export class CitasComponent implements OnInit {
   paginaActual: number = 1;
   Math = Math;
 
+  // Subject para búsqueda con debounce
+  private searchSubject = new Subject<string>();
+  private readonly MIN_SEARCH_CHARS = 2;
+
   nuevaCita = {
     titulo: '',
     especialidad: '',
@@ -62,6 +69,7 @@ export class CitasComponent implements OnInit {
 
   constructor(
     private citasService: CitasService,
+    private searchService: SearchService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {}
@@ -76,7 +84,148 @@ export class CitasComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       this.cargarCitas();
     }
+
+    // Configurar búsqueda con Elasticsearch
+    this.searchSubject.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      switchMap((termino) => {
+        if (termino.trim().length < this.MIN_SEARCH_CHARS) {
+          this.isLoadingBusqueda = false;
+          this.buscarLocal();
+          return [];
+        }
+        this.isLoadingBusqueda = true;
+        return this.searchService.buscarModulo('citas', termino, this.getFiltrosElasticsearch());
+      })
+    ).subscribe({
+      next: (response: any) => {
+        this.isLoadingBusqueda = false;
+        if (response && response.success && response.data?.resultados?.length > 0) {
+          const resultados = response.data.resultados.map((r: any) => ({
+            id: r.id,
+            titulo: r.datos?.titulo || r.titulo || '',
+            especialidad: r.datos?.especialidad || r.especialidad || '',
+            fecha: r.datos?.fecha || r.fecha || '',
+            hora: r.datos?.hora || r.hora || '',
+            tipo: r.datos?.tipo || r.tipo || 'Presencial',
+            lugar: r.datos?.lugar || r.lugar || '',
+            notas: r.datos?.notas || r.notas || '',
+            estado: r.datos?.estado || r.estado || 'pendiente',
+            recordatorio: r.datos?.recordatorio || false
+          }));
+          
+          this.citas = resultados;
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
+        } else {
+          this.buscarLocal();
+        }
+      },
+      error: () => {
+        this.isLoadingBusqueda = false;
+        this.buscarLocal();
+      }
+    });
   }
+
+  // ==================== BÚSQUEDA LOCAL (FALLBACK) ====================
+  buscarLocal() {
+    let filtradas = [...this.citas];
+
+    if (this.filtroActual === 'pendientes') {
+      filtradas = filtradas.filter(c => c.estado === 'pendiente');
+    } else if (this.filtroActual === 'completadas') {
+      filtradas = filtradas.filter(c => c.estado === 'completada');
+    } else if (this.filtroActual === 'canceladas') {
+      filtradas = filtradas.filter(c => c.estado === 'cancelada');
+    }
+
+    if (this.terminoBusqueda.trim()) {
+      const term = this.terminoBusqueda.toLowerCase();
+      filtradas = filtradas.filter(c =>
+        c.titulo.toLowerCase().includes(term) ||
+        c.especialidad.toLowerCase().includes(term) ||
+        (c.lugar && c.lugar.toLowerCase().includes(term))
+      );
+    }
+
+    filtradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    this.citasFiltradas = filtradas;
+    this.paginaActual = 1;
+    this.cdr.detectChanges();
+  }
+
+  // ==================== FILTROS PARA ELASTICSEARCH ====================
+  private getFiltrosElasticsearch(): any {
+    const filtros: any = {};
+    if (this.filtroActual === 'pendientes') {
+      filtros.estado = 'pendiente';
+    } else if (this.filtroActual === 'completadas') {
+      filtros.estado = 'completada';
+    } else if (this.filtroActual === 'canceladas') {
+      filtros.estado = 'cancelada';
+    }
+    return filtros;
+  }
+
+  private aplicarFiltrosLocales() {
+    let filtradas = [...this.citas];
+
+    if (this.filtroActual === 'pendientes') {
+      filtradas = filtradas.filter(c => c.estado === 'pendiente');
+    } else if (this.filtroActual === 'completadas') {
+      filtradas = filtradas.filter(c => c.estado === 'completada');
+    } else if (this.filtroActual === 'canceladas') {
+      filtradas = filtradas.filter(c => c.estado === 'cancelada');
+    }
+
+    filtradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    this.citasFiltradas = filtradas;
+    this.paginaActual = 1;
+  }
+
+  // ==================== INDEXAR EN ELASTICSEARCH ====================
+  private indexarCitasEnElasticsearch(citas: Cita[]) {
+    for (const cita of citas) {
+      if (cita.id) {
+        const documento = {
+          id: cita.id,
+          titulo: cita.titulo,
+          especialidad: cita.especialidad,
+          fecha: cita.fecha,
+          hora: cita.hora,
+          tipo: cita.tipo,
+          lugar: cita.lugar || '',
+          notas: cita.notas || '',
+          estado: cita.estado,
+          recordatorio: cita.recordatorio || false
+        };
+        this.searchService.indexar('citas', documento).subscribe();
+      }
+    }
+  }
+
+  private indexarCita(cita: Cita) {
+    if (cita.id) {
+      const documento = {
+        id: cita.id,
+        titulo: cita.titulo,
+        especialidad: cita.especialidad,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        tipo: cita.tipo,
+        lugar: cita.lugar || '',
+        notas: cita.notas || '',
+        estado: cita.estado,
+        recordatorio: cita.recordatorio || false
+      };
+      this.searchService.indexar('citas', documento).subscribe();
+    }
+  }
+
+  // ==================== MÉTODOS EXISTENTES (MODIFICADOS) ====================
 
   get totalPaginas(): number {
     return Math.ceil(this.citasFiltradas.length / this.itemsPorPagina);
@@ -139,6 +288,8 @@ export class CitasComponent implements OnInit {
         if (response.success && response.data) {
           this.citas = response.data;
           this.marcarCitasVencidasComoCompletadas();
+          // Indexar en Elasticsearch (en segundo plano)
+          this.indexarCitasEnElasticsearch(response.data);
         } else {
           this.citas = [];
           this.aplicarFiltros();
@@ -176,6 +327,8 @@ export class CitasComponent implements OnInit {
         this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
+        // Re-indexar citas actualizadas
+        this.indexarCitasEnElasticsearch(vencidas);
       },
       error: () => {
         this.aplicarFiltros();
@@ -186,28 +339,12 @@ export class CitasComponent implements OnInit {
   }
 
   aplicarFiltros() {
-    let filtradas = [...this.citas];
-
-    if (this.filtroActual === 'pendientes') {
-      filtradas = filtradas.filter(c => c.estado === 'pendiente');
-    } else if (this.filtroActual === 'completadas') {
-      filtradas = filtradas.filter(c => c.estado === 'completada');
-    } else if (this.filtroActual === 'canceladas') {
-      filtradas = filtradas.filter(c => c.estado === 'cancelada');
+    // Si hay término de búsqueda con más de 2 caracteres, usar Elasticsearch
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      this.searchSubject.next(this.terminoBusqueda);
+      return;
     }
-
-    if (this.terminoBusqueda.trim()) {
-      const term = this.terminoBusqueda.toLowerCase();
-      filtradas = filtradas.filter(c =>
-        c.titulo.toLowerCase().includes(term) ||
-        c.especialidad.toLowerCase().includes(term) ||
-        (c.lugar && c.lugar.toLowerCase().includes(term))
-      );
-    }
-
-    filtradas.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    this.citasFiltradas = filtradas;
-    this.paginaActual = 1;
+    this.buscarLocal();
   }
 
   cambiarFiltro(filtro: string) {
@@ -215,6 +352,11 @@ export class CitasComponent implements OnInit {
     this.paginaActual = 1;
     this.aplicarFiltros();
     this.actualizarVista();
+  }
+
+  onSearchChange(termino: string) {
+    this.terminoBusqueda = termino;
+    this.searchSubject.next(termino);
   }
 
   cambiarVista(vista: 'lista' | 'mes' | 'semana' | 'dia') {
@@ -587,6 +729,10 @@ export class CitasComponent implements OnInit {
               this.esReagendar ? 'Cita reagendada correctamente' : 'Cita actualizada correctamente',
               'success'
             );
+            // Indexar en Elasticsearch
+            if (response.data) {
+              this.indexarCita(response.data);
+            }
           } else {
             this.errorMessage = response.error || 'Error al actualizar';
             this.showToast(this.errorMessage, 'error');
@@ -606,6 +752,10 @@ export class CitasComponent implements OnInit {
             this.cargarCitas();
             this.cerrarModal();
             this.showToast('Cita registrada correctamente', 'success');
+            // Indexar en Elasticsearch
+            if (response.data) {
+              this.indexarCita(response.data);
+            }
           } else {
             this.errorMessage = response.error || 'Error al guardar';
             this.showToast(this.errorMessage, 'error');
@@ -670,6 +820,11 @@ export class CitasComponent implements OnInit {
               this.cargarCitas();
               this.cerrarModalDetalle();
               this.showToast('Cita cancelada', 'success');
+              // Actualizar índice
+              const cita = this.citas.find(c => c.id === id);
+              if (cita) {
+                this.indexarCita(cita);
+              }
             }
             this.cdr.detectChanges();
           },
