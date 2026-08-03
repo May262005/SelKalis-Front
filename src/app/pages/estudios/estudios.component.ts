@@ -106,6 +106,7 @@ export class EstudiosComponent implements OnInit {
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
+          // ✅ Restaurar estudios originales cuando se limpia la búsqueda
           this.estudios = [...this.estudiosOriginales];
           this.aplicarFiltrosLocales();
           this.actualizarVista();
@@ -120,6 +121,16 @@ export class EstudiosComponent implements OnInit {
         this.isLoadingBusqueda = false;
         if (response && response.success) {
           const resultadosRaw = response.data?.resultados || [];
+          
+          // ✅ Si no hay resultados, mostrar mensaje de "sin resultados"
+          if (resultadosRaw.length === 0) {
+            this.estudios = [];
+            this.aplicarFiltrosLocales();
+            this.actualizarVista();
+            this.cdr.detectChanges();
+            return;
+          }
+          
           const resultados = resultadosRaw.map((r: any) => ({
             id: r.id,
             titulo: r.datos?.titulo || r.titulo || '',
@@ -136,6 +147,7 @@ export class EstudiosComponent implements OnInit {
           this.actualizarVista();
           this.cdr.detectChanges();
         } else {
+          // ✅ Si hay error, restaurar originales
           this.estudios = [...this.estudiosOriginales];
           this.aplicarFiltrosLocales();
           this.actualizarVista();
@@ -144,6 +156,7 @@ export class EstudiosComponent implements OnInit {
       },
       error: () => {
         this.isLoadingBusqueda = false;
+        // ✅ Si hay error, restaurar originales
         this.estudios = [...this.estudiosOriginales];
         this.aplicarFiltrosLocales();
         this.actualizarVista();
@@ -558,10 +571,12 @@ export class EstudiosComponent implements OnInit {
   }
 
   aplicarFiltros() {
+    // ✅ Si hay búsqueda, usar Elasticsearch
     if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
       this.searchSubject.next(this.terminoBusqueda);
       return;
     }
+    // ✅ Si no hay búsqueda, restaurar todos los estudios y aplicar filtros
     this.estudios = [...this.estudiosOriginales];
     this.aplicarFiltrosLocales();
     this.actualizarVista();
