@@ -3,62 +3,34 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
-import { EstudiosService, Estudio } from '../../services/estudios.service';
+import { CitasService, Cita } from '../../services/citas.service';
 import { SearchService } from '../../services/search.service';
 
 @Component({
-  selector: 'app-estudios',
+  selector: 'app-citas',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './estudios.component.html',
-  styleUrls: ['./estudios.component.css']
+  templateUrl: './citas.component.html',
+  styleUrls: ['./citas.component.css']
 })
-export class EstudiosComponent implements OnInit {
-  estudiosOriginales: Estudio[] = [];
-  estudios: Estudio[] = [];
-  estudiosFiltrados: Estudio[] = [];
+export class CitasComponent implements OnInit {
+  citasOriginales: Cita[] = [];
+  citas: Cita[] = [];
+  citasFiltradas: Cita[] = [];
   terminoBusqueda: string = '';
-  filtroActual: string = 'todos';
-  isLoading: boolean = false;
-  isLoadingBusqueda: boolean = false;
-  errorMessage: string = '';
-  errorGuardando: string = '';
-  hoy: Date = new Date();
-  fechaMinima: string = '';
-
+  filtroActual: string = 'todas';
   mostrarModal: boolean = false;
   mostrarModalDetalle: boolean = false;
-  estudioSeleccionado: Estudio | null = null;
+  citaSeleccionada: Cita | null = null;
   editandoId: string | null = null;
   esReagendar: boolean = false;
   esEdicion: boolean = false;
+  isLoading: boolean = false;
+  isLoadingBusqueda: boolean = false;
+  errorMessage: string = '';
+  fechaMinima: string = '';
 
-  estudioExpandidoId: string | null = null;
-
-  itemsPorPagina: number = 10;
-  paginaActual: number = 1;
-  Math = Math;
-
-  vistaActual: 'lista' | 'mes' | 'semana' | 'dia' = 'lista';
-  mesActual: number = new Date().getMonth() + 1;
-  anioActual: number = new Date().getFullYear();
-  fechaSeleccionada: Date = new Date();
-
-  semanaActual: Date[] = [];
-  estudiosPorHora: { hora: string; estudios: Estudio[] }[] = [];
-  diasDelMes: { fecha: Date; dia: number; estudios: Estudio[] }[] = [];
-
-  private searchSubject = new Subject<string>();
-  private readonly MIN_SEARCH_CHARS = 1;
-
-  nuevoEstudio = {
-    titulo: '',
-    tipo: '',
-    fecha: '',
-    hora: '',
-    lugar: '',
-    notas: ''
-  };
+  citaExpandidaId: string | null = null;
 
   mostrarModalConfirmacion: boolean = false;
   confirmacion = {
@@ -69,20 +41,37 @@ export class EstudiosComponent implements OnInit {
     accionConfirmar: () => {}
   };
 
-  tiposEstudio: string[] = [
-    'Laboratorio',
-    'Radiologia',
-    'Tomografia',
-    'Resonancia',
-    'Ultrasonido',
-    'Electrocardiograma',
-    'Endoscopia',
-    'Biopsia',
-    'Otro'
-  ];
+  vistaActual: 'lista' | 'mes' | 'semana' | 'dia' = 'lista';
+  mesActual: number = new Date().getMonth() + 1;
+  anioActual: number = new Date().getFullYear();
+  fechaSeleccionada: Date = new Date();
+
+  semanaActual: Date[] = [];
+  citasPorHora: { hora: string; citas: Cita[] }[] = [];
+  diasDelMes: { fecha: Date; dia: number; citas: Cita[] }[] = [];
+
+  itemsPorPagina: number = 10;
+  paginaActual: number = 1;
+  Math = Math;
+
+  // ✅ Resultados de Elasticsearch (cache separado, nunca pisa this.citas)
+  citasResultados: Cita[] = [];
+
+  private searchSubject = new Subject<string>();
+  private readonly MIN_SEARCH_CHARS = 1;
+
+  nuevaCita = {
+    titulo: '',
+    especialidad: '',
+    fecha: '',
+    hora: '',
+    tipo: 'Presencial' as 'Presencial' | 'Virtual',
+    lugar: '',
+    notas: ''
+  };
 
   constructor(
-    private estudiosService: EstudiosService,
+    private citasService: CitasService,
     private searchService: SearchService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
@@ -90,64 +79,55 @@ export class EstudiosComponent implements OnInit {
 
   ngOnInit() {
     this.fechaMinima = this.formatearFechaLocal(new Date());
-    this.nuevoEstudio.fecha = this.formatearFechaLocal(new Date());
-    this.nuevoEstudio.hora = this.obtenerHoraActual();
+    this.nuevaCita.fecha = this.formatearFechaLocal(new Date());
     this.generarSemanaActual();
     this.generarHorasDelDia();
     this.generarCalendarioMes();
 
     if (isPlatformBrowser(this.platformId)) {
-      this.cargarEstudios();
+      this.cargarCitas();
     }
 
+    // ==================== Búsqueda con Elasticsearch ====================
     this.searchSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
-          this.estudios = [...this.estudiosOriginales];
-          this.aplicarFiltrosLocales();
-          this.actualizarVista();
-          this.cdr.detectChanges();
+          this.citasResultados = [];
+          this.filtrarCitas();
           return [];
         }
         this.isLoadingBusqueda = true;
-        return this.searchService.buscarModulo('estudios', termino, this.getFiltrosElasticsearch());
+        return this.searchService.buscarModulo('citas', termino, this.getFiltrosElasticsearch());
       })
     ).subscribe({
       next: (response: any) => {
         this.isLoadingBusqueda = false;
-        if (response && response.success) {
-          const resultadosRaw = response.data?.resultados || [];
-          const resultados = resultadosRaw.map((r: any) => ({
+        if (response && response.success && response.data?.resultados?.length > 0) {
+          this.citasResultados = response.data.resultados.map((r: any) => ({
             id: r.id,
             titulo: r.datos?.titulo || r.titulo || '',
-            tipo: r.datos?.tipo || r.tipo || '',
+            especialidad: r.datos?.especialidad || r.especialidad || '',
             fecha: r.datos?.fecha || r.fecha || '',
             hora: r.datos?.hora || r.hora || '',
+            tipo: r.datos?.tipo || r.tipo || 'Presencial',
             lugar: r.datos?.lugar || r.lugar || '',
             notas: r.datos?.notas || r.notas || '',
-            estado: r.datos?.estado || r.estado || 'pendiente'
+            estado: r.datos?.estado || r.estado || 'pendiente',
+            recordatorio: r.datos?.recordatorio || false
           }));
-          
-          this.estudios = resultados;
-          this.aplicarFiltrosLocales();
-          this.actualizarVista();
-          this.cdr.detectChanges();
         } else {
-          this.estudios = [...this.estudiosOriginales];
-          this.aplicarFiltrosLocales();
-          this.actualizarVista();
-          this.cdr.detectChanges();
+          this.citasResultados = [];
         }
+        this.filtrarCitas();
+        this.cdr.detectChanges();
       },
       error: () => {
         this.isLoadingBusqueda = false;
-        this.estudios = [...this.estudiosOriginales];
-        this.aplicarFiltrosLocales();
-        this.actualizarVista();
-        this.cdr.detectChanges();
+        this.citasResultados = [];
+        this.filtrarCitas();
       }
     });
   }
@@ -156,72 +136,59 @@ export class EstudiosComponent implements OnInit {
     const filtros: any = {};
     if (this.filtroActual === 'pendientes') {
       filtros.estado = 'pendiente';
-    } else if (this.filtroActual === 'completados') {
-      filtros.estado = 'completado';
-    } else if (this.filtroActual === 'cancelados') {
-      filtros.estado = 'cancelado';
+    } else if (this.filtroActual === 'completadas') {
+      filtros.estado = 'completada';
+    } else if (this.filtroActual === 'canceladas') {
+      filtros.estado = 'cancelada';
     }
     return filtros;
   }
 
-  private aplicarFiltrosLocales() {
-    let filtrados = [...this.estudios];
-
-    if (this.filtroActual === 'pendientes') {
-      filtrados = filtrados.filter(e => e.estado === 'pendiente');
-    } else if (this.filtroActual === 'completados') {
-      filtrados = filtrados.filter(e => e.estado === 'completado');
-    } else if (this.filtroActual === 'cancelados') {
-      filtrados = filtrados.filter(e => e.estado === 'cancelado');
-    }
-
-    filtrados.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    this.estudiosFiltrados = filtrados;
-    this.paginaActual = 1;
-    this.cdr.detectChanges();
-  }
-
-  private indexarEstudiosEnElasticsearch(estudios: Estudio[]) {
-    for (const estudio of estudios) {
-      if (estudio.id) {
+  private indexarCitasEnElasticsearch(citas: Cita[]) {
+    for (const cita of citas) {
+      if (cita.id) {
         const documento = {
-          id: estudio.id,
-          titulo: estudio.titulo.replace(/\./g, ' '),
-          tipo: estudio.tipo,
-          fecha: estudio.fecha,
-          hora: estudio.hora,
-          lugar: estudio.lugar || '',
-          notas: estudio.notas || '',
-          estado: estudio.estado
+          id: cita.id,
+          titulo: cita.titulo.replace(/\./g, ' '),
+          especialidad: cita.especialidad,
+          fecha: cita.fecha,
+          hora: cita.hora,
+          tipo: cita.tipo,
+          lugar: cita.lugar || '',
+          notas: cita.notas || '',
+          estado: cita.estado,
+          recordatorio: cita.recordatorio || false
         };
-        this.searchService.indexar('estudios', documento).subscribe();
+        this.searchService.indexar('citas', documento).subscribe();
       }
     }
   }
 
-  private indexarEstudio(estudio: Estudio) {
-    if (estudio.id) {
+  private indexarCita(cita: Cita) {
+    if (cita.id) {
       const documento = {
-        id: estudio.id,
-        titulo: estudio.titulo.replace(/\./g, ' '),
-        tipo: estudio.tipo,
-        fecha: estudio.fecha,
-        hora: estudio.hora,
-        lugar: estudio.lugar || '',
-        notas: estudio.notas || '',
-        estado: estudio.estado
+        id: cita.id,
+        titulo: cita.titulo.replace(/\./g, ' '),
+        especialidad: cita.especialidad,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        tipo: cita.tipo,
+        lugar: cita.lugar || '',
+        notas: cita.notas || '',
+        estado: cita.estado,
+        recordatorio: cita.recordatorio || false
       };
-      this.searchService.indexar('estudios', documento).subscribe();
+      this.searchService.indexar('citas', documento).subscribe();
     }
   }
 
   get totalPaginas(): number {
-    return Math.ceil(this.estudiosFiltrados.length / this.itemsPorPagina);
+    return Math.ceil(this.citasFiltradas.length / this.itemsPorPagina);
   }
 
-  get estudiosPaginados(): Estudio[] {
+  get citasPaginadas(): Cita[] {
     const inicio = (this.paginaActual - 1) * this.itemsPorPagina;
-    return this.estudiosFiltrados.slice(inicio, inicio + this.itemsPorPagina);
+    return this.citasFiltradas.slice(inicio, inicio + this.itemsPorPagina);
   }
 
   obtenerPaginas(): number[] {
@@ -262,97 +229,108 @@ export class EstudiosComponent implements OnInit {
     }
   }
 
-  toggleEstudio(id: string) {
-    this.estudioExpandidoId = this.estudioExpandidoId === id ? null : id;
+  toggleCita(id: string) {
+    this.citaExpandidaId = this.citaExpandidaId === id ? null : id;
   }
 
-  cargarEstudios() {
+  cargarCitas() {
     this.isLoading = true;
     this.errorMessage = '';
-    this.cdr.detectChanges();
 
-    this.estudiosService.getEstudios().subscribe({
+    this.citasService.getCitas().subscribe({
       next: (response: any) => {
         this.isLoading = false;
         if (response.success && response.data) {
-          this.estudiosOriginales = response.data;
-          this.estudios = response.data;
-          this.marcarEstudiosVencidosComoCompletados();
-          this.indexarEstudiosEnElasticsearch(response.data);
-          this.aplicarFiltros();
-          this.actualizarVista();
+          this.citasOriginales = response.data;
+          this.citas = response.data;
+          this.marcarCitasVencidasComoCompletadas();
+          this.indexarCitasEnElasticsearch(response.data);
           this.cdr.detectChanges();
           setTimeout(() => this.cdr.detectChanges(), 50);
         } else {
-          this.estudiosOriginales = [];
-          this.estudios = [];
-          this.aplicarFiltros();
-          this.actualizarVista();
+          this.citasOriginales = [];
+          this.citas = [];
           this.cdr.detectChanges();
         }
       },
       error: (error: any) => {
         this.isLoading = false;
-        this.errorMessage = error?.error?.error || 'Error al cargar los estudios';
-        this.estudiosOriginales = [];
-        this.estudios = [];
-        this.aplicarFiltros();
-        this.actualizarVista();
+        this.errorMessage = error?.error?.error || 'Error al cargar las citas';
+        this.citasOriginales = [];
+        this.citas = [];
         this.cdr.detectChanges();
-        this.showToast('Error al cargar los estudios', 'error');
+        this.showToast('Error al cargar las citas', 'error');
       }
     });
   }
 
-  private marcarEstudiosVencidosComoCompletados() {
+  private marcarCitasVencidasComoCompletadas() {
     const hoy = this.formatearFechaLocal(new Date());
-    const vencidos = this.estudios.filter(e => e.estado === 'pendiente' && e.fecha < hoy && e.id);
+    const vencidas = this.citas.filter(c => c.estado === 'pendiente' && c.fecha < hoy && c.id);
 
-    if (vencidos.length === 0) {
-      this.aplicarFiltros();
+    if (vencidas.length === 0) {
+      this.filtrarCitas();
       this.actualizarVista();
       this.cdr.detectChanges();
       return;
     }
 
-    const cambios = vencidos.map(e => this.estudiosService.cambiarEstado(e.id!, 'completado'));
+    const cambios = vencidas.map(c => this.citasService.cambiarEstadoCita(c.id!, 'completada'));
     forkJoin(cambios).subscribe({
       next: () => {
-        vencidos.forEach(v => { v.estado = 'completado'; });
-        this.indexarEstudiosEnElasticsearch(vencidos);
-        this.aplicarFiltros();
+        vencidas.forEach(v => { v.estado = 'completada'; });
+        this.indexarCitasEnElasticsearch(vencidas);
+        this.filtrarCitas();
         this.actualizarVista();
         this.cdr.detectChanges();
       },
       error: () => {
-        this.aplicarFiltros();
+        this.filtrarCitas();
         this.actualizarVista();
         this.cdr.detectChanges();
       }
     });
   }
 
-  aplicarFiltros() {
-    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
-      this.searchSubject.next(this.terminoBusqueda);
-      return;
-    }
-    this.estudios = [...this.estudiosOriginales];
-    this.aplicarFiltrosLocales();
-    this.actualizarVista();
-    this.cdr.detectChanges();
-  }
+  // ✅ METODO PRINCIPAL DE FILTRADO - igual que en tratamientos
+  filtrarCitas() {
+    const usarBusquedaES = this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS
+      && this.citasResultados.length > 0;
 
-  cambiarFiltro(filtro: string) {
-    this.filtroActual = filtro;
+    let filtrados = usarBusquedaES ? [...this.citasResultados] : [...this.citas];
+
+    if (this.filtroActual === 'pendientes') {
+      filtrados = filtrados.filter(c => c.estado === 'pendiente');
+    } else if (this.filtroActual === 'completadas') {
+      filtrados = filtrados.filter(c => c.estado === 'completada');
+    } else if (this.filtroActual === 'canceladas') {
+      filtrados = filtrados.filter(c => c.estado === 'cancelada');
+    }
+
+    // Si venimos de Elasticsearch, el término ya se aplicó en el backend
+    if (!usarBusquedaES && this.terminoBusqueda.trim()) {
+      const term = this.terminoBusqueda.toLowerCase();
+      filtrados = filtrados.filter(c =>
+        c.titulo.toLowerCase().includes(term) ||
+        c.especialidad.toLowerCase().includes(term) ||
+        (c.lugar && c.lugar.toLowerCase().includes(term))
+      );
+    }
+
+    this.citasFiltradas = filtrados;
     this.paginaActual = 1;
-    this.aplicarFiltros();
-    this.actualizarVista();
+    this.cdr.detectChanges();
   }
 
   onSearchChange(termino: string) {
     this.terminoBusqueda = termino;
     this.searchSubject.next(termino);
+  }
+
+  cambiarFiltro(filtro: string) {
+    this.filtroActual = filtro;
+    this.paginaActual = 1;
+    this.filtrarCitas();
   }
 
   cambiarVista(vista: 'lista' | 'mes' | 'semana' | 'dia') {
@@ -383,19 +361,19 @@ export class EstudiosComponent implements OnInit {
       this.diasDelMes.push({
         fecha: fechaVacia,
         dia: fechaVacia.getDate(),
-        estudios: []
+        citas: []
       });
     }
 
     for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
       const fecha = new Date(this.anioActual, this.mesActual - 1, dia);
       const fechaStr = this.formatearFechaLocal(fecha);
-      const estudiosDelDia = this.estudiosFiltrados.filter(e => e.fecha === fechaStr);
+      const citasDelDia = this.citasFiltradas.filter(c => c.fecha === fechaStr);
 
       this.diasDelMes.push({
         fecha,
         dia,
-        estudios: estudiosDelDia
+        citas: citasDelDia
       });
     }
   }
@@ -460,23 +438,23 @@ export class EstudiosComponent implements OnInit {
     this.generarSemanaActual();
   }
 
-  getEstudiosDelDia(fecha: Date): Estudio[] {
+  getCitasDelDia(fecha: Date): Cita[] {
     const fechaStr = this.formatearFechaLocal(fecha);
-    return this.estudiosFiltrados.filter(e => e.fecha === fechaStr);
+    return this.citasFiltradas.filter(c => c.fecha === fechaStr);
   }
 
   generarHorasDelDia() {
-    this.estudiosPorHora = [];
+    this.citasPorHora = [];
     const fechaStr = this.formatearFechaLocal(this.fechaSeleccionada);
-    const estudiosDelDia = this.estudiosFiltrados.filter(e => e.fecha === fechaStr);
+    const citasDelDia = this.citasFiltradas.filter(c => c.fecha === fechaStr);
 
     for (let h = 6; h <= 22; h++) {
       const horaStr = `${h.toString().padStart(2, '0')}:00`;
-      const estudiosEnHora = estudiosDelDia.filter(e => e.hora.startsWith(horaStr.substring(0, 2)));
+      const citasEnHora = citasDelDia.filter(c => c.hora.startsWith(horaStr.substring(0, 2)));
 
-      this.estudiosPorHora.push({
+      this.citasPorHora.push({
         hora: horaStr,
-        estudios: estudiosEnHora
+        citas: citasEnHora
       });
     }
   }
@@ -521,27 +499,6 @@ export class EstudiosComponent implements OnInit {
     return `${y}-${m}-${d}`;
   }
 
-  private obtenerHoraActual(): string {
-    const ahora = new Date();
-    return `${ahora.getHours().toString().padStart(2, '0')}:${ahora.getMinutes().toString().padStart(2, '0')}`;
-  }
-
-  formatearHora12(hora24: string): string {
-    if (!hora24) return '';
-    const partes = hora24.split(':');
-    let h = parseInt(partes[0], 10);
-    const m = (partes[1] || '00').padStart(2, '0');
-    if (isNaN(h)) return hora24;
-    const sufijo = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h}:${m} ${sufijo}`;
-  }
-
-  formatearHora(hora24: string): string {
-    return this.formatearHora12(hora24);
-  }
-
   formatearFecha(fecha: string): string {
     if (!fecha) return '';
     const opciones: Intl.DateTimeFormatOptions = {
@@ -553,20 +510,31 @@ export class EstudiosComponent implements OnInit {
     return fechaObj.toLocaleDateString('es-ES', opciones);
   }
 
+  formatearHora(hora: string): string {
+    if (!hora) return '';
+    const [h, m] = hora.split(':');
+    const horaNum = parseInt(h);
+    const sufijo = horaNum >= 12 ? 'PM' : 'AM';
+    const hora12 = horaNum % 12 || 12;
+    return `${hora12}:${m} ${sufijo}`;
+  }
+
+  obtenerNombreDia(fecha: Date): string {
+    const dias = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+    return dias[fecha.getDay()];
+  }
+
+  obtenerNombreMes(mes: number): string {
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return meses[mes - 1];
+  }
+
   obtenerFechaMinima(): string {
     return this.formatearFechaLocal(new Date());
   }
 
-  private esFechaPasada(fecha: string): boolean {
-    return fecha < this.obtenerFechaMinima();
-  }
-
-  obtenerMensajeError(error: any): string {
-    return error?.error?.error || error?.message || 'Error desconocido';
-  }
-
-  verDetalleEstudio(estudio: Estudio) {
-    this.estudioSeleccionado = estudio;
+  verDetalleCita(cita: Cita) {
+    this.citaSeleccionada = cita;
     this.mostrarModalDetalle = true;
     if (isPlatformBrowser(this.platformId)) {
       document.body.style.overflow = 'hidden';
@@ -576,33 +544,34 @@ export class EstudiosComponent implements OnInit {
 
   cerrarModalDetalle() {
     this.mostrarModalDetalle = false;
-    this.estudioSeleccionado = null;
+    this.citaSeleccionada = null;
     if (isPlatformBrowser(this.platformId)) {
       document.body.style.overflow = '';
     }
     this.cdr.detectChanges();
   }
 
-  abrirModal(estudio?: Estudio) {
-    this.errorGuardando = '';
+  abrirModal(cita?: Cita) {
+    this.errorMessage = '';
     this.esReagendar = false;
     this.esEdicion = false;
 
-    if (estudio) {
+    if (cita) {
       const hoy = this.formatearFechaLocal(new Date());
-      if (estudio.fecha < hoy) {
-        this.showToast('No se puede editar un estudio con fecha pasada', 'warning');
+      if (cita.fecha < hoy) {
+        this.showToast('No se puede editar una cita con fecha pasada', 'warning');
         return;
       }
       this.esEdicion = true;
-      this.editandoId = estudio.id || null;
-      this.nuevoEstudio = {
-        titulo: estudio.titulo,
-        tipo: estudio.tipo,
-        fecha: estudio.fecha,
-        hora: estudio.hora,
-        lugar: estudio.lugar || '',
-        notas: estudio.notas || ''
+      this.editandoId = cita.id || null;
+      this.nuevaCita = {
+        titulo: cita.titulo,
+        especialidad: cita.especialidad,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        tipo: cita.tipo,
+        lugar: cita.lugar || '',
+        notas: cita.notas || ''
       };
     } else {
       this.editandoId = null;
@@ -614,18 +583,19 @@ export class EstudiosComponent implements OnInit {
     }
   }
 
-  reagendarEstudioDesdeDetalle(estudio: Estudio) {
+  reagendarCitaDesdeDetalle(cita: Cita) {
     this.cerrarModalDetalle();
     this.esReagendar = true;
     this.esEdicion = false;
-    this.editandoId = estudio.id || null;
-    this.nuevoEstudio = {
-      titulo: estudio.titulo,
-      tipo: estudio.tipo,
-      fecha: estudio.fecha,
-      hora: estudio.hora,
-      lugar: estudio.lugar || '',
-      notas: estudio.notas || ''
+    this.editandoId = cita.id || null;
+    this.nuevaCita = {
+      titulo: cita.titulo,
+      especialidad: cita.especialidad,
+      fecha: cita.fecha,
+      hora: cita.hora,
+      tipo: cita.tipo,
+      lugar: cita.lugar || '',
+      notas: cita.notas || ''
     };
     this.mostrarModal = true;
     if (isPlatformBrowser(this.platformId)) {
@@ -633,14 +603,13 @@ export class EstudiosComponent implements OnInit {
     }
   }
 
-  editarEstudioDesdeDetalle(estudio: Estudio) {
+  editarCitaDesdeDetalle(cita: Cita) {
     this.cerrarModalDetalle();
-    this.abrirModal(estudio);
+    this.abrirModal(cita);
   }
 
   cerrarModal() {
     this.mostrarModal = false;
-    this.errorGuardando = '';
     this.esReagendar = false;
     this.esEdicion = false;
     if (isPlatformBrowser(this.platformId)) {
@@ -648,137 +617,129 @@ export class EstudiosComponent implements OnInit {
     }
     this.editandoId = null;
     this.resetFormulario();
-    this.cdr.detectChanges();
+    this.errorMessage = '';
   }
 
   resetFormulario() {
     const hoy = new Date();
-    this.nuevoEstudio = {
+    this.nuevaCita = {
       titulo: '',
-      tipo: '',
+      especialidad: '',
       fecha: this.formatearFechaLocal(hoy),
-      hora: this.obtenerHoraActual(),
+      hora: '09:00',
+      tipo: 'Presencial',
       lugar: '',
       notas: ''
     };
   }
 
-  guardarEstudio() {
-    this.errorGuardando = '';
-
-    if (!this.nuevoEstudio.titulo) {
-      this.errorGuardando = 'El titulo es obligatorio';
-      this.showToast(this.errorGuardando, 'warning');
-      this.cdr.detectChanges();
-      return;
-    }
-
-    if (!this.nuevoEstudio.tipo) {
-      this.errorGuardando = 'El tipo de estudio es obligatorio';
-      this.showToast(this.errorGuardando, 'warning');
-      this.cdr.detectChanges();
-      return;
-    }
-
-    if (!this.nuevoEstudio.fecha) {
-      this.errorGuardando = 'La fecha es obligatoria';
-      this.showToast(this.errorGuardando, 'warning');
-      this.cdr.detectChanges();
-      return;
-    }
-
-    if (!this.nuevoEstudio.hora) {
-      this.errorGuardando = 'La hora es obligatoria';
-      this.showToast(this.errorGuardando, 'warning');
-      this.cdr.detectChanges();
+  guardarCita() {
+    if (!this.nuevaCita.titulo || !this.nuevaCita.especialidad || !this.nuevaCita.fecha || !this.nuevaCita.hora) {
+      this.errorMessage = 'Por favor completa todos los campos obligatorios';
+      this.showToast(this.errorMessage, 'warning');
       return;
     }
 
     if (this.esEdicion && !this.esReagendar) {
       const data = {
-        titulo: this.nuevoEstudio.titulo,
-        tipo: this.nuevoEstudio.tipo,
-        lugar: this.nuevoEstudio.lugar || '',
-        notas: this.nuevoEstudio.notas || ''
+        titulo: this.nuevaCita.titulo,
+        especialidad: this.nuevaCita.especialidad,
+        tipo: this.nuevaCita.tipo,
+        lugar: this.nuevaCita.lugar,
+        notas: this.nuevaCita.notas
       };
 
       this.isLoading = true;
-      this.errorGuardando = '';
-      this.cdr.detectChanges();
+      this.errorMessage = '';
 
-      this.estudiosService.updateEstudio(this.editandoId!, data).subscribe({
+      this.citasService.updateCita(this.editandoId!, data).subscribe({
         next: (response: any) => {
           this.isLoading = false;
           if (response.success) {
-            this.cargarEstudios();
+            this.cargarCitas();
             this.cerrarModal();
-            this.showToast('Estudio actualizado correctamente', 'success');
+            this.showToast('Cita actualizada correctamente', 'success');
           } else {
-            this.errorGuardando = response.error || 'Error al guardar';
-            this.showToast(this.errorGuardando, 'error');
+            this.errorMessage = response.error || 'Error al actualizar';
+            this.showToast(this.errorMessage, 'error');
           }
-          this.cdr.detectChanges();
         },
         error: (error: any) => {
           this.isLoading = false;
-          this.errorGuardando = this.obtenerMensajeError(error);
-          this.showToast('Error al guardar: ' + this.errorGuardando, 'error');
-          this.cdr.detectChanges();
+          this.errorMessage = error?.error?.error || 'Error al actualizar';
+          this.showToast(this.errorMessage, 'error');
         }
       });
       return;
     }
 
-    if (!this.esEdicion && this.esFechaPasada(this.nuevoEstudio.fecha)) {
-      this.errorGuardando = 'La fecha no puede ser un dia que ya paso';
-      this.showToast(this.errorGuardando, 'warning');
-      this.cdr.detectChanges();
+    if (!this.esEdicion && this.nuevaCita.fecha < this.obtenerFechaMinima()) {
+      this.errorMessage = 'La fecha no puede ser un dia que ya paso';
+      this.showToast(this.errorMessage, 'warning');
       return;
     }
 
     const data = {
-      titulo: this.nuevoEstudio.titulo,
-      tipo: this.nuevoEstudio.tipo,
-      fecha: this.nuevoEstudio.fecha,
-      hora: this.nuevoEstudio.hora,
-      lugar: this.nuevoEstudio.lugar || '',
-      notas: this.nuevoEstudio.notas || ''
+      titulo: this.nuevaCita.titulo,
+      especialidad: this.nuevaCita.especialidad,
+      fecha: this.nuevaCita.fecha,
+      hora: this.nuevaCita.hora,
+      tipo: this.nuevaCita.tipo,
+      lugar: this.nuevaCita.lugar,
+      notas: this.nuevaCita.notas
     };
 
     this.isLoading = true;
-    this.errorGuardando = '';
-    this.cdr.detectChanges();
+    this.errorMessage = '';
 
-    const operation = this.editandoId
-      ? this.estudiosService.updateEstudio(this.editandoId, data)
-      : this.estudiosService.createEstudio(data);
-
-    operation.subscribe({
-      next: (response: any) => {
-        this.isLoading = false;
-        if (response.success) {
-          this.cargarEstudios();
-          this.cerrarModal();
-          const mensaje = this.esReagendar ? 'Estudio reagendado correctamente' :
-                          this.editandoId ? 'Estudio actualizado correctamente' :
-                          'Estudio registrado correctamente';
-          this.showToast(mensaje, 'success');
-          if (response.data) {
-            this.indexarEstudio(response.data);
+    if (this.editandoId) {
+      this.citasService.updateCita(this.editandoId, data).subscribe({
+        next: (response: any) => {
+          this.isLoading = false;
+          if (response.success) {
+            this.cargarCitas();
+            this.cerrarModal();
+            this.showToast(
+              this.esReagendar ? 'Cita reagendada correctamente' : 'Cita actualizada correctamente',
+              'success'
+            );
+            if (response.data) {
+              this.indexarCita(response.data);
+            }
+          } else {
+            this.errorMessage = response.error || 'Error al actualizar';
+            this.showToast(this.errorMessage, 'error');
           }
-        } else {
-          this.errorGuardando = response.error || 'Error al guardar';
-          this.showToast(this.errorGuardando, 'error');
+        },
+        error: (error: any) => {
+          this.isLoading = false;
+          this.errorMessage = error?.error?.error || 'Error al actualizar';
+          this.showToast(this.errorMessage, 'error');
         }
-        this.cdr.detectChanges();
-      },
-      error: (error: any) => {
-        this.isLoading = false;
-        this.errorGuardando = this.obtenerMensajeError(error);
-        this.showToast('Error al guardar: ' + this.errorGuardando, 'error');
-        this.cdr.detectChanges();
-      }
-    });
+      });
+    } else {
+      this.citasService.createCita(data).subscribe({
+        next: (response: any) => {
+          this.isLoading = false;
+          if (response.success) {
+            this.cargarCitas();
+            this.cerrarModal();
+            this.showToast('Cita registrada correctamente', 'success');
+            if (response.data) {
+              this.indexarCita(response.data);
+            }
+          } else {
+            this.errorMessage = response.error || 'Error al guardar';
+            this.showToast(this.errorMessage, 'error');
+          }
+        },
+        error: (error: any) => {
+          this.isLoading = false;
+          this.errorMessage = error?.error?.error || 'Error al guardar';
+          this.showToast(this.errorMessage, 'error');
+        }
+      });
+    }
   }
 
   private abrirConfirmacion(
@@ -817,36 +778,40 @@ export class EstudiosComponent implements OnInit {
     }
   }
 
-  cancelarEstudio(id: string) {
+  cancelarCita(id: string) {
     this.abrirConfirmacion(
-      'Cancelar estudio',
-      'Seguro que quieres cancelar este estudio?',
+      'Cancelar cita',
+      '¿Seguro que quieres cancelar esta cita? Podrás editarla después.',
       () => {
         this.isLoading = true;
         this.cdr.detectChanges();
-        this.estudiosService.cambiarEstado(id, 'cancelado').subscribe({
+        this.citasService.cambiarEstadoCita(id, 'cancelada').subscribe({
           next: (response: any) => {
             this.isLoading = false;
             if (response.success) {
-              this.cargarEstudios();
+              this.cargarCitas();
               this.cerrarModalDetalle();
-              this.showToast('Estudio cancelado', 'success');
+              this.showToast('Cita cancelada', 'success');
+              const cita = this.citas.find(c => c.id === id);
+              if (cita) {
+                this.indexarCita(cita);
+              }
             }
             this.cdr.detectChanges();
           },
           error: (error: any) => {
             this.isLoading = false;
-            this.showToast('Error al cancelar el estudio', 'error');
+            this.showToast('Error al cancelar la cita', 'error');
             this.cdr.detectChanges();
           }
         });
       },
-      { textoConfirmar: 'Si, cancelar' }
+      { textoConfirmar: 'Sí, cancelar' }
     );
   }
 
-  cancelarEstudioDesdeDetalle(id: string) {
-    this.cancelarEstudio(id);
+  cancelarCitaDesdeDetalle(id: string) {
+    this.cancelarCita(id);
   }
 
   showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info'): void {
@@ -931,7 +896,7 @@ export class EstudiosComponent implements OnInit {
   }
 
   recargar() {
-    this.cargarEstudios();
-    this.showToast('Estudios actualizados', 'info');
+    this.cargarCitas();
+    this.showToast('Citas actualizadas', 'info');
   }
 }
