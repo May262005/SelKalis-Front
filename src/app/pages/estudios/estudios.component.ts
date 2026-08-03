@@ -107,14 +107,13 @@ export class EstudiosComponent implements OnInit {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
           this.estudios = [...this.estudiosOriginales];
-          this.filtrarTodo();
+          this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
           return [];
         }
         this.isLoadingBusqueda = true;
-        // ✅ Buscar SIN filtros de estado, solo por texto
-        return this.searchService.buscarModulo('estudios', termino, {});
+        return this.searchService.buscarModulo('estudios', termino, this.getFiltrosElasticsearch());
       })
     ).subscribe({
       next: (response: any) => {
@@ -133,26 +132,39 @@ export class EstudiosComponent implements OnInit {
           }));
           
           this.estudios = resultados;
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
         } else {
           this.estudios = [...this.estudiosOriginales];
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
         }
-        // ✅ SIEMPRE aplicar filtros locales después de cualquier cambio
-        this.filtrarTodo();
-        this.actualizarVista();
-        this.cdr.detectChanges();
       },
       error: () => {
         this.isLoadingBusqueda = false;
         this.estudios = [...this.estudiosOriginales];
-        this.filtrarTodo();
+        this.aplicarFiltrosLocales();
         this.actualizarVista();
         this.cdr.detectChanges();
       }
     });
   }
 
-  // ✅ Método unificado para filtrar por estado
-  private filtrarTodo() {
+  private getFiltrosElasticsearch(): any {
+    const filtros: any = {};
+    if (this.filtroActual === 'pendientes') {
+      filtros.estado = 'pendiente';
+    } else if (this.filtroActual === 'completados') {
+      filtros.estado = 'completado';
+    } else if (this.filtroActual === 'cancelados') {
+      filtros.estado = 'cancelado';
+    }
+    return filtros;
+  }
+
+  private aplicarFiltrosLocales() {
     let filtrados = [...this.estudios];
 
     if (this.filtroActual === 'pendientes') {
@@ -267,14 +279,14 @@ export class EstudiosComponent implements OnInit {
           this.estudios = response.data;
           this.marcarEstudiosVencidosComoCompletados();
           this.indexarEstudiosEnElasticsearch(response.data);
-          this.filtrarTodo();
+          this.aplicarFiltros();
           this.actualizarVista();
           this.cdr.detectChanges();
           setTimeout(() => this.cdr.detectChanges(), 50);
         } else {
           this.estudiosOriginales = [];
           this.estudios = [];
-          this.filtrarTodo();
+          this.aplicarFiltros();
           this.actualizarVista();
           this.cdr.detectChanges();
         }
@@ -284,7 +296,7 @@ export class EstudiosComponent implements OnInit {
         this.errorMessage = this.obtenerMensajeError(error);
         this.estudiosOriginales = [];
         this.estudios = [];
-        this.filtrarTodo();
+        this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
         this.showToast('Error al cargar los estudios', 'error');
@@ -297,7 +309,7 @@ export class EstudiosComponent implements OnInit {
     const vencidos = this.estudios.filter(e => e.estado === 'pendiente' && e.fecha < hoy && e.id);
 
     if (vencidos.length === 0) {
-      this.filtrarTodo();
+      this.aplicarFiltros();
       this.actualizarVista();
       this.cdr.detectChanges();
       return;
@@ -308,26 +320,34 @@ export class EstudiosComponent implements OnInit {
       next: () => {
         vencidos.forEach(v => { v.estado = 'completado'; });
         this.indexarEstudiosEnElasticsearch(vencidos);
-        this.filtrarTodo();
+        this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
       },
       error: () => {
-        this.filtrarTodo();
+        this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
       }
     });
   }
 
-  // ✅ Cuando cambia el filtro, solo refiltrar lo que ya está en memoria
+  aplicarFiltros() {
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      this.searchSubject.next(this.terminoBusqueda);
+      return;
+    }
+    this.estudios = [...this.estudiosOriginales];
+    this.aplicarFiltrosLocales();
+    this.actualizarVista();
+    this.cdr.detectChanges();
+  }
+
   cambiarFiltro(filtro: string) {
     this.filtroActual = filtro;
     this.paginaActual = 1;
-    // ✅ SIEMPRE refiltrar los datos actuales, NO hacer nueva búsqueda
-    this.filtrarTodo();
+    this.aplicarFiltros();
     this.actualizarVista();
-    this.cdr.detectChanges();
   }
 
   onSearchChange(termino: string) {
