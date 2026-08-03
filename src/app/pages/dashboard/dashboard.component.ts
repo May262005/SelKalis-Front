@@ -82,19 +82,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       weekday: 'long', 
       day: 'numeric', 
       month: 'long', 
-      year: 'numeric' 
+      year: 'numeric',
+      timeZone: 'America/Mexico_City'
     };
     this.fechaActual = ahora.toLocaleDateString('es-ES', opcionesFecha);
     
     const opcionesHora: Intl.DateTimeFormatOptions = { 
       hour: '2-digit', 
-      minute: '2-digit' 
+      minute: '2-digit',
+      timeZone: 'America/Mexico_City'
     };
     this.horaActual = ahora.toLocaleTimeString('es-ES', opcionesHora);
     
     const hora = ahora.getHours();
     if (hora >= 5 && hora < 12) {
-      this.saludo = 'Buenos dias';
+      this.saludo = 'Buenos días';
     } else if (hora >= 12 && hora < 19) {
       this.saludo = 'Buenas tardes';
     } else {
@@ -105,6 +107,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   cargarDashboard() {
     const token = this.authService.getToken();
     if (!token) {
+      console.warn('⚠️ No hay token de autenticación');
+      this.isLoading = false;
+      this.cdr.detectChanges();
       return;
     }
 
@@ -113,55 +118,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     this.dashboardService.getDashboardData().subscribe({
       next: (data: DashboardData) => {
+        console.log('✅ Datos del dashboard recibidos:', data);
+        
         this.isLoading = false;
-        
         this.proximaToma = data.proximaToma;
-        
-        if (data.proximaCita) {
-          this.proximaCita = {
-            doctor: data.proximaCita.doctor,
-            fecha: data.proximaCita.fecha,
-            hora: data.proximaCita.hora
-          };
-        } else {
-          this.proximaCita = null;
-        }
-        
+        this.proximaCita = data.proximaCita;
         this.tratamientosActivos = data.totalTratamientosActivos;
         this.completadosHoy = data.tomasCompletadasHoy;
-        
         this.tratamientosActivosLista = data.tratamientosActivos;
-        this.proximasCitas = data.proximaCita ? [data.proximaCita] : [];
         this.proximosEstudios = data.proximosEstudios;
         this.documentosRecientes = data.documentosRecientes;
+        
+        if (data.proximaCita) {
+          this.proximasCitas = [data.proximaCita];
+        } else {
+          this.proximasCitas = [];
+        }
         
         this.cdr.detectChanges();
       },
       error: (error: any) => {
+        console.error('❌ Error cargando dashboard:', error);
         this.isLoading = false;
-        this.cargarDatosFallback();
         this.cdr.detectChanges();
       }
     });
-  }
-
-  cargarDatosFallback() {
-    const tratamientos = localStorage.getItem('tratamientos');
-    if (tratamientos) {
-      try {
-        const data = JSON.parse(tratamientos);
-        const activos = data.filter((t: any) => t.estado === 'activo');
-        this.tratamientosActivos = activos.length;
-        this.tratamientosActivosLista = activos.map((t: any) => ({
-          nombre: t.nombre,
-          medicamentosCount: t.medicamentos?.length || 0,
-          progreso: 0
-        }));
-        this.cdr.detectChanges();
-      } catch (e) {
-        // Error silencioso
-      }
-    }
   }
 
   subirDocumento() {
