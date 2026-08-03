@@ -28,9 +28,11 @@ export class DocumentosComponent implements OnInit, OnDestroy {
   
   private loadingTimeout: any = null;
   
-  // Subject para búsqueda con debounce
+  // ✅ Resultados de Elasticsearch (cache separado, nunca pisa this.documentos)
+  documentosResultados: Documento[] = [];
+  
   private searchSubject = new Subject<string>();
-  private readonly MIN_SEARCH_CHARS = 2;
+  private readonly MIN_SEARCH_CHARS = 1;
   
   // Vista previa
   mostrarVistaPrevia: boolean = false;
@@ -70,13 +72,14 @@ export class DocumentosComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.cargarDocumentos();
 
-    // Configurar búsqueda con Elasticsearch
+    // ==================== Búsqueda con Elasticsearch ====================
     this.searchSubject.pipe(
-      debounceTime(400),
+      debounceTime(300),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
+          this.documentosResultados = [];
           this.filtrarDocumentos();
           return [];
         }
@@ -87,7 +90,7 @@ export class DocumentosComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.isLoadingBusqueda = false;
         if (response && response.success && response.data?.resultados?.length > 0) {
-          const resultados = response.data.resultados.map((r: any) => ({
+          this.documentosResultados = response.data.resultados.map((r: any) => ({
             id: r.id,
             nombre: r.datos?.nombre || r.titulo || '',
             categoria: r.datos?.categoria || 'otro',
@@ -98,16 +101,15 @@ export class DocumentosComponent implements OnInit, OnDestroy {
             created_at: r.datos?.created_at || r.fecha || '',
             fecha: r.datos?.fecha || ''
           }));
-          
-          this.documentos = resultados;
-          this.aplicarFiltrosLocales();
-          this.cdr.detectChanges();
         } else {
-          this.filtrarDocumentos();
+          this.documentosResultados = [];
         }
+        this.filtrarDocumentos();
+        this.cdr.detectChanges();
       },
       error: () => {
         this.isLoadingBusqueda = false;
+        this.documentosResultados = [];
         this.filtrarDocumentos();
       }
     });
@@ -115,6 +117,9 @@ export class DocumentosComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.clearLoadingTimeout();
+    if (this.stream) {
+      this.stream.getTracks().forEach(track => track.stop());
+    }
   }
 
   // ==================== BÚSQUEDA CON ELASTICSEARCH ====================
@@ -126,24 +131,13 @@ export class DocumentosComponent implements OnInit, OnDestroy {
     return filtros;
   }
 
-  private aplicarFiltrosLocales() {
-    let filtrados = [...this.documentos];
-    
-    if (this.filtroActual !== 'todos') {
-      filtrados = filtrados.filter(d => d.categoria === this.filtroActual);
-    }
-    
-    this.documentosFiltrados = filtrados;
-    this.cdr.detectChanges();
-  }
-
   // ==================== INDEXAR EN ELASTICSEARCH ====================
   private indexarDocumentosEnElasticsearch(documentos: Documento[]) {
     for (const documento of documentos) {
       if (documento.id) {
         const doc = {
           id: documento.id,
-          nombre: documento.nombre,
+          nombre: documento.nombre.replace(/\./g, ' '),
           categoria: documento.categoria,
           descripcion: documento.descripcion || '',
           tipo: documento.tipo || '',
@@ -161,7 +155,7 @@ export class DocumentosComponent implements OnInit, OnDestroy {
     if (documento.id) {
       const doc = {
         id: documento.id,
-        nombre: documento.nombre,
+        nombre: documento.nombre.replace(/\./g, ' '),
         categoria: documento.categoria,
         descripcion: documento.descripcion || '',
         tipo: documento.tipo || '',
@@ -174,7 +168,7 @@ export class DocumentosComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ==================== MÉTODOS EXISTENTES (MODIFICADOS) ====================
+  // ==================== MÉTODOS EXISTENTES ====================
 
   private clearLoadingTimeout() {
     if (this.loadingTimeout) {
@@ -208,14 +202,15 @@ export class DocumentosComponent implements OnInit, OnDestroy {
         this.isLoading = false;
         if (response.success && response.data) {
           this.documentos = response.data;
-          this.filtrarDocumentos();
-          // Indexar en Elasticsearch
           this.indexarDocumentosEnElasticsearch(response.data);
+          this.filtrarDocumentos();
+          this.cdr.detectChanges();
+          setTimeout(() => this.cdr.detectChanges(), 50);
         } else {
           this.documentos = [];
           this.filtrarDocumentos();
+          this.cdr.detectChanges();
         }
-        this.cdr.detectChanges();
       },
       error: (error: any) => {
         this.clearLoadingTimeout();
@@ -229,28 +224,30 @@ export class DocumentosComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ✅ METODO PRINCIPAL DE FILTRADO - igual que en tratamientos
   filtrarDocumentos() {
-    // Si hay término de búsqueda con más de 2 caracteres, usar Elasticsearch
-    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
-      this.searchSubject.next(this.terminoBusqueda);
-      return;
-    }
-    
-    let filtrados = [...this.documentos];
-    
+    const usarBusquedaES = this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS
+      && this.documentosResultados.length > 0;
+
+    let filtrados = usarBusquedaES ? [...this.documentosResultados] : [...this.documentos];
+
     if (this.filtroActual !== 'todos') {
       filtrados = filtrados.filter(d => d.categoria === this.filtroActual);
     }
-    
-    if (this.terminoBusqueda.trim()) {
+
+    // Si venimos de Elasticsearch, el término ya se aplicó en el backend
+    if (!usarBusquedaES && this.terminoBusqueda.trim()) {
       const term = this.terminoBusqueda.toLowerCase();
-      filtrados = filtrados.filter(d => d.nombre.toLowerCase().includes(term));
+      filtrados = filtrados.filter(d =>
+        d.nombre.toLowerCase().includes(term) ||
+        (d.descripcion && d.descripcion.toLowerCase().includes(term))
+      );
     }
-    
+
     this.documentosFiltrados = filtrados;
+    this.cdr.detectChanges();
   }
 
-  // ✅ Método para búsqueda con Elasticsearch
   onSearchChange(termino: string) {
     this.terminoBusqueda = termino;
     this.searchSubject.next(termino);
@@ -258,7 +255,13 @@ export class DocumentosComponent implements OnInit, OnDestroy {
 
   cambiarFiltro(filtro: string) {
     this.filtroActual = filtro;
-    this.cargarDocumentos();
+    // ✅ Si hay búsqueda, re-ejecutar búsqueda con el nuevo filtro
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      this.searchSubject.next(this.terminoBusqueda);
+    } else {
+      // ✅ Si no hay búsqueda, recargar documentos con el filtro
+      this.cargarDocumentos();
+    }
   }
 
   abrirModal() {
@@ -449,7 +452,6 @@ export class DocumentosComponent implements OnInit, OnDestroy {
           this.cargarDocumentos();
           this.cerrarModal();
           this.showToast('Documento subido correctamente', 'success');
-          // Indexar en Elasticsearch
           if (response.data) {
             this.indexarDocumento(response.data);
           }
@@ -618,5 +620,10 @@ export class DocumentosComponent implements OnInit, OnDestroy {
         if (toast.parentNode) toast.remove();
       }, 400);
     }, 4000);
+  }
+
+  recargar() {
+    this.cargarDocumentos();
+    this.showToast('Documentos actualizados', 'info');
   }
 }
