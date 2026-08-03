@@ -113,7 +113,7 @@ export class EstudiosComponent implements OnInit {
           return [];
         }
         this.isLoadingBusqueda = true;
-        // ✅ Pasamos el filtro actual a Elasticsearch
+        // ✅ Siempre pasar el filtro actual a Elasticsearch
         return this.searchService.buscarModulo('estudios', termino, this.getFiltrosElasticsearch());
       })
     ).subscribe({
@@ -121,6 +121,14 @@ export class EstudiosComponent implements OnInit {
         this.isLoadingBusqueda = false;
         if (response && response.success) {
           const resultadosRaw = response.data?.resultados || [];
+          
+          if (resultadosRaw.length === 0) {
+            this.estudios = [];
+            this.aplicarFiltrosLocales();
+            this.actualizarVista();
+            this.cdr.detectChanges();
+            return;
+          }
           
           const resultados = resultadosRaw.map((r: any) => ({
             id: r.id,
@@ -134,7 +142,7 @@ export class EstudiosComponent implements OnInit {
           }));
           
           this.estudios = resultados;
-          // ✅ Siempre aplicar filtros locales DESPUÉS de la búsqueda
+          // ✅ SIEMPRE aplicar filtros locales después de la búsqueda
           this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
@@ -168,7 +176,6 @@ export class EstudiosComponent implements OnInit {
   }
 
   private aplicarFiltrosLocales() {
-    // ✅ SIEMPRE aplicar filtros, incluso si this.estudios está vacío
     let filtrados = [...this.estudios];
 
     if (this.filtroActual === 'pendientes') {
@@ -562,7 +569,7 @@ export class EstudiosComponent implements OnInit {
   }
 
   aplicarFiltros() {
-    // ✅ Si hay búsqueda, usar Elasticsearch (que ya aplica el filtro por estado)
+    // ✅ Si hay búsqueda, usar Elasticsearch (con el filtro actual)
     if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
       this.searchSubject.next(this.terminoBusqueda);
       return;
@@ -577,9 +584,17 @@ export class EstudiosComponent implements OnInit {
   cambiarFiltro(filtro: string) {
     this.filtroActual = filtro;
     this.paginaActual = 1;
-    // ✅ Al cambiar el filtro, volver a aplicar búsqueda o filtros locales
-    this.aplicarFiltros();
-    this.actualizarVista();
+    // ✅ SIEMPRE aplicar filtros, incluso si hay búsqueda activa
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      // Si hay búsqueda, re-ejecutar la búsqueda con el nuevo filtro
+      this.searchSubject.next(this.terminoBusqueda);
+    } else {
+      // Si no hay búsqueda, aplicar filtros locales
+      this.estudios = [...this.estudiosOriginales];
+      this.aplicarFiltrosLocales();
+      this.actualizarVista();
+      this.cdr.detectChanges();
+    }
   }
 
   verDetalleEstudio(estudio: Estudio) {
