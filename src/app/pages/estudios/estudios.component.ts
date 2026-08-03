@@ -48,6 +48,9 @@ export class EstudiosComponent implements OnInit {
   estudiosPorHora: { hora: string; estudios: Estudio[] }[] = [];
   diasDelMes: { fecha: Date; dia: number; estudios: Estudio[] }[] = [];
 
+  // ✅ Resultados de Elasticsearch (cache separado, nunca pisa this.estudios)
+  estudiosResultados: Estudio[] = [];
+
   private searchSubject = new Subject<string>();
   private readonly MIN_SEARCH_CHARS = 1;
 
@@ -100,28 +103,25 @@ export class EstudiosComponent implements OnInit {
       this.cargarEstudios();
     }
 
+    // ==================== Búsqueda con Elasticsearch ====================
     this.searchSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
-          this.estudios = [...this.estudiosOriginales];
-          this.filtrarTodo();
-          this.actualizarVista();
-          this.cdr.detectChanges();
+          this.estudiosResultados = [];
+          this.filtrarEstudios();
           return [];
         }
         this.isLoadingBusqueda = true;
-        // ✅ Buscar SIN filtros de estado, solo por texto
-        return this.searchService.buscarModulo('estudios', termino, {});
+        return this.searchService.buscarModulo('estudios', termino, this.getFiltrosElasticsearch());
       })
     ).subscribe({
       next: (response: any) => {
         this.isLoadingBusqueda = false;
-        if (response && response.success) {
-          const resultadosRaw = response.data?.resultados || [];
-          const resultados = resultadosRaw.map((r: any) => ({
+        if (response && response.success && response.data?.resultados?.length > 0) {
+          this.estudiosResultados = response.data.resultados.map((r: any) => ({
             id: r.id,
             titulo: r.datos?.titulo || r.titulo || '',
             tipo: r.datos?.tipo || r.tipo || '',
@@ -131,42 +131,30 @@ export class EstudiosComponent implements OnInit {
             notas: r.datos?.notas || r.notas || '',
             estado: r.datos?.estado || r.estado || 'pendiente'
           }));
-          
-          this.estudios = resultados;
         } else {
-          this.estudios = [...this.estudiosOriginales];
+          this.estudiosResultados = [];
         }
-        // ✅ SIEMPRE aplicar filtros locales después de cualquier cambio
-        this.filtrarTodo();
-        this.actualizarVista();
+        this.filtrarEstudios();
         this.cdr.detectChanges();
       },
       error: () => {
         this.isLoadingBusqueda = false;
-        this.estudios = [...this.estudiosOriginales];
-        this.filtrarTodo();
-        this.actualizarVista();
-        this.cdr.detectChanges();
+        this.estudiosResultados = [];
+        this.filtrarEstudios();
       }
     });
   }
 
-  // ✅ Método unificado para filtrar por estado
-  private filtrarTodo() {
-    let filtrados = [...this.estudios];
-
+  private getFiltrosElasticsearch(): any {
+    const filtros: any = {};
     if (this.filtroActual === 'pendientes') {
-      filtrados = filtrados.filter(e => e.estado === 'pendiente');
+      filtros.estado = 'pendiente';
     } else if (this.filtroActual === 'completados') {
-      filtrados = filtrados.filter(e => e.estado === 'completado');
+      filtros.estado = 'completado';
     } else if (this.filtroActual === 'cancelados') {
-      filtrados = filtrados.filter(e => e.estado === 'cancelado');
+      filtros.estado = 'cancelado';
     }
-
-    filtrados.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    this.estudiosFiltrados = filtrados;
-    this.paginaActual = 1;
-    this.cdr.detectChanges();
+    return filtros;
   }
 
   private indexarEstudiosEnElasticsearch(estudios: Estudio[]) {
@@ -267,25 +255,19 @@ export class EstudiosComponent implements OnInit {
           this.estudios = response.data;
           this.marcarEstudiosVencidosComoCompletados();
           this.indexarEstudiosEnElasticsearch(response.data);
-          this.filtrarTodo();
-          this.actualizarVista();
           this.cdr.detectChanges();
           setTimeout(() => this.cdr.detectChanges(), 50);
         } else {
           this.estudiosOriginales = [];
           this.estudios = [];
-          this.filtrarTodo();
-          this.actualizarVista();
           this.cdr.detectChanges();
         }
       },
       error: (error: any) => {
         this.isLoading = false;
-        this.errorMessage = this.obtenerMensajeError(error);
+        this.errorMessage = error?.error?.error || 'Error al cargar los estudios';
         this.estudiosOriginales = [];
         this.estudios = [];
-        this.filtrarTodo();
-        this.actualizarVista();
         this.cdr.detectChanges();
         this.showToast('Error al cargar los estudios', 'error');
       }
@@ -297,7 +279,7 @@ export class EstudiosComponent implements OnInit {
     const vencidos = this.estudios.filter(e => e.estado === 'pendiente' && e.fecha < hoy && e.id);
 
     if (vencidos.length === 0) {
-      this.filtrarTodo();
+      this.filtrarEstudios();
       this.actualizarVista();
       this.cdr.detectChanges();
       return;
@@ -308,31 +290,57 @@ export class EstudiosComponent implements OnInit {
       next: () => {
         vencidos.forEach(v => { v.estado = 'completado'; });
         this.indexarEstudiosEnElasticsearch(vencidos);
-        this.filtrarTodo();
+        this.filtrarEstudios();
         this.actualizarVista();
         this.cdr.detectChanges();
       },
       error: () => {
-        this.filtrarTodo();
+        this.filtrarEstudios();
         this.actualizarVista();
         this.cdr.detectChanges();
       }
     });
   }
 
-  // ✅ Cuando cambia el filtro, solo refiltrar lo que ya está en memoria
-  cambiarFiltro(filtro: string) {
-    this.filtroActual = filtro;
+  // ✅ METODO PRINCIPAL DE FILTRADO - igual que en tratamientos
+  filtrarEstudios() {
+    const usarBusquedaES = this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS
+      && this.estudiosResultados.length > 0;
+
+    let filtrados = usarBusquedaES ? [...this.estudiosResultados] : [...this.estudios];
+
+    if (this.filtroActual === 'pendientes') {
+      filtrados = filtrados.filter(e => e.estado === 'pendiente');
+    } else if (this.filtroActual === 'completados') {
+      filtrados = filtrados.filter(e => e.estado === 'completado');
+    } else if (this.filtroActual === 'cancelados') {
+      filtrados = filtrados.filter(e => e.estado === 'cancelado');
+    }
+
+    // Si venimos de Elasticsearch, el término ya se aplicó en el backend
+    if (!usarBusquedaES && this.terminoBusqueda.trim()) {
+      const term = this.terminoBusqueda.toLowerCase();
+      filtrados = filtrados.filter(e =>
+        e.titulo.toLowerCase().includes(term) ||
+        e.tipo.toLowerCase().includes(term) ||
+        (e.lugar && e.lugar.toLowerCase().includes(term))
+      );
+    }
+
+    this.estudiosFiltrados = filtrados;
     this.paginaActual = 1;
-    // ✅ SIEMPRE refiltrar los datos actuales, NO hacer nueva búsqueda
-    this.filtrarTodo();
-    this.actualizarVista();
     this.cdr.detectChanges();
   }
 
   onSearchChange(termino: string) {
     this.terminoBusqueda = termino;
     this.searchSubject.next(termino);
+  }
+
+  cambiarFiltro(filtro: string) {
+    this.filtroActual = filtro;
+    this.paginaActual = 1;
+    this.filtrarEstudios();
   }
 
   cambiarVista(vista: 'lista' | 'mes' | 'semana' | 'dia') {
@@ -577,7 +585,7 @@ export class EstudiosComponent implements OnInit {
     this.errorGuardando = '';
     this.esReagendar = false;
     this.esEdicion = false;
-    
+
     if (estudio) {
       const hoy = this.formatearFechaLocal(new Date());
       if (estudio.fecha < hoy) {
@@ -602,7 +610,6 @@ export class EstudiosComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       document.body.style.overflow = 'hidden';
     }
-    this.cdr.detectChanges();
   }
 
   reagendarEstudioDesdeDetalle(estudio: Estudio) {
@@ -622,7 +629,11 @@ export class EstudiosComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       document.body.style.overflow = 'hidden';
     }
-    this.cdr.detectChanges();
+  }
+
+  editarEstudioDesdeDetalle(estudio: Estudio) {
+    this.cerrarModalDetalle();
+    this.abrirModal(estudio);
   }
 
   cerrarModal() {
