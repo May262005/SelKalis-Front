@@ -113,7 +113,6 @@ export class EstudiosComponent implements OnInit {
           return [];
         }
         this.isLoadingBusqueda = true;
-        // ✅ Siempre pasar el filtro actual a Elasticsearch
         return this.searchService.buscarModulo('estudios', termino, this.getFiltrosElasticsearch());
       })
     ).subscribe({
@@ -121,15 +120,6 @@ export class EstudiosComponent implements OnInit {
         this.isLoadingBusqueda = false;
         if (response && response.success) {
           const resultadosRaw = response.data?.resultados || [];
-          
-          if (resultadosRaw.length === 0) {
-            this.estudios = [];
-            this.aplicarFiltrosLocales();
-            this.actualizarVista();
-            this.cdr.detectChanges();
-            return;
-          }
-          
           const resultados = resultadosRaw.map((r: any) => ({
             id: r.id,
             titulo: r.datos?.titulo || r.titulo || '',
@@ -142,7 +132,6 @@ export class EstudiosComponent implements OnInit {
           }));
           
           this.estudios = resultados;
-          // ✅ SIEMPRE aplicar filtros locales después de la búsqueda
           this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
@@ -275,6 +264,90 @@ export class EstudiosComponent implements OnInit {
 
   toggleEstudio(id: string) {
     this.estudioExpandidoId = this.estudioExpandidoId === id ? null : id;
+  }
+
+  cargarEstudios() {
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.cdr.detectChanges();
+
+    this.estudiosService.getEstudios().subscribe({
+      next: (response: any) => {
+        this.isLoading = false;
+        if (response.success && response.data) {
+          this.estudiosOriginales = response.data;
+          this.estudios = response.data;
+          this.marcarEstudiosVencidosComoCompletados();
+          this.indexarEstudiosEnElasticsearch(response.data);
+          this.aplicarFiltros();
+          this.actualizarVista();
+          this.cdr.detectChanges();
+          setTimeout(() => this.cdr.detectChanges(), 50);
+        } else {
+          this.estudiosOriginales = [];
+          this.estudios = [];
+          this.aplicarFiltros();
+          this.actualizarVista();
+          this.cdr.detectChanges();
+        }
+      },
+      error: (error: any) => {
+        this.isLoading = false;
+        this.errorMessage = this.obtenerMensajeError(error);
+        this.estudiosOriginales = [];
+        this.estudios = [];
+        this.aplicarFiltros();
+        this.actualizarVista();
+        this.cdr.detectChanges();
+        this.showToast('Error al cargar los estudios', 'error');
+      }
+    });
+  }
+
+  private marcarEstudiosVencidosComoCompletados() {
+    const hoy = this.formatearFechaLocal(new Date());
+    const vencidos = this.estudios.filter(e => e.estado === 'pendiente' && e.fecha < hoy && e.id);
+
+    if (vencidos.length === 0) {
+      this.aplicarFiltros();
+      this.actualizarVista();
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const cambios = vencidos.map(e => this.estudiosService.cambiarEstado(e.id!, 'completado'));
+    forkJoin(cambios).subscribe({
+      next: () => {
+        vencidos.forEach(v => { v.estado = 'completado'; });
+        this.indexarEstudiosEnElasticsearch(vencidos);
+        this.aplicarFiltros();
+        this.actualizarVista();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.aplicarFiltros();
+        this.actualizarVista();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  aplicarFiltros() {
+    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
+      this.searchSubject.next(this.terminoBusqueda);
+      return;
+    }
+    this.estudios = [...this.estudiosOriginales];
+    this.aplicarFiltrosLocales();
+    this.actualizarVista();
+    this.cdr.detectChanges();
+  }
+
+  cambiarFiltro(filtro: string) {
+    this.filtroActual = filtro;
+    this.paginaActual = 1;
+    this.aplicarFiltros();
+    this.actualizarVista();
   }
 
   onSearchChange(termino: string) {
@@ -500,101 +573,6 @@ export class EstudiosComponent implements OnInit {
 
   obtenerMensajeError(error: any): string {
     return error?.error?.error || error?.message || 'Error desconocido';
-  }
-
-  cargarEstudios() {
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.cdr.detectChanges();
-
-    this.estudiosService.getEstudios().subscribe({
-      next: (response: any) => {
-        this.isLoading = false;
-        if (response.success && response.data) {
-          this.estudiosOriginales = response.data;
-          this.estudios = response.data;
-          this.marcarEstudiosVencidosComoCompletados();
-          this.indexarEstudiosEnElasticsearch(response.data);
-          this.aplicarFiltros();
-          this.actualizarVista();
-          this.cdr.detectChanges();
-          setTimeout(() => this.cdr.detectChanges(), 50);
-        } else {
-          this.estudiosOriginales = [];
-          this.estudios = [];
-          this.aplicarFiltros();
-          this.actualizarVista();
-          this.cdr.detectChanges();
-        }
-      },
-      error: (error: any) => {
-        this.isLoading = false;
-        this.errorMessage = this.obtenerMensajeError(error);
-        this.estudiosOriginales = [];
-        this.estudios = [];
-        this.aplicarFiltros();
-        this.actualizarVista();
-        this.cdr.detectChanges();
-        this.showToast('Error al cargar los estudios', 'error');
-      }
-    });
-  }
-
-  private marcarEstudiosVencidosComoCompletados() {
-    const hoy = this.formatearFechaLocal(new Date());
-    const vencidos = this.estudios.filter(e => e.estado === 'pendiente' && e.fecha < hoy && e.id);
-
-    if (vencidos.length === 0) {
-      this.aplicarFiltros();
-      this.actualizarVista();
-      this.cdr.detectChanges();
-      return;
-    }
-
-    const cambios = vencidos.map(e => this.estudiosService.cambiarEstado(e.id!, 'completado'));
-    forkJoin(cambios).subscribe({
-      next: () => {
-        vencidos.forEach(v => { v.estado = 'completado'; });
-        this.indexarEstudiosEnElasticsearch(vencidos);
-        this.aplicarFiltros();
-        this.actualizarVista();
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.aplicarFiltros();
-        this.actualizarVista();
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  aplicarFiltros() {
-    // ✅ Si hay búsqueda, usar Elasticsearch (con el filtro actual)
-    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
-      this.searchSubject.next(this.terminoBusqueda);
-      return;
-    }
-    // ✅ Si no hay búsqueda, restaurar todos los estudios y aplicar filtros locales
-    this.estudios = [...this.estudiosOriginales];
-    this.aplicarFiltrosLocales();
-    this.actualizarVista();
-    this.cdr.detectChanges();
-  }
-
-  cambiarFiltro(filtro: string) {
-    this.filtroActual = filtro;
-    this.paginaActual = 1;
-    // ✅ SIEMPRE aplicar filtros, incluso si hay búsqueda activa
-    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
-      // Si hay búsqueda, re-ejecutar la búsqueda con el nuevo filtro
-      this.searchSubject.next(this.terminoBusqueda);
-    } else {
-      // Si no hay búsqueda, aplicar filtros locales
-      this.estudios = [...this.estudiosOriginales];
-      this.aplicarFiltrosLocales();
-      this.actualizarVista();
-      this.cdr.detectChanges();
-    }
   }
 
   verDetalleEstudio(estudio: Estudio) {
