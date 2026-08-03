@@ -1,4 +1,3 @@
-// auth.service.ts
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -21,6 +20,7 @@ const SK_CREDENTIALS = 'sk_credentials';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  // ✅ URL CORRECTA del backend en Render
   private apiUrl = 'https://selkalis-auth-service.onrender.com';
   
   private readonly REQUEST_TIMEOUT = 60000;
@@ -137,6 +137,8 @@ export class AuthService {
     );
   }
 
+  // ==================== MÉTODOS DE AUTENTICACIÓN ====================
+
   register(userData: any): Observable<any> {
     return this.requestWithRetry(
       this.http.post(`${this.apiUrl}/usuarios/registro`, userData)
@@ -187,6 +189,8 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
+  // ==================== RECUPERACIÓN DE CONTRASEÑA ====================
+
   solicitarRecuperacion(email: string): Observable<any> {
     return this.requestWithRetry(
       this.http.post(`${this.apiUrl}/auth/recuperar`, { email })
@@ -211,6 +215,8 @@ export class AuthService {
     );
   }
 
+  // ==================== MÉTODOS DE USUARIO ====================
+
   getUsuario(id: string): Observable<any> {
     return this.requestWithRetry(
       this.http.get(`${this.apiUrl}/usuarios/${id}`, { headers: this.getAuthHeaders() })
@@ -226,9 +232,13 @@ export class AuthService {
   cambiarPassword(userId: string, currentPassword: string, newPassword: string): Observable<any> {
     return this.requestWithRetry(
       this.http.post(`${this.apiUrl}/usuarios/cambiar-password`,
-        { userId, currentPassword, newPassword })
+        { userId, currentPassword, newPassword },
+        { headers: this.getAuthHeaders() }
+      )
     );
   }
+
+  // ==================== MÉTODOS DE UTILIDAD ====================
 
   getToken(): string | null {
     if (!this.isBrowser) return null;
@@ -252,25 +262,30 @@ export class AuthService {
     });
   }
 
+  // ==================== MANEJO DE ERRORES ====================
+
   private handleError(error: any): Observable<never> {
-    let errorMessage = 'Error en la conexion';
+    let errorMessage = 'Error en la conexión';
     
     if (error instanceof HttpErrorResponse) {
       switch (error.status) {
         case 0:
-          errorMessage = 'No se pudo conectar al servidor. Verifica tu conexion.';
+          errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
           break;
-        case 502:
-          errorMessage = 'El servicio esta despertando. Intenta de nuevo en unos segundos.';
-          break;
-        case 503:
-          errorMessage = 'El servicio no esta disponible. Intenta mas tarde.';
+        case 400:
+          errorMessage = error.error?.error || error.error?.mensaje || 'Solicitud incorrecta';
           break;
         case 401:
-          errorMessage = 'Sesion expirada. Por favor, inicia sesion nuevamente.';
+          errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
           break;
         case 404:
           errorMessage = 'Endpoint no encontrado. Verifica la URL.';
+          break;
+        case 502:
+          errorMessage = 'El servicio está despertando. Intenta de nuevo en unos segundos.';
+          break;
+        case 503:
+          errorMessage = 'El servicio no está disponible. Intenta más tarde.';
           break;
         default:
           errorMessage = error.error?.error || error.error?.mensaje || 'Error en el servidor';

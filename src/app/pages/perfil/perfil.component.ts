@@ -1,7 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -12,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
   styleUrls: ['./perfil.component.css']
 })
 export class PerfilComponent implements OnInit {
-  private apiUrl = 'http://localhost:3000/api';
+  // ✅ ELIMINADA la variable apiUrl - usamos AuthService en su lugar
 
   usuario = {
     id: '',
@@ -50,8 +49,7 @@ export class PerfilComponent implements OnInit {
   isLoadingCambiarPassword = false;
 
   constructor(
-    private http: HttpClient,
-    private authService: AuthService,
+    private authService: AuthService, // ✅ SOLO AuthService
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -69,9 +67,8 @@ export class PerfilComponent implements OnInit {
       };
       this.usuarioEdit = { ...this.usuario };
 
-      this.http.get<any>(`${this.apiUrl}/usuarios/${user.id}`, {
-        headers: this.authService.getAuthHeaders()
-      }).subscribe({
+      // ✅ Usando AuthService
+      this.authService.getUsuario(user.id).subscribe({
         next: (res) => {
           if (res.user) {
             this.usuario = { ...this.usuario, ...res.user };
@@ -79,7 +76,10 @@ export class PerfilComponent implements OnInit {
             this.cdr.detectChanges();
           }
         },
-        error: () => this.showToast('No se pudo cargar la información del perfil', 'warning')
+        error: (err) => {
+          console.error('Error al cargar perfil:', err);
+          this.showToast(err.userMessage || 'No se pudo cargar la información del perfil', 'warning');
+        }
       });
     }
 
@@ -128,27 +128,26 @@ export class PerfilComponent implements OnInit {
     const { id, nombre, apellido, telefono } = this.usuarioEdit;
     this.isLoadingGuardar = true;
 
-    this.http.put<any>(`${this.apiUrl}/usuarios/${id}`,
-      { nombre, apellido, telefono },
-      { headers: this.authService.getAuthHeaders() }
-    ).subscribe({
-      next: (res) => {
-        if (res.user) {
-          this.usuario = { ...this.usuario, ...res.user };
-          this.usuarioEdit = { ...this.usuario };
+    // ✅ Usando AuthService
+    this.authService.actualizarUsuario(id, { nombre, apellido, telefono })
+      .subscribe({
+        next: (res) => {
+          if (res.user) {
+            this.usuario = { ...this.usuario, ...res.user };
+            this.usuarioEdit = { ...this.usuario };
+          }
+          this.isLoadingGuardar = false;
+          this.cerrarModalEditar();
+          this.showToast('Perfil actualizado correctamente', 'success');
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isLoadingGuardar = false;
+          const msg = err.userMessage || err.error?.error || 'Error al actualizar el perfil';
+          this.showToast(msg, 'error');
+          this.cdr.detectChanges();
         }
-        this.isLoadingGuardar = false;
-        this.cerrarModalEditar();
-        this.showToast('Perfil actualizado correctamente', 'success');
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.isLoadingGuardar = false;
-        const msg = err.error?.error ?? 'Error al actualizar el perfil';
-        this.showToast(msg, 'error');
-        this.cdr.detectChanges();
-      }
-    });
+      });
   }
 
   // ── Modal Verificar Identidad ──────────────────────────
@@ -172,23 +171,23 @@ export class PerfilComponent implements OnInit {
 
     this.isLoadingVerificar = true;
 
-    this.http.post<any>(`${this.apiUrl}/usuarios/login`, {
-      email: this.usuario.email,
-      password: this.passwordVerificacion
-    }).subscribe({
-      next: () => {
-        this.passwordDescifrada = this.passwordVerificacion;
-        this.isLoadingVerificar = false;
-        this.cerrarModalVerificar();
-        this.abrirPasswordModal();
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.isLoadingVerificar = false;
-        this.showToast('Contraseña incorrecta', 'error');
-        this.cdr.detectChanges();
-      }
-    });
+    // ✅ Usando AuthService
+    this.authService.login(this.usuario.email, this.passwordVerificacion, false)
+      .subscribe({
+        next: () => {
+          this.passwordDescifrada = this.passwordVerificacion;
+          this.isLoadingVerificar = false;
+          this.cerrarModalVerificar();
+          this.abrirPasswordModal();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.isLoadingVerificar = false;
+          const msg = err.userMessage || 'Contraseña incorrecta';
+          this.showToast(msg, 'error');
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   // ── Modal Mostrar Contraseña ───────────────────────────
@@ -240,11 +239,12 @@ export class PerfilComponent implements OnInit {
 
     this.isLoadingCambiarPassword = true;
 
-    this.http.post<any>(`${this.apiUrl}/usuarios/cambiar-password`, {
-      userId: this.usuario.id,
-      currentPassword: this.passwords.actual,
-      newPassword: this.passwords.nueva
-    }, { headers: this.authService.getAuthHeaders() }).subscribe({
+    // ✅ Usando AuthService
+    this.authService.cambiarPassword(
+      this.usuario.id,
+      this.passwords.actual,
+      this.passwords.nueva
+    ).subscribe({
       next: () => {
         this.isLoadingCambiarPassword = false;
         this.cerrarModalCambiarPassword();
@@ -253,7 +253,7 @@ export class PerfilComponent implements OnInit {
       },
       error: (err) => {
         this.isLoadingCambiarPassword = false;
-        const msg = err.error?.error ?? 'Error al cambiar la contraseña';
+        const msg = err.userMessage || err.error?.error || 'Error al cambiar la contraseña';
         this.showToast(msg, 'error');
         this.cdr.detectChanges();
       }
