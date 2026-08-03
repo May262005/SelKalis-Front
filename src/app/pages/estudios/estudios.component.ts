@@ -106,7 +106,6 @@ export class EstudiosComponent implements OnInit {
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
-          // ✅ Restaurar estudios originales cuando se limpia la búsqueda
           this.estudios = [...this.estudiosOriginales];
           this.aplicarFiltrosLocales();
           this.actualizarVista();
@@ -114,6 +113,7 @@ export class EstudiosComponent implements OnInit {
           return [];
         }
         this.isLoadingBusqueda = true;
+        // ✅ Pasamos el filtro actual a Elasticsearch
         return this.searchService.buscarModulo('estudios', termino, this.getFiltrosElasticsearch());
       })
     ).subscribe({
@@ -121,15 +121,6 @@ export class EstudiosComponent implements OnInit {
         this.isLoadingBusqueda = false;
         if (response && response.success) {
           const resultadosRaw = response.data?.resultados || [];
-          
-          // ✅ Si no hay resultados, mostrar mensaje de "sin resultados"
-          if (resultadosRaw.length === 0) {
-            this.estudios = [];
-            this.aplicarFiltrosLocales();
-            this.actualizarVista();
-            this.cdr.detectChanges();
-            return;
-          }
           
           const resultados = resultadosRaw.map((r: any) => ({
             id: r.id,
@@ -143,11 +134,11 @@ export class EstudiosComponent implements OnInit {
           }));
           
           this.estudios = resultados;
+          // ✅ Siempre aplicar filtros locales DESPUÉS de la búsqueda
           this.aplicarFiltrosLocales();
           this.actualizarVista();
           this.cdr.detectChanges();
         } else {
-          // ✅ Si hay error, restaurar originales
           this.estudios = [...this.estudiosOriginales];
           this.aplicarFiltrosLocales();
           this.actualizarVista();
@@ -156,7 +147,6 @@ export class EstudiosComponent implements OnInit {
       },
       error: () => {
         this.isLoadingBusqueda = false;
-        // ✅ Si hay error, restaurar originales
         this.estudios = [...this.estudiosOriginales];
         this.aplicarFiltrosLocales();
         this.actualizarVista();
@@ -178,6 +168,7 @@ export class EstudiosComponent implements OnInit {
   }
 
   private aplicarFiltrosLocales() {
+    // ✅ SIEMPRE aplicar filtros, incluso si this.estudios está vacío
     let filtrados = [...this.estudios];
 
     if (this.filtroActual === 'pendientes') {
@@ -571,12 +562,12 @@ export class EstudiosComponent implements OnInit {
   }
 
   aplicarFiltros() {
-    // ✅ Si hay búsqueda, usar Elasticsearch
+    // ✅ Si hay búsqueda, usar Elasticsearch (que ya aplica el filtro por estado)
     if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
       this.searchSubject.next(this.terminoBusqueda);
       return;
     }
-    // ✅ Si no hay búsqueda, restaurar todos los estudios y aplicar filtros
+    // ✅ Si no hay búsqueda, restaurar todos los estudios y aplicar filtros locales
     this.estudios = [...this.estudiosOriginales];
     this.aplicarFiltrosLocales();
     this.actualizarVista();
@@ -586,6 +577,7 @@ export class EstudiosComponent implements OnInit {
   cambiarFiltro(filtro: string) {
     this.filtroActual = filtro;
     this.paginaActual = 1;
+    // ✅ Al cambiar el filtro, volver a aplicar búsqueda o filtros locales
     this.aplicarFiltros();
     this.actualizarVista();
   }
