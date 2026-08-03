@@ -1,114 +1,409 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
-import { AuthService } from './auth.service';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, throwError, forkJoin, of } from 'rxjs';
+import { catchError, map, timeout } from 'rxjs/operators';
+import { isPlatformBrowser } from '@angular/common';
 
-export interface DashboardData {
-  proximaToma: { nombre: string; hora: string } | null;
-  proximaCita: { doctor: string; fecha: string; hora?: string } | null;
-  totalTratamientosActivos: number;
-  tomasCompletadasHoy: number;
-  tratamientosActivos: any[];
-  proximosEstudios: any[];
-  documentosRecientes: any[];
+export interface ProximaToma {
+  nombre: string;
+  hora: string;
+  medicamentoId?: string;
+  tratamientoId?: string;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface ProximaCita {
+  id: string;
+  doctor: string;
+  especialidad: string;
+  fecha: string;
+  hora: string;
+  tipo: 'presencial' | 'virtual' | 'Presencial' | 'Virtual';
+  lugar?: string;
+}
+
+export interface TratamientoActivo {
+  id: string;
+  nombre: string;
+  medicamentosCount: number;
+  progreso: number;
+  estado: string;
+}
+
+export interface ProximoEstudio {
+  id: string;
+  lugar: string;
+  tipo: string;
+  fecha: string;
+  hora: string;
+}
+
+export interface DocumentoReciente {
+  id: string;
+  nombre: string;
+  tipo: 'pdf' | 'imagen' | 'archivo';
+  fecha: string;
+  tamano: string;
+  url?: string;
+  categoria?: string;
+}
+
+export interface DashboardData {
+  proximaToma: ProximaToma | null;
+  proximaCita: ProximaCita | null;
+  tratamientosActivos: TratamientoActivo[];
+  proximosEstudios: ProximoEstudio[];
+  documentosRecientes: DocumentoReciente[];
+  totalTratamientosActivos: number;
+  tomasCompletadasHoy: number;
+}
+
+@Injectable({ providedIn: 'root' })
 export class DashboardService {
-  private apiUrl = 'https://selkalis-auth-service.onrender.com';
+  private readonly TIMEOUT = 15000;
+
+  private readonly TRATAMIENTOS_URL = 'https://selkalis-tratamientos-service.onrender.com';
+  private readonly CITAS_URL = 'https://selkalis-citas-service.onrender.com';
+  private readonly ESTUDIOS_URL = 'https://selkalis-estudios-service.onrender.com';
+  private readonly DOCUMENTOS_URL = 'https://selkalis-documentos-service.onrender.com';
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
-  private formatearFecha(fecha: string | null | undefined): string {
-    if (!fecha) return 'No programada';
-    
-    try {
-      const parts = fecha.split('-');
-      if (parts.length === 3) {
-        const year = parseInt(parts[0]);
-        const month = parseInt(parts[1]) - 1;
-        const day = parseInt(parts[2]);
-        const date = new Date(year, month, day);
-        return date.toLocaleDateString('es-ES', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        });
-      }
-      return fecha;
-    } catch {
-      return fecha || 'No programada';
-    }
+  private getFechaLocal(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
-  private formatearHora(hora: string | null | undefined): string {
-    if (!hora) return '';
-    
-    try {
-      const parts = hora.split(':');
-      if (parts.length >= 2) {
-        const hour = parseInt(parts[0]);
-        const minute = parseInt(parts[1]);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const hour12 = hour % 12 || 12;
-        return `${hour12}:${minute.toString().padStart(2, '0')} ${ampm}`;
-      }
-      return hora;
-    } catch {
-      return hora || '';
+  private getAuthHeaders(): HttpHeaders {
+    let token = null;
+    if (isPlatformBrowser(this.platformId)) {
+      token = localStorage.getItem('sk_token');
     }
+
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    return headers;
+  }
+
+  private handleError(error: any): Observable<never> {
+    return throwError(() => error);
   }
 
   getDashboardData(): Observable<DashboardData> {
-    const token = this.authService.getToken();
-    if (!token) {
-      return throwError(() => new Error('No hay token de autenticación'));
-    }
+    const headers = this.getAuthHeaders();
 
-    const headers = this.authService.getAuthHeaders();
+    const tratamientos$ = this.http.get(`${this.TRATAMIENTOS_URL}/tratamientos`, { headers })
+      .pipe(
+        timeout(this.TIMEOUT),
+        catchError(() => of({ success: true, data: [] }))
+      );
 
-    return this.http.get<any>(`${this.apiUrl}/dashboard`, { headers }).pipe(
-      map((response) => {
-        console.log('📥 Respuesta del servidor:', response);
-        
-        const proximosEstudios = (response.proximosEstudios || []).map((estudio: any) => ({
-          ...estudio,
-          fechaFormateada: this.formatearFecha(estudio.fecha_programada || estudio.fecha),
-          horaFormateada: this.formatearHora(estudio.hora_time || estudio.hora)
-        }));
+    const citas$ = this.http.get(`${this.CITAS_URL}/citas`, { headers })
+      .pipe(
+        timeout(this.TIMEOUT),
+        catchError(() => of({ success: true, data: [] }))
+      );
 
-        const dashboardData: DashboardData = {
-          proximaToma: response.proximaToma ? {
-            nombre: response.proximaToma.nombre,
-            hora: response.proximaToma.hora
-          } : null,
-          
-          proximaCita: response.proximaCita ? {
-            doctor: response.proximaCita.doctor,
-            fecha: this.formatearFecha(response.proximaCita.fecha),
-            hora: response.proximaCita.hora
-          } : null,
-          
-          totalTratamientosActivos: response.totalTratamientosActivos || 0,
-          tomasCompletadasHoy: response.tomasCompletadasHoy || 0,
-          tratamientosActivos: response.tratamientosActivos || [],
-          proximosEstudios: proximosEstudios,
-          documentosRecientes: response.documentosRecientes || []
+    const estudios$ = this.http.get(`${this.ESTUDIOS_URL}/estudios`, { headers })
+      .pipe(
+        timeout(this.TIMEOUT),
+        catchError(() => of({ success: true, data: [] }))
+      );
+
+    const documentos$ = this.http.get(`${this.DOCUMENTOS_URL}/documentos`, { headers })
+      .pipe(
+        timeout(this.TIMEOUT),
+        catchError(() => of({ success: true, data: [] }))
+      );
+
+    return forkJoin({
+      tratamientos: tratamientos$,
+      citas: citas$,
+      estudios: estudios$,
+      documentos: documentos$
+    }).pipe(
+      map((result: any) => {
+        const tratamientos = result.tratamientos?.data || [];
+        const citas = result.citas?.data || [];
+        const estudios = result.estudios?.data || [];
+        const documentos = result.documentos?.data || [];
+
+        const hoyLocal = this.getFechaLocal();
+        let tomasCompletadas = 0;
+
+        for (const tratamiento of tratamientos) {
+          if (tratamiento.estado !== 'activo' || tratamiento.activo === false) continue;
+          const medicamentos = tratamiento.medicamentos || [];
+          for (const med of medicamentos) {
+            if (med.activo === false) continue;
+            const tomas = med.tomas || [];
+            const tomasHoy = tomas.filter((t: any) => t.fecha === hoyLocal);
+            tomasCompletadas += tomasHoy.filter((t: any) => t.completado === true).length;
+          }
+        }
+
+        const tratamientosActivos = this.obtenerTratamientosActivos(tratamientos);
+        const totalTratamientosActivos = this.contarTratamientosActivos(tratamientos);
+
+        return {
+          proximaToma: this.obtenerProximaToma(tratamientos),
+          proximaCita: this.obtenerProximaCita(citas),
+          tratamientosActivos: tratamientosActivos,
+          proximosEstudios: this.obtenerProximosEstudios(estudios),
+          documentosRecientes: this.obtenerDocumentosRecientes(documentos),
+          totalTratamientosActivos: totalTratamientosActivos,
+          tomasCompletadasHoy: tomasCompletadas
         };
-        
-        return dashboardData;
       }),
       catchError((error) => {
-        console.error('❌ Error al obtener datos del dashboard:', error);
-        return throwError(() => error);
+        return this.getDashboardDataFallback();
       })
     );
+  }
+
+  private getDashboardDataFallback(): Observable<DashboardData> {
+    const headers = this.getAuthHeaders();
+
+    const tratamientos$ = this.http.get(`${this.TRATAMIENTOS_URL}/tratamientos`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    const citas$ = this.http.get(`${this.CITAS_URL}/citas`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    const estudios$ = this.http.get(`${this.ESTUDIOS_URL}/estudios`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    const documentos$ = this.http.get(`${this.DOCUMENTOS_URL}/documentos`, { headers })
+      .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
+
+    return forkJoin({
+      tratamientos: tratamientos$,
+      citas: citas$,
+      estudios: estudios$,
+      documentos: documentos$
+    }).pipe(
+      map((result: any) => {
+        const tratamientos = result.tratamientos?.data || [];
+        const citas = result.citas?.data || [];
+        const estudios = result.estudios?.data || [];
+        const documentos = result.documentos?.data || [];
+
+        const hoyLocal = this.getFechaLocal();
+        let tomasCompletadas = 0;
+
+        for (const tratamiento of tratamientos) {
+          if (tratamiento.estado !== 'activo' || tratamiento.activo === false) continue;
+          const medicamentos = tratamiento.medicamentos || [];
+          for (const med of medicamentos) {
+            if (med.activo === false) continue;
+            const tomas = med.tomas || [];
+            const tomasHoy = tomas.filter((t: any) => t.fecha === hoyLocal);
+            tomasCompletadas += tomasHoy.filter((t: any) => t.completado === true).length;
+          }
+        }
+
+        return {
+          proximaToma: this.obtenerProximaToma(tratamientos),
+          proximaCita: this.obtenerProximaCita(citas),
+          tratamientosActivos: this.obtenerTratamientosActivos(tratamientos),
+          proximosEstudios: this.obtenerProximosEstudios(estudios),
+          documentosRecientes: this.obtenerDocumentosRecientes(documentos),
+          totalTratamientosActivos: this.contarTratamientosActivos(tratamientos),
+          tomasCompletadasHoy: tomasCompletadas
+        };
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  private obtenerProximaToma(tratamientos: any[]): ProximaToma | null {
+    if (!tratamientos || tratamientos.length === 0) return null;
+
+    const ahora = new Date();
+    const hoyLocal = this.getFechaLocal();
+
+    for (const tratamiento of tratamientos) {
+      if (tratamiento.estado !== 'activo' || tratamiento.activo === false) continue;
+
+      const medicamentos = tratamiento.medicamentos || [];
+      for (const med of medicamentos) {
+        if (med.activo === false) continue;
+
+        const tomas = med.tomas || [];
+
+        const proximaToma = tomas
+          .filter((t: any) => t.fecha === hoyLocal && !t.completado)
+          .sort((a: any, b: any) => a.hora.localeCompare(b.hora))
+          .find((t: any) => {
+            const [h, m] = t.hora.split(':').map(Number);
+            const horaToma = new Date();
+            horaToma.setHours(h || 0, m || 0, 0, 0);
+            return horaToma >= ahora;
+          });
+
+        if (proximaToma) {
+          return {
+            nombre: med.nombre,
+            hora: this.formatearHora12(proximaToma.hora),
+            medicamentoId: med.id,
+            tratamientoId: tratamiento.id
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private obtenerProximaCita(citas: any[]): ProximaCita | null {
+    if (!citas || citas.length === 0) return null;
+
+    const hoyLocal = this.getFechaLocal();
+
+    const proximas = citas
+      .filter((c: any) => c.estado === 'pendiente')
+      .filter((c: any) => c.fecha >= hoyLocal)
+      .sort((a: any, b: any) => {
+        if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
+        return a.hora.localeCompare(b.hora);
+      });
+
+    if (proximas.length === 0) return null;
+
+    const cita = proximas[0];
+    return {
+      id: cita.id,
+      doctor: cita.titulo || cita.doctor || 'Medico',
+      especialidad: cita.especialidad || 'General',
+      fecha: this.formatearFecha(cita.fecha),
+      hora: this.formatearHora12(cita.hora),
+      tipo: cita.tipo || 'presencial',
+      lugar: cita.lugar
+    };
+  }
+
+  private obtenerTratamientosActivos(tratamientos: any[]): TratamientoActivo[] {
+    if (!tratamientos || tratamientos.length === 0) return [];
+
+    const hoyLocal = this.getFechaLocal();
+
+    return tratamientos
+      .filter((t: any) => t.estado === 'activo' && t.activo !== false)
+      .filter((t: any) => t.fecha_inicio <= hoyLocal && t.fecha_fin >= hoyLocal)
+      .map((t: any) => ({
+        id: t.id,
+        nombre: t.nombre,
+        medicamentosCount: (t.medicamentos || []).filter((m: any) => m.activo !== false).length,
+        progreso: this.calcularProgresoTratamiento(t),
+        estado: t.estado
+      }))
+      .slice(0, 5);
+  }
+
+  private obtenerProximosEstudios(estudios: any[]): ProximoEstudio[] {
+    if (!estudios || estudios.length === 0) return [];
+
+    const hoyLocal = this.getFechaLocal();
+
+    return estudios
+      .filter((e: any) => e.estado === 'pendiente')
+      .filter((e: any) => e.fecha >= hoyLocal)
+      .sort((a: any, b: any) => {
+        if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
+        return a.hora.localeCompare(b.hora);
+      })
+      .map((e: any) => ({
+        id: e.id,
+        lugar: e.lugar || e.titulo || 'Laboratorio',
+        tipo: e.tipo || 'Estudio',
+        fecha: this.formatearFecha(e.fecha),  // ✅ SOLO CAMBIO AQUÍ
+        hora: this.formatearHora12(e.hora)
+      }))
+      .slice(0, 3);
+  }
+
+  private obtenerDocumentosRecientes(documentos: any[]): DocumentoReciente[] {
+    if (!documentos || documentos.length === 0) return [];
+
+    return documentos
+      .sort((a: any, b: any) => {
+        const fechaA = new Date(a.created_at || a.fecha);
+        const fechaB = new Date(b.created_at || b.fecha);
+        return fechaB.getTime() - fechaA.getTime();
+      })
+      .map((d: any) => ({
+        id: d.id,
+        nombre: d.nombre,
+        tipo: this.obtenerTipoDocumento(d.nombre, d.tipo),
+        fecha: this.formatearFecha(d.created_at || d.fecha),
+        tamano: d.tamano,
+        url: d.url,
+        categoria: d.categoria
+      }))
+      .slice(0, 3);
+  }
+
+  private contarTratamientosActivos(tratamientos: any[]): number {
+    if (!tratamientos || tratamientos.length === 0) return 0;
+
+    const hoyLocal = this.getFechaLocal();
+
+    return tratamientos
+      .filter((t: any) => t.estado === 'activo' && t.activo !== false)
+      .filter((t: any) => t.fecha_inicio <= hoyLocal && t.fecha_fin >= hoyLocal)
+      .length;
+  }
+
+  private calcularProgresoTratamiento(tratamiento: any): number {
+    if (!tratamiento.medicamentos || tratamiento.medicamentos.length === 0) return 0;
+
+    let totalTomas = 0;
+    let completadas = 0;
+
+    for (const med of tratamiento.medicamentos) {
+      if (med.activo === false) continue;
+      const tomas = med.tomas || [];
+      totalTomas += tomas.length;
+      completadas += tomas.filter((t: any) => t.completado).length;
+    }
+
+    return totalTomas === 0 ? 0 : Math.round((completadas / totalTomas) * 100);
+  }
+
+  // ✅ CAMBIO: Mostrar fecha completa de la base de datos
+  private formatearFecha(fecha: string): string {
+    if (!fecha) return '';
+    // Devuelve la fecha tal como está en la base de datos
+    return fecha;
+  }
+
+  // ✅ SIN CAMBIOS: La hora se formatea a 12h
+  private formatearHora12(hora24: string): string {
+    if (!hora24) return '';
+    const [h, m] = hora24.split(':').map(Number);
+    const sufijo = h >= 12 ? 'PM' : 'AM';
+    const hora12 = h % 12 || 12;
+    return `${hora12}:${m.toString().padStart(2, '0')} ${sufijo}`;
+  }
+
+  private obtenerTipoDocumento(nombre: string, mimeType?: string): 'pdf' | 'imagen' | 'archivo' {
+    if (mimeType) {
+      if (mimeType === 'application/pdf') return 'pdf';
+      if (mimeType.startsWith('image/')) return 'imagen';
+    }
+    if (nombre.endsWith('.pdf')) return 'pdf';
+    if (nombre.endsWith('.png') || nombre.endsWith('.jpg') || nombre.endsWith('.jpeg') || nombre.endsWith('.webp')) return 'imagen';
+    return 'archivo';
   }
 }
