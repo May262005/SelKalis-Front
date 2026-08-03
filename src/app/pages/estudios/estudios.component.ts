@@ -14,6 +14,7 @@ import { SearchService } from '../../services/search.service';
   styleUrls: ['./estudios.component.css']
 })
 export class EstudiosComponent implements OnInit {
+  estudiosOriginales: Estudio[] = [];
   estudios: Estudio[] = [];
   estudiosFiltrados: Estudio[] = [];
   terminoBusqueda: string = '';
@@ -47,9 +48,8 @@ export class EstudiosComponent implements OnInit {
   estudiosPorHora: { hora: string; estudios: Estudio[] }[] = [];
   diasDelMes: { fecha: Date; dia: number; estudios: Estudio[] }[] = [];
 
-  // Subject para búsqueda con debounce
   private searchSubject = new Subject<string>();
-  private readonly MIN_SEARCH_CHARS = 2;
+  private readonly MIN_SEARCH_CHARS = 1;
 
   nuevoEstudio = {
     titulo: '',
@@ -100,14 +100,16 @@ export class EstudiosComponent implements OnInit {
       this.cargarEstudios();
     }
 
-    // Configurar búsqueda con Elasticsearch
     this.searchSubject.pipe(
-      debounceTime(400),
+      debounceTime(300),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
           this.isLoadingBusqueda = false;
-          this.filtrarEstudios();
+          this.estudios = [...this.estudiosOriginales];
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
           return [];
         }
         this.isLoadingBusqueda = true;
@@ -116,8 +118,9 @@ export class EstudiosComponent implements OnInit {
     ).subscribe({
       next: (response: any) => {
         this.isLoadingBusqueda = false;
-        if (response && response.success && response.data?.resultados?.length > 0) {
-          const resultados = response.data.resultados.map((r: any) => ({
+        if (response && response.success) {
+          const resultadosRaw = response.data?.resultados || [];
+          const resultados = resultadosRaw.map((r: any) => ({
             id: r.id,
             titulo: r.datos?.titulo || r.titulo || '',
             tipo: r.datos?.tipo || r.tipo || '',
@@ -133,17 +136,22 @@ export class EstudiosComponent implements OnInit {
           this.actualizarVista();
           this.cdr.detectChanges();
         } else {
-          this.filtrarEstudios();
+          this.estudios = [...this.estudiosOriginales];
+          this.aplicarFiltrosLocales();
+          this.actualizarVista();
+          this.cdr.detectChanges();
         }
       },
       error: () => {
         this.isLoadingBusqueda = false;
-        this.filtrarEstudios();
+        this.estudios = [...this.estudiosOriginales];
+        this.aplicarFiltrosLocales();
+        this.actualizarVista();
+        this.cdr.detectChanges();
       }
     });
   }
 
-  // ==================== BÚSQUEDA CON ELASTICSEARCH ====================
   private getFiltrosElasticsearch(): any {
     const filtros: any = {};
     if (this.filtroActual === 'pendientes') {
@@ -173,13 +181,12 @@ export class EstudiosComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // ==================== INDEXAR EN ELASTICSEARCH ====================
   private indexarEstudiosEnElasticsearch(estudios: Estudio[]) {
     for (const estudio of estudios) {
       if (estudio.id) {
         const documento = {
           id: estudio.id,
-          titulo: estudio.titulo,
+          titulo: estudio.titulo.replace(/\./g, ' '),
           tipo: estudio.tipo,
           fecha: estudio.fecha,
           hora: estudio.hora,
@@ -196,7 +203,7 @@ export class EstudiosComponent implements OnInit {
     if (estudio.id) {
       const documento = {
         id: estudio.id,
-        titulo: estudio.titulo,
+        titulo: estudio.titulo.replace(/\./g, ' '),
         tipo: estudio.tipo,
         fecha: estudio.fecha,
         hora: estudio.hora,
@@ -207,8 +214,6 @@ export class EstudiosComponent implements OnInit {
       this.searchService.indexar('estudios', documento).subscribe();
     }
   }
-
-  // ==================== MÉTODOS EXISTENTES (MODIFICADOS) ====================
 
   get totalPaginas(): number {
     return Math.ceil(this.estudiosFiltrados.length / this.itemsPorPagina);
@@ -261,7 +266,6 @@ export class EstudiosComponent implements OnInit {
     this.estudioExpandidoId = this.estudioExpandidoId === id ? null : id;
   }
 
-  // ✅ Método para búsqueda con Elasticsearch
   onSearchChange(termino: string) {
     this.terminoBusqueda = termino;
     this.searchSubject.next(termino);
@@ -496,13 +500,18 @@ export class EstudiosComponent implements OnInit {
       next: (response: any) => {
         this.isLoading = false;
         if (response.success && response.data) {
+          this.estudiosOriginales = response.data;
           this.estudios = response.data;
           this.marcarEstudiosVencidosComoCompletados();
-          // Indexar en Elasticsearch
           this.indexarEstudiosEnElasticsearch(response.data);
+          this.aplicarFiltros();
+          this.actualizarVista();
+          this.cdr.detectChanges();
+          setTimeout(() => this.cdr.detectChanges(), 50);
         } else {
+          this.estudiosOriginales = [];
           this.estudios = [];
-          this.filtrarEstudios();
+          this.aplicarFiltros();
           this.actualizarVista();
           this.cdr.detectChanges();
         }
@@ -510,8 +519,9 @@ export class EstudiosComponent implements OnInit {
       error: (error: any) => {
         this.isLoading = false;
         this.errorMessage = this.obtenerMensajeError(error);
+        this.estudiosOriginales = [];
         this.estudios = [];
-        this.filtrarEstudios();
+        this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
         this.showToast('Error al cargar los estudios', 'error');
@@ -524,7 +534,7 @@ export class EstudiosComponent implements OnInit {
     const vencidos = this.estudios.filter(e => e.estado === 'pendiente' && e.fecha < hoy && e.id);
 
     if (vencidos.length === 0) {
-      this.filtrarEstudios();
+      this.aplicarFiltros();
       this.actualizarVista();
       this.cdr.detectChanges();
       return;
@@ -534,56 +544,34 @@ export class EstudiosComponent implements OnInit {
     forkJoin(cambios).subscribe({
       next: () => {
         vencidos.forEach(v => { v.estado = 'completado'; });
-        this.filtrarEstudios();
+        this.indexarEstudiosEnElasticsearch(vencidos);
+        this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
-        // Re-indexar estudios actualizados
-        this.indexarEstudiosEnElasticsearch(vencidos);
       },
       error: () => {
-        this.filtrarEstudios();
+        this.aplicarFiltros();
         this.actualizarVista();
         this.cdr.detectChanges();
       }
     });
   }
 
-  filtrarEstudios() {
-    // Si hay término de búsqueda con más de 2 caracteres, usar Elasticsearch
+  aplicarFiltros() {
     if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
       this.searchSubject.next(this.terminoBusqueda);
       return;
     }
-    
-    let filtrados = [...this.estudios];
-
-    if (this.filtroActual === 'pendientes') {
-      filtrados = filtrados.filter(e => e.estado === 'pendiente');
-    } else if (this.filtroActual === 'completados') {
-      filtrados = filtrados.filter(e => e.estado === 'completado');
-    } else if (this.filtroActual === 'cancelados') {
-      filtrados = filtrados.filter(e => e.estado === 'cancelado');
-    }
-
-    if (this.terminoBusqueda.trim()) {
-      const term = this.terminoBusqueda.toLowerCase();
-      filtrados = filtrados.filter(e =>
-        e.titulo.toLowerCase().includes(term) ||
-        e.tipo.toLowerCase().includes(term) ||
-        (e.lugar && e.lugar.toLowerCase().includes(term))
-      );
-    }
-
-    filtrados.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    this.estudiosFiltrados = filtrados;
-    this.paginaActual = 1;
+    this.estudios = [...this.estudiosOriginales];
+    this.aplicarFiltrosLocales();
+    this.actualizarVista();
     this.cdr.detectChanges();
   }
 
   cambiarFiltro(filtro: string) {
     this.filtroActual = filtro;
     this.paginaActual = 1;
-    this.filtrarEstudios();
+    this.aplicarFiltros();
     this.actualizarVista();
   }
 
@@ -782,7 +770,6 @@ export class EstudiosComponent implements OnInit {
                           this.editandoId ? 'Estudio actualizado correctamente' :
                           'Estudio registrado correctamente';
           this.showToast(mensaje, 'success');
-          // Indexar en Elasticsearch
           if (response.data) {
             this.indexarEstudio(response.data);
           }
