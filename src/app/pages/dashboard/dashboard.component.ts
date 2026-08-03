@@ -116,7 +116,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.isLoading = false;
         
         this.proximaToma = data.proximaToma;
-        this.proximaCita = data.proximaCita;
+        
+        if (data.proximaCita) {
+          this.proximaCita = {
+            doctor: data.proximaCita.doctor,
+            fecha: data.proximaCita.fecha,
+            hora: data.proximaCita.hora
+          };
+        } else {
+          this.proximaCita = null;
+        }
+        
         this.tratamientosActivos = data.totalTratamientosActivos;
         this.completadosHoy = data.tomasCompletadasHoy;
         
@@ -129,10 +139,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       error: (error: any) => {
         this.isLoading = false;
-        console.error('❌ Error cargando dashboard:', error);
+        this.cargarDatosFallback();
         this.cdr.detectChanges();
       }
     });
+  }
+
+  cargarDatosFallback() {
+    const tratamientos = localStorage.getItem('tratamientos');
+    if (tratamientos) {
+      try {
+        const data = JSON.parse(tratamientos);
+        const activos = data.filter((t: any) => t.estado === 'activo');
+        this.tratamientosActivos = activos.length;
+        this.tratamientosActivosLista = activos.map((t: any) => ({
+          nombre: t.nombre,
+          medicamentosCount: t.medicamentos?.length || 0,
+          progreso: 0
+        }));
+        this.cdr.detectChanges();
+      } catch (e) {
+        // Error silencioso
+      }
+    }
   }
 
   subirDocumento() {
