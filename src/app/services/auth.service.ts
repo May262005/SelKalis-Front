@@ -17,10 +17,11 @@ interface User {
 
 const SK_TOKEN = 'sk_token';
 const SK_CREDENTIALS = 'sk_credentials';
+const SK_USER_DATA = 'sk_user_data';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  // ✅ URL CORRECTA del backend en Render
+  // URL del backend en Render
   private apiUrl = 'https://selkalis-auth-service.onrender.com';
   
   private readonly REQUEST_TIMEOUT = 60000;
@@ -49,6 +50,8 @@ export class AuthService {
     }
   }
 
+  // ==================== LIMPIEZA DE DATOS LEGACY ====================
+  
   private limpiarLegacy() {
     ['auth_token', 'user_data', 'selkalis_token',
      'selkalis_remember_token', 'selkalis_saved_email',
@@ -60,6 +63,8 @@ export class AuthService {
     });
   }
 
+  // ==================== CARGA DE SESIÓN ====================
+  
   private cargarSesion() {
     const token = localStorage.getItem(SK_TOKEN);
     
@@ -76,23 +81,51 @@ export class AuthService {
         return;
       }
 
+      // Intentar cargar datos completos del usuario desde almacenamiento local
+      const storedUser = localStorage.getItem(SK_USER_DATA);
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          this.currentUserSubject.next({
+            id: payload.id || userData.id,
+            nombre: payload.nombre || userData.nombre,
+            apellido: payload.apellido || userData.apellido,
+            email: payload.email || userData.email,
+            telefono: userData.telefono || '',
+            created_at: userData.created_at || '',
+            ultimo_login: userData.ultimo_login || ''
+          });
+          return;
+        } catch (error) {
+          console.warn('Error al cargar datos de usuario almacenados:', error);
+        }
+      }
+
+      // Si no hay datos almacenados, usar solo el payload del token
       this.currentUserSubject.next({
         id: payload.id,
         nombre: payload.nombre,
-        apellido: payload.apellido,
-        email: payload.email
+        apellido: payload.apellido || '',
+        email: payload.email,
+        telefono: payload.telefono || '',
+        created_at: payload.created_at || '',
+        ultimo_login: payload.ultimo_login || ''
       });
-    } catch {
+    } catch (error) {
+      console.error('Error al cargar sesión:', error);
       this.clearAllStorage();
     }
   }
 
   private clearAllStorage(): void {
     localStorage.removeItem(SK_TOKEN);
+    localStorage.removeItem(SK_USER_DATA);
     this.currentUserSubject.next(null);
     this.tokenReadySubject.next(false);
   }
 
+  // ==================== CREDENCIALES GUARDADAS ====================
+  
   guardarCredenciales(email: string, password: string): void {
     if (!this.isBrowser) return;
     const encrypted = btoa(JSON.stringify({ email, password }));
@@ -121,6 +154,8 @@ export class AuthService {
     return !!localStorage.getItem(SK_CREDENTIALS);
   }
 
+  // ==================== CONFIGURACIÓN DE PETICIONES ====================
+  
   private requestWithRetry<T>(request: Observable<T>): Observable<T> {
     return request.pipe(
       timeout(this.REQUEST_TIMEOUT),
@@ -137,11 +172,31 @@ export class AuthService {
     );
   }
 
+  getAuthHeaders(): HttpHeaders {
+    const token = this.getToken();
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+    
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    
+    return headers;
+  }
+
   // ==================== MÉTODOS DE AUTENTICACIÓN ====================
 
   register(userData: any): Observable<any> {
     return this.requestWithRetry(
       this.http.post(`${this.apiUrl}/usuarios/registro`, userData)
+    ).pipe(
+      tap((response: any) => {
+        console.log('✅ Registro exitoso:', response);
+        if (response.token && response.usuario) {
+          this.handleSuccessfulLogin(response.token, response.usuario);
+        }
+      })
     );
   }
 
@@ -150,20 +205,42 @@ export class AuthService {
       this.http.post(`${this.apiUrl}/usuarios/login`, { email, password })
     ).pipe(
       tap((response: any) => {
-        if (!this.isBrowser || !response.token) return;
-        localStorage.setItem(SK_TOKEN, response.token);
-        if (response.user) {
-          this.currentUserSubject.next(response.user);
-        }
-        this.tokenReadySubject.next(true);
-        
-        if (rememberMe) {
-          this.guardarCredenciales(email, password);
-        } else {
-          this.eliminarCredenciales();
+        console.log('✅ Login exitoso:', response);
+        if (response.token && response.user) {
+          this.handleSuccessfulLogin(response.token, response.user);
+          
+          if (rememberMe) {
+            this.guardarCredenciales(email, password);
+          } else {
+            this.eliminarCredenciales();
+          }
         }
       })
     );
+  }
+
+  private handleSuccessfulLogin(token: string, user: any): void {
+    if (!this.isBrowser) return;
+    
+    // Guardar token
+    localStorage.setItem(SK_TOKEN, token);
+    
+    // Guardar datos completos del usuario
+    const userData = {
+      id: user.id,
+      nombre: user.nombre || '',
+      apellido: user.apellido || '',
+      email: user.email || '',
+      telefono: user.telefono || '',
+      created_at: user.created_at || '',
+      ultimo_login: user.ultimo_login || ''
+    };
+    
+    localStorage.setItem(SK_USER_DATA, JSON.stringify(userData));
+    
+    // Actualizar el BehaviorSubject
+    this.currentUserSubject.next(userData);
+    this.tokenReadySubject.next(true);
   }
 
   logout() {
@@ -181,7 +258,10 @@ export class AuthService {
         catchError(() => {
           return [];
         })
-      ).subscribe();
+      ).subscribe({
+        next: () => console.log('✅ Logout exitoso'),
+        error: () => console.warn('⚠️ Error en logout, limpiando sesión localmente')
+      });
     }
 
     this.clearAllStorage();
@@ -218,24 +298,112 @@ export class AuthService {
   // ==================== MÉTODOS DE USUARIO ====================
 
   getUsuario(id: string): Observable<any> {
+    console.log(`🔍 Obteniendo usuario ${id} desde ${this.apiUrl}/usuarios/${id}`);
     return this.requestWithRetry(
       this.http.get(`${this.apiUrl}/usuarios/${id}`, { headers: this.getAuthHeaders() })
+    ).pipe(
+      tap((response: any) => {
+        console.log('📥 Datos completos del usuario:', response);
+        if (response && response.user) {
+          // Actualizar los datos del usuario en el almacenamiento local
+          const currentUser = this.currentUserSubject.value;
+          if (currentUser) {
+            const updatedUser = {
+              ...currentUser,
+              ...response.user
+            };
+            this.updateUserData(updatedUser);
+          }
+        }
+      })
     );
   }
 
   actualizarUsuario(id: string, data: any): Observable<any> {
+    console.log(`✏️ Actualizando usuario ${id} con:`, data);
     return this.requestWithRetry(
       this.http.put(`${this.apiUrl}/usuarios/${id}`, data, { headers: this.getAuthHeaders() })
+    ).pipe(
+      tap((response: any) => {
+        console.log('✅ Usuario actualizado:', response);
+        if (response && response.user) {
+          // Actualizar los datos del usuario en el almacenamiento local
+          const currentUser = this.currentUserSubject.value;
+          if (currentUser) {
+            const updatedUser = {
+              ...currentUser,
+              ...response.user
+            };
+            this.updateUserData(updatedUser);
+          }
+        }
+      })
     );
   }
 
   cambiarPassword(userId: string, currentPassword: string, newPassword: string): Observable<any> {
+    console.log(`🔑 Cambiando contraseña para usuario ${userId}`);
     return this.requestWithRetry(
       this.http.post(`${this.apiUrl}/usuarios/cambiar-password`,
         { userId, currentPassword, newPassword },
         { headers: this.getAuthHeaders() }
       )
     );
+  }
+
+  // ==================== ACTUALIZACIÓN DE DATOS DEL USUARIO ====================
+
+  /**
+   * Actualiza los datos del usuario en el BehaviorSubject y en localStorage
+   */
+  updateUserData(userData: Partial<User>): void {
+    const currentUser = this.currentUserSubject.value;
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...userData };
+      this.currentUserSubject.next(updatedUser);
+      
+      // Guardar en localStorage
+      if (this.isBrowser) {
+        localStorage.setItem(SK_USER_DATA, JSON.stringify(updatedUser));
+      }
+      
+      console.log('🔄 Datos de usuario actualizados:', updatedUser);
+    } else {
+      // Si no hay usuario actual, crear uno nuevo
+      if (this.isBrowser) {
+        localStorage.setItem(SK_USER_DATA, JSON.stringify(userData));
+        this.currentUserSubject.next(userData as User);
+      }
+    }
+  }
+
+  /**
+   * Obtiene los datos completos del usuario actual
+   */
+  getUserData(): User | null {
+    const user = this.currentUserSubject.value;
+    if (user) return user;
+    
+    // Intentar recuperar del localStorage
+    if (this.isBrowser) {
+      const stored = localStorage.getItem(SK_USER_DATA);
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Obtiene solo el ID del usuario actual
+   */
+  getUserId(): string | null {
+    const user = this.getUserData();
+    return user ? user.id : null;
   }
 
   // ==================== MÉTODOS DE UTILIDAD ====================
@@ -254,20 +422,42 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  getAuthHeaders(): HttpHeaders {
+  /**
+   * Verifica si el token es válido
+   */
+  isTokenValid(): boolean {
     const token = this.getToken();
-    return new HttpHeaders({
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-    });
+    if (!token) return false;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const nowSec = Math.floor(Date.now() / 1000);
+      return payload.exp && payload.exp > nowSec;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Refresca los datos del usuario desde el servidor
+   */
+  refreshUserData(): Observable<any> {
+    const userId = this.getUserId();
+    if (!userId) {
+      return throwError(() => new Error('No hay usuario autenticado'));
+    }
+    return this.getUsuario(userId);
   }
 
   // ==================== MANEJO DE ERRORES ====================
 
   private handleError(error: any): Observable<never> {
     let errorMessage = 'Error en la conexión';
+    let statusCode = 0;
     
     if (error instanceof HttpErrorResponse) {
+      statusCode = error.status;
+      
       switch (error.status) {
         case 0:
           errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
@@ -277,9 +467,26 @@ export class AuthService {
           break;
         case 401:
           errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+          // Limpiar sesión si el token expiró
+          if (this.isBrowser) {
+            this.clearAllStorage();
+            this.tokenReadySubject.next(false);
+          }
+          break;
+        case 403:
+          errorMessage = 'No tienes permiso para realizar esta acción';
           break;
         case 404:
-          errorMessage = 'Endpoint no encontrado. Verifica la URL.';
+          errorMessage = error.error?.error || 'Recurso no encontrado';
+          break;
+        case 409:
+          errorMessage = error.error?.error || 'Conflicto con los datos existentes';
+          break;
+        case 422:
+          errorMessage = error.error?.error || 'Datos inválidos';
+          break;
+        case 500:
+          errorMessage = 'Error interno del servidor. Intenta más tarde.';
           break;
         case 502:
           errorMessage = 'El servicio está despertando. Intenta de nuevo en unos segundos.';
@@ -290,12 +497,17 @@ export class AuthService {
         default:
           errorMessage = error.error?.error || error.error?.mensaje || 'Error en el servidor';
       }
+      
+      console.error(`❌ Error ${error.status}:`, errorMessage);
+    } else {
+      console.error('❌ Error desconocido:', error);
     }
 
     const enrichedError = {
       ...error,
       userMessage: errorMessage,
-      status: error.status || 0
+      status: statusCode || error.status || 0,
+      originalError: error
     };
 
     return throwError(() => enrichedError);

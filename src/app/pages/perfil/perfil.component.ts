@@ -11,8 +11,6 @@ import { AuthService } from '../../services/auth.service';
   styleUrls: ['./perfil.component.css']
 })
 export class PerfilComponent implements OnInit {
-  // ✅ ELIMINADA la variable apiUrl - usamos AuthService en su lugar
-
   usuario = {
     id: '',
     nombre: '',
@@ -49,42 +47,84 @@ export class PerfilComponent implements OnInit {
   isLoadingCambiarPassword = false;
 
   constructor(
-    private authService: AuthService, // ✅ SOLO AuthService
+    private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    const user = this.authService.getCurrentUser();
-    if (user) {
-      this.usuario = {
-        id: user.id,
-        nombre: user.nombre,
-        apellido: user.apellido ?? '',
-        email: user.email,
-        telefono: user.telefono ?? '',
-        created_at: user.created_at ?? '',
-        ultimo_login: user.ultimo_login ?? ''
-      };
-      this.usuarioEdit = { ...this.usuario };
-
-      // ✅ Usando AuthService
-      this.authService.getUsuario(user.id).subscribe({
-        next: (res) => {
-          if (res.user) {
-            this.usuario = { ...this.usuario, ...res.user };
-            this.usuarioEdit = { ...this.usuario };
-            this.cdr.detectChanges();
-          }
-        },
-        error: (err) => {
-          console.error('Error al cargar perfil:', err);
-          this.showToast(err.userMessage || 'No se pudo cargar la información del perfil', 'warning');
-        }
-      });
-    }
-
+    this.cargarPerfil();
+    
     const savedPrefs = localStorage.getItem('preferencias');
     if (savedPrefs) this.preferencias = JSON.parse(savedPrefs);
+  }
+
+  // ✅ NUEVO: Método para cargar el perfil
+  cargarPerfil() {
+    const user = this.authService.getCurrentUser();
+    if (!user) {
+      console.warn('No hay usuario autenticado');
+      return;
+    }
+
+    // Primero cargar datos del token
+    this.usuario = {
+      id: user.id,
+      nombre: user.nombre || '',
+      apellido: user.apellido || '',
+      email: user.email || '',
+      telefono: user.telefono || '',
+      created_at: user.created_at || '',
+      ultimo_login: user.ultimo_login || ''
+    };
+    this.usuarioEdit = { ...this.usuario };
+
+    // ✅ Luego cargar datos actualizados del servidor
+    this.authService.getUsuario(user.id).subscribe({
+      next: (res) => {
+        console.log('📥 Datos recibidos del servidor:', res);
+        
+        if (res && res.user) {
+          // ✅ Actualizar TODOS los campos
+          this.usuario = {
+            id: res.user.id || this.usuario.id,
+            nombre: res.user.nombre || this.usuario.nombre,
+            apellido: res.user.apellido || this.usuario.apellido,
+            email: res.user.email || this.usuario.email,
+            telefono: res.user.telefono || '',
+            created_at: res.user.created_at || this.usuario.created_at,
+            ultimo_login: res.user.ultimo_login || ''
+          };
+          
+          this.usuarioEdit = { ...this.usuario };
+          
+          // ✅ Actualizar también el usuario en el AuthService
+          // Esto es importante para que el token tenga los datos actualizados
+          const currentUser = this.authService.getCurrentUser();
+          if (currentUser) {
+            const updatedUser = {
+              ...currentUser,
+              telefono: this.usuario.telefono,
+              ultimo_login: this.usuario.ultimo_login
+            };
+            // Guardar en el subject del AuthService
+            // Nota: Esto requiere un método en AuthService para actualizar el usuario
+            // Si no existe, podemos actualizar el token manualmente
+            this.authService.updateUserData(updatedUser);
+          }
+          
+          this.cdr.detectChanges();
+          
+          // ✅ Mostrar logs para depuración
+          console.log('✅ Perfil actualizado:');
+          console.log('  📱 Teléfono:', this.usuario.telefono || '(No especificado)');
+          console.log('  🕐 Último login:', this.usuario.ultimo_login || 'Sin registros');
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error al cargar perfil:', err);
+        this.showToast(err.userMessage || 'No se pudo cargar la información del perfil', 'warning');
+      }
+    });
   }
 
   // ── Toast ──────────────────────────────────────────────
@@ -128,18 +168,33 @@ export class PerfilComponent implements OnInit {
     const { id, nombre, apellido, telefono } = this.usuarioEdit;
     this.isLoadingGuardar = true;
 
-    // ✅ Usando AuthService
     this.authService.actualizarUsuario(id, { nombre, apellido, telefono })
       .subscribe({
         next: (res) => {
-          if (res.user) {
+          console.log('✅ Perfil actualizado en servidor:', res);
+          
+          if (res && res.user) {
+            // ✅ Actualizar todos los campos con los datos del servidor
             this.usuario = { ...this.usuario, ...res.user };
             this.usuarioEdit = { ...this.usuario };
+            
+            // ✅ Actualizar el usuario en el AuthService
+            const currentUser = this.authService.getCurrentUser();
+            if (currentUser) {
+              this.authService.updateUserData({
+                ...currentUser,
+                nombre: res.user.nombre,
+                apellido: res.user.apellido,
+                telefono: res.user.telefono
+              });
+            }
+            
+            this.cdr.detectChanges();
+            this.showToast('Perfil actualizado correctamente', 'success');
           }
+          
           this.isLoadingGuardar = false;
           this.cerrarModalEditar();
-          this.showToast('Perfil actualizado correctamente', 'success');
-          this.cdr.detectChanges();
         },
         error: (err) => {
           this.isLoadingGuardar = false;
@@ -171,14 +226,18 @@ export class PerfilComponent implements OnInit {
 
     this.isLoadingVerificar = true;
 
-    // ✅ Usando AuthService
     this.authService.login(this.usuario.email, this.passwordVerificacion, false)
       .subscribe({
-        next: () => {
+        next: (response) => {
+          console.log('✅ Verificación exitosa:', response);
           this.passwordDescifrada = this.passwordVerificacion;
           this.isLoadingVerificar = false;
           this.cerrarModalVerificar();
           this.abrirPasswordModal();
+          
+          // ✅ Actualizar el perfil después de verificar (para obtener último login)
+          this.cargarPerfil();
+          
           this.cdr.detectChanges();
         },
         error: (err) => {
@@ -239,7 +298,6 @@ export class PerfilComponent implements OnInit {
 
     this.isLoadingCambiarPassword = true;
 
-    // ✅ Usando AuthService
     this.authService.cambiarPassword(
       this.usuario.id,
       this.passwords.actual,
@@ -272,16 +330,34 @@ export class PerfilComponent implements OnInit {
   }
 
   get ultimoAccesoFormateado(): string {
-    if (!this.usuario.ultimo_login) return 'Sin registros';
-    return new Date(this.usuario.ultimo_login).toLocaleString('es-MX', {
-      dateStyle: 'medium', timeStyle: 'short'
-    });
+    if (!this.usuario.ultimo_login) {
+      return 'Sin registros';
+    }
+    try {
+      const date = new Date(this.usuario.ultimo_login);
+      if (isNaN(date.getTime())) {
+        return 'Sin registros';
+      }
+      return date.toLocaleString('es-MX', {
+        dateStyle: 'medium', 
+        timeStyle: 'short'
+      });
+    } catch (error) {
+      return 'Sin registros';
+    }
   }
 
   get miembroDesdeFormateado(): string {
     if (!this.usuario.created_at) return '';
-    return new Date(this.usuario.created_at).toLocaleDateString('es-MX', {
-      year: 'numeric', month: 'long'
-    });
+    try {
+      const date = new Date(this.usuario.created_at);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('es-MX', {
+        year: 'numeric', 
+        month: 'long'
+      });
+    } catch (error) {
+      return '';
+    }
   }
 }
