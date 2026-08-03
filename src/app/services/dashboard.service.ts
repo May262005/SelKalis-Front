@@ -6,13 +6,7 @@ import { AuthService } from './auth.service';
 
 export interface DashboardData {
   proximaToma: { nombre: string; hora: string } | null;
-  proximaCita: { 
-    doctor: string; 
-    fecha: string; 
-    hora?: string;
-    fechaCorta?: string;  // ✅ Agregar propiedad opcional
-    tipo?: string;        // ✅ Agregar propiedad opcional
-  } | null;
+  proximaCita: { doctor: string; fecha: string; hora?: string } | null;
   totalTratamientosActivos: number;
   tomasCompletadasHoy: number;
   tratamientosActivos: any[];
@@ -31,7 +25,6 @@ export class DashboardService {
     private authService: AuthService
   ) {}
 
-  // ✅ Formatear fecha desde 'YYYY-MM-DD'
   private formatearFecha(fecha: string | null | undefined): string {
     if (!fecha) return 'No programada';
     
@@ -41,7 +34,6 @@ export class DashboardService {
         const year = parseInt(parts[0]);
         const month = parseInt(parts[1]) - 1;
         const day = parseInt(parts[2]);
-        
         const date = new Date(year, month, day);
         return date.toLocaleDateString('es-ES', {
           weekday: 'long',
@@ -50,43 +42,12 @@ export class DashboardService {
           year: 'numeric'
         });
       }
-      
-      const date = new Date(fecha);
-      if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString('es-ES', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        });
-      }
-      
       return fecha;
-    } catch (error) {
-      console.warn('Error formateando fecha:', fecha, error);
+    } catch {
       return fecha || 'No programada';
     }
   }
 
-  // ✅ Formatear fecha corta
-  private formatearFechaCorta(fecha: string | null | undefined): string {
-    if (!fecha) return '';
-    
-    try {
-      const parts = fecha.split('-');
-      if (parts.length === 3) {
-        const day = parseInt(parts[2]);
-        const month = parseInt(parts[1]);
-        const year = parseInt(parts[0]);
-        return `${day}/${month}/${year}`;
-      }
-      return fecha;
-    } catch {
-      return fecha || '';
-    }
-  }
-
-  // ✅ Formatear hora desde 'HH:MM:SS'
   private formatearHora(hora: string | null | undefined): string {
     if (!hora) return '';
     
@@ -95,15 +56,12 @@ export class DashboardService {
       if (parts.length >= 2) {
         const hour = parseInt(parts[0]);
         const minute = parseInt(parts[1]);
-        
         const ampm = hour >= 12 ? 'PM' : 'AM';
         const hour12 = hour % 12 || 12;
         return `${hour12}:${minute.toString().padStart(2, '0')} ${ampm}`;
       }
-      
       return hora;
-    } catch (error) {
-      console.warn('Error formateando hora:', hora, error);
+    } catch {
       return hora || '';
     }
   }
@@ -120,32 +78,23 @@ export class DashboardService {
       map((response) => {
         console.log('📥 Respuesta del servidor:', response);
         
-        // ✅ Procesar próximos estudios
         const proximosEstudios = (response.proximosEstudios || []).map((estudio: any) => ({
           ...estudio,
           fechaFormateada: this.formatearFecha(estudio.fecha_programada || estudio.fecha),
-          fechaCorta: this.formatearFechaCorta(estudio.fecha_programada || estudio.fecha),
           horaFormateada: this.formatearHora(estudio.hora_time || estudio.hora)
         }));
 
-        // ✅ Procesar próxima cita - SIN propiedades adicionales
-        let proximaCita = null;
-        if (response.proximaCita) {
-          proximaCita = {
-            doctor: response.proximaCita.doctor || 'Doctor',
-            fecha: this.formatearFecha(response.proximaCita.fecha_programada || response.proximaCita.fecha),
-            hora: this.formatearHora(response.proximaCita.hora_time || response.proximaCita.hora)
-            // ❌ Eliminamos fechaCorta y tipo para que coincida con la interfaz
-          };
-        }
-
         const dashboardData: DashboardData = {
           proximaToma: response.proximaToma ? {
-            nombre: response.proximaToma.nombre || 'Medicamento',
-            hora: this.formatearHora(response.proximaToma.hora)
+            nombre: response.proximaToma.nombre,
+            hora: response.proximaToma.hora
           } : null,
           
-          proximaCita: proximaCita,
+          proximaCita: response.proximaCita ? {
+            doctor: response.proximaCita.doctor,
+            fecha: this.formatearFecha(response.proximaCita.fecha),
+            hora: response.proximaCita.hora
+          } : null,
           
           totalTratamientosActivos: response.totalTratamientosActivos || 0,
           tomasCompletadasHoy: response.tomasCompletadasHoy || 0,
@@ -154,7 +103,6 @@ export class DashboardService {
           documentosRecientes: response.documentosRecientes || []
         };
         
-        console.log('📊 Dashboard procesado:', dashboardData);
         return dashboardData;
       }),
       catchError((error) => {

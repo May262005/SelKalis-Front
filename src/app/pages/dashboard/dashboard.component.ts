@@ -82,21 +82,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
       weekday: 'long', 
       day: 'numeric', 
       month: 'long', 
-      year: 'numeric',
-      timeZone: 'America/Mexico_City'
+      year: 'numeric' 
     };
     this.fechaActual = ahora.toLocaleDateString('es-ES', opcionesFecha);
     
     const opcionesHora: Intl.DateTimeFormatOptions = { 
       hour: '2-digit', 
-      minute: '2-digit',
-      timeZone: 'America/Mexico_City'
+      minute: '2-digit' 
     };
     this.horaActual = ahora.toLocaleTimeString('es-ES', opcionesHora);
     
     const hora = ahora.getHours();
     if (hora >= 5 && hora < 12) {
-      this.saludo = 'Buenos días';
+      this.saludo = 'Buenos dias';
     } else if (hora >= 12 && hora < 19) {
       this.saludo = 'Buenas tardes';
     } else {
@@ -107,9 +105,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   cargarDashboard() {
     const token = this.authService.getToken();
     if (!token) {
-      console.warn('⚠️ No hay token de autenticación');
-      this.isLoading = false;
-      this.cdr.detectChanges();
       return;
     }
 
@@ -118,28 +113,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     this.dashboardService.getDashboardData().subscribe({
       next: (data: DashboardData) => {
-        console.log('✅ Datos del dashboard recibidos:', data);
-        
         this.isLoading = false;
+        
         this.proximaToma = data.proximaToma;
         this.proximaCita = data.proximaCita;
         this.tratamientosActivos = data.totalTratamientosActivos;
         this.completadosHoy = data.tomasCompletadasHoy;
+        
         this.tratamientosActivosLista = data.tratamientosActivos;
+        this.proximasCitas = data.proximaCita ? [data.proximaCita] : [];
         this.proximosEstudios = data.proximosEstudios;
         this.documentosRecientes = data.documentosRecientes;
-        
-        if (data.proximaCita) {
-          this.proximasCitas = [data.proximaCita];
-        } else {
-          this.proximasCitas = [];
-        }
         
         this.cdr.detectChanges();
       },
       error: (error: any) => {
-        console.error('❌ Error cargando dashboard:', error);
         this.isLoading = false;
+        console.error('❌ Error cargando dashboard:', error);
         this.cdr.detectChanges();
       }
     });
