@@ -28,11 +28,11 @@ export class DocumentosComponent implements OnInit, OnDestroy {
   
   private loadingTimeout: any = null;
   
-  // ✅ Resultados de Elasticsearch - CACHE SEPARADO
+  // ✅ Resultados de Elasticsearch (cache separado, NUNCA pisa this.documentos)
   documentosResultados: Documento[] = [];
   
   private searchSubject = new Subject<string>();
-  private readonly MIN_SEARCH_CHARS = 1;
+  private readonly MIN_SEARCH_CHARS = 2;
   
   // Vista previa
   mostrarVistaPrevia: boolean = false;
@@ -70,11 +70,13 @@ export class DocumentosComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.cargarDocumentos();
+    if (isPlatformBrowser(this.platformId)) {
+      this.cargarDocumentos();
+    }
 
     // ==================== Búsqueda con Elasticsearch ====================
     this.searchSubject.pipe(
-      debounceTime(300),
+      debounceTime(400),
       distinctUntilChanged(),
       switchMap((termino) => {
         if (termino.trim().length < this.MIN_SEARCH_CHARS) {
@@ -90,7 +92,6 @@ export class DocumentosComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.isLoadingBusqueda = false;
         if (response && response.success && response.data?.resultados?.length > 0) {
-          // ✅ GUARDAR EN CACHE SEPARADO, NO MODIFICAR this.documentos
           this.documentosResultados = response.data.resultados.map((r: any) => ({
             id: r.id,
             nombre: r.datos?.nombre || r.titulo || '',
@@ -103,10 +104,8 @@ export class DocumentosComponent implements OnInit, OnDestroy {
             fecha: r.datos?.fecha || ''
           }));
         } else {
-          // ✅ SI NO HAY RESULTADOS, LIMPIAR CACHE
           this.documentosResultados = [];
         }
-        // ✅ SIEMPRE FILTRAR DESPUÉS
         this.filtrarDocumentos();
         this.cdr.detectChanges();
       },
@@ -228,20 +227,18 @@ export class DocumentosComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ✅ METODO PRINCIPAL DE FILTRADO - igual que en tratamientos
+  // ✅ METODO PRINCIPAL DE FILTRADO - IGUAL QUE TRATAMIENTOS
   filtrarDocumentos() {
-    // ✅ USAR resultados de ES si hay búsqueda, sino usar documentos normales
     const usarBusquedaES = this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS
       && this.documentosResultados.length > 0;
 
     let filtrados = usarBusquedaES ? [...this.documentosResultados] : [...this.documentos];
 
-    // ✅ FILTRAR POR CATEGORIA SIEMPRE
     if (this.filtroActual !== 'todos') {
       filtrados = filtrados.filter(d => d.categoria === this.filtroActual);
     }
 
-    // ✅ FILTRAR POR TEXTO LOCAL si no viene de ES
+    // Si venimos de Elasticsearch, el término ya se aplicó en el backend
     if (!usarBusquedaES && this.terminoBusqueda.trim()) {
       const term = this.terminoBusqueda.toLowerCase();
       filtrados = filtrados.filter(d =>
@@ -261,13 +258,7 @@ export class DocumentosComponent implements OnInit, OnDestroy {
 
   cambiarFiltro(filtro: string) {
     this.filtroActual = filtro;
-    // ✅ Si hay búsqueda, re-ejecutar búsqueda con el nuevo filtro
-    if (this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS) {
-      this.searchSubject.next(this.terminoBusqueda);
-    } else {
-      // ✅ Si no hay búsqueda, recargar documentos con el filtro
-      this.cargarDocumentos();
-    }
+    this.filtrarDocumentos();
   }
 
   abrirModal() {
