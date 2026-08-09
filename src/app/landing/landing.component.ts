@@ -17,7 +17,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   testiIndex = 0;
   private autoplayInterval: any;
 
-  // Enlaces de redes sociales (actualiza con tus URLs reales)
+  // Enlaces de redes sociales con tus URLs
   socialLinks = {
     instagram: 'https://www.instagram.com/maysucks_26/',
     facebook: 'https://www.facebook.com/maite.guevara.246560/',

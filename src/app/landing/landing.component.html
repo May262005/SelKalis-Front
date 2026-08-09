@@ -254,7 +254,7 @@
     </div>
   </section>
 
-  <!-- CONTACTO - NUEVA SECCIÓN -->
+  <!-- CONTACTO -->
   <section class="section contacto-section">
     <div class="section-header">
       <div class="section-label">Contacto</div>
@@ -283,7 +283,7 @@
           <div class="contacto-icon"><i class="fas fa-map-marker-alt"></i></div>
           <div>
             <div class="contacto-label">Ubicación</div>
-            <div class="contacto-value">México</div>
+            <div class="contacto-value">Querétaro, México</div>
           </div>
         </div>
       </div>
@@ -291,35 +291,32 @@
       <div class="contacto-redes">
         <span class="redes-label">Síguenos en redes sociales</span>
         <div class="redes-icons">
-          <a href="#" target="_blank" class="red-social" aria-label="Instagram">
+          <a [href]="socialLinks.instagram" target="_blank" rel="noopener noreferrer" class="red-social" aria-label="Instagram">
             <i class="fab fa-instagram"></i>
           </a>
-          <a href="#" target="_blank" class="red-social" aria-label="Facebook">
+          <a [href]="socialLinks.facebook" target="_blank" rel="noopener noreferrer" class="red-social" aria-label="Facebook">
             <i class="fab fa-facebook-f"></i>
           </a>
-          <a href="#" target="_blank" class="red-social" aria-label="X (Twitter)">
+          <a [href]="socialLinks.twitter" target="_blank" rel="noopener noreferrer" class="red-social" aria-label="X (Twitter)">
             <i class="fab fa-x-twitter"></i>
-          </a>
-          <a href="#" target="_blank" class="red-social" aria-label="YouTube">
-            <i class="fab fa-youtube"></i>
-          </a>
-          <a href="#" target="_blank" class="red-social" aria-label="TikTok">
-            <i class="fab fa-tiktok"></i>
           </a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- FOOTER OPTIMIZADO -->
+  <!-- FOOTER COMPLETO -->
   <footer class="ns-footer">
     <div class="footer-inner">
+      <!-- Logo -->
       <div class="footer-logo" (click)="goToLanding()">
         <img src="/logo_mo.png" alt="SelKalis" style="width: 28px; height: 28px; object-fit: contain;">
         <span>Sel<span>Kalis</span></span>
       </div>
       
+      <!-- Enlaces del footer -->
       <div class="footer-links">
+        <!-- Columna 1: Legal -->
         <div class="footer-links-group">
           <span class="footer-links-title">Legal</span>
           <a routerLink="/terminos">Términos y condiciones</a>
@@ -330,31 +327,33 @@
           <a routerLink="/proteccion-datos">Protección de datos</a>
         </div>
         
+        <!-- Columna 2: Soporte -->
         <div class="footer-links-group">
           <span class="footer-links-title">Soporte</span>
-          <a href="mailto:selkalis26@gmail.com">Contacto</a>
-          <a routerLink="/ayuda">Ayuda</a>
+          <a href="mailto:selkalis26@gmail.com">Contáctanos por correo</a>
+          <a routerLink="/ayuda">Centro de ayuda</a>
           <a routerLink="/faq">Preguntas frecuentes</a>
         </div>
 
-        <!-- NUEVA: Redes sociales en el footer -->
+        <!-- Columna 3: Redes sociales -->
         <div class="footer-links-group footer-social">
-          <span class="footer-links-title">Redes sociales</span>
+          <span class="footer-links-title">Síguenos</span>
           <div class="footer-social-icons">
-            <a href="#" target="_blank" aria-label="Instagram">
+            <a [href]="socialLinks.instagram" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
               <i class="fab fa-instagram"></i>
             </a>
-            <a href="#" target="_blank" aria-label="Facebook">
+            <a [href]="socialLinks.facebook" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
               <i class="fab fa-facebook-f"></i>
             </a>
-            <a href="#" target="_blank" aria-label="X (Twitter)">
+            <a [href]="socialLinks.twitter" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
               <i class="fab fa-x-twitter"></i>
-            </a>          
+            </a>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Bottom bar -->
     <div class="footer-bottom">
       <p>© 2026 SelKalis. Todos los derechos reservados.</p>
     </div>
