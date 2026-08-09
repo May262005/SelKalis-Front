@@ -17,6 +17,13 @@ export class LandingComponent implements OnInit, OnDestroy {
   testiIndex = 0;
   private autoplayInterval: any;
 
+  // Enlaces de redes sociales (actualiza con tus URLs reales)
+  socialLinks = {
+    instagram: 'https://www.instagram.com/maysucks_26/',
+    facebook: 'https://www.facebook.com/maite.guevara.246560/',
+    twitter: 'https://x.com/MAITEGUEVARAGU1'
+  };
+
   testimonios = [
     {
       texto: 'Antes olvidaba mis medicamentos constantemente. Ahora con SelKalis llevo tres meses sin perder una sola dosis. Es increíblemente simple de usar.',

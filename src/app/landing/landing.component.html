@@ -254,6 +254,63 @@
     </div>
   </section>
 
+  <!-- CONTACTO - NUEVA SECCIÓN -->
+  <section class="section contacto-section">
+    <div class="section-header">
+      <div class="section-label">Contacto</div>
+      <h2>¿Tienes alguna duda? Escríbenos</h2>
+    </div>
+
+    <div class="contacto-content">
+      <div class="contacto-info">
+        <div class="contacto-item">
+          <div class="contacto-icon"><i class="fas fa-envelope"></i></div>
+          <div>
+            <div class="contacto-label">Correo electrónico</div>
+            <a href="mailto:selkalis26@gmail.com" class="contacto-value">selkalis26@gmail.com</a>
+          </div>
+        </div>
+
+        <div class="contacto-item">
+          <div class="contacto-icon"><i class="fas fa-clock"></i></div>
+          <div>
+            <div class="contacto-label">Horario de atención</div>
+            <div class="contacto-value">Lunes a viernes, 9:00 - 18:00</div>
+          </div>
+        </div>
+
+        <div class="contacto-item">
+          <div class="contacto-icon"><i class="fas fa-map-marker-alt"></i></div>
+          <div>
+            <div class="contacto-label">Ubicación</div>
+            <div class="contacto-value">México</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="contacto-redes">
+        <span class="redes-label">Síguenos en redes sociales</span>
+        <div class="redes-icons">
+          <a href="#" target="_blank" class="red-social" aria-label="Instagram">
+            <i class="fab fa-instagram"></i>
+          </a>
+          <a href="#" target="_blank" class="red-social" aria-label="Facebook">
+            <i class="fab fa-facebook-f"></i>
+          </a>
+          <a href="#" target="_blank" class="red-social" aria-label="X (Twitter)">
+            <i class="fab fa-x-twitter"></i>
+          </a>
+          <a href="#" target="_blank" class="red-social" aria-label="YouTube">
+            <i class="fab fa-youtube"></i>
+          </a>
+          <a href="#" target="_blank" class="red-social" aria-label="TikTok">
+            <i class="fab fa-tiktok"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- FOOTER OPTIMIZADO -->
   <footer class="ns-footer">
     <div class="footer-inner">
@@ -268,8 +325,7 @@
           <a routerLink="/terminos">Términos y condiciones</a>
           <a routerLink="/privacidad">Política de privacidad</a>
           <a routerLink="/cookies">Política de cookies</a>
-          <!-- 👇 ESTE ES EL ENLACE CON EL EVENTO 👇 -->
-          <a (click)="abrirConfiguracionCookies()" style="cursor: pointer;"> Configurar cookies </a>
+          <a (click)="abrirConfiguracionCookies()" style="cursor: pointer;">Configurar cookies</a>
           <a routerLink="/aviso-legal">Aviso legal</a>
           <a routerLink="/proteccion-datos">Protección de datos</a>
         </div>
@@ -280,7 +336,22 @@
           <a routerLink="/ayuda">Ayuda</a>
           <a routerLink="/faq">Preguntas frecuentes</a>
         </div>
-        
+
+        <!-- NUEVA: Redes sociales en el footer -->
+        <div class="footer-links-group footer-social">
+          <span class="footer-links-title">Redes sociales</span>
+          <div class="footer-social-icons">
+            <a href="#" target="_blank" aria-label="Instagram">
+              <i class="fab fa-instagram"></i>
+            </a>
+            <a href="#" target="_blank" aria-label="Facebook">
+              <i class="fab fa-facebook-f"></i>
+            </a>
+            <a href="#" target="_blank" aria-label="X (Twitter)">
+              <i class="fab fa-x-twitter"></i>
+            </a>          
+          </div>
+        </div>
       </div>
     </div>
 
