@@ -1,6 +1,6 @@
 // services/search.service.ts
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, timeout, map } from 'rxjs/operators';
 import { isPlatformBrowser } from '@angular/common';
@@ -18,7 +18,9 @@ export interface SearchResult {
 
 @Injectable({ providedIn: 'root' })
 export class SearchService {
-  private readonly TIMEOUT = 10000;
+  // ✅ Subido de 10s a 15s: el servicio en Render puede tardar en "despertar" (cold start)
+  // en el plan gratuito, y con 10s muchas peticiones de indexado truenan sin necesidad.
+  private readonly TIMEOUT = 15000;
   private readonly SEARCH_URL = 'https://sselkalis-search-service.onrender.com';
 
   constructor(
@@ -43,6 +45,25 @@ export class SearchService {
     return headers;
   }
 
+  // ✅ Logging detallado: permite distinguir en consola entre timeout, error de CORS,
+  // error 4xx/5xx del backend, o token inválido/expirado, en vez de un "Error" genérico.
+  private logError(contexto: string, error: any): void {
+    if (error instanceof HttpErrorResponse) {
+      console.error(`❌ ${contexto}:`, {
+        status: error.status,
+        statusText: error.statusText,
+        message: error.message,
+        url: error.url,
+        errorBody: error.error
+      });
+    } else {
+      console.error(`❌ ${contexto}:`, {
+        name: error?.name,
+        message: error?.message
+      });
+    }
+  }
+
   /**
    * Buscar en un módulo específico
    */
@@ -52,13 +73,13 @@ export class SearchService {
     }
 
     const headers = this.getAuthHeaders();
-    return this.http.post(`${this.SEARCH_URL}/search/modulo`, 
+    return this.http.post(`${this.SEARCH_URL}/search/modulo`,
       { modulo, termino: termino.trim(), filtros: filtros || {} },
       { headers }
     ).pipe(
       timeout(this.TIMEOUT),
       catchError((error) => {
-        console.error(`❌ Error buscando en ${modulo}:`, error);
+        this.logError(`Error buscando en ${modulo}`, error);
         return of({ success: true, data: { total: 0, resultados: [] } });
       })
     );
@@ -79,7 +100,7 @@ export class SearchService {
     ).pipe(
       timeout(this.TIMEOUT),
       catchError((error) => {
-        console.error('❌ Error en búsqueda global:', error);
+        this.logError('Error en búsqueda global', error);
         return of({ success: true, data: { total: 0, resultados: [] } });
       })
     );
@@ -96,7 +117,7 @@ export class SearchService {
     ).pipe(
       timeout(this.TIMEOUT),
       catchError((error) => {
-        console.error('❌ Error indexando:', error);
+        this.logError(`Error indexando en ${modulo} (doc id: ${documento?.id})`, error);
         return of({ success: false, error: error.message });
       })
     );
@@ -111,7 +132,7 @@ export class SearchService {
       .pipe(
         timeout(this.TIMEOUT),
         catchError((error) => {
-          console.error('❌ Error eliminando:', error);
+          this.logError(`Error eliminando de ${modulo}`, error);
           return of({ success: false, error: error.message });
         })
       );

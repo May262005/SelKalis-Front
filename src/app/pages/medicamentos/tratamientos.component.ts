@@ -827,13 +827,26 @@ export class TratamientosComponent implements OnInit {
     }));
   }
 
-  // ✅ MODIFICADO: usa tratamientosResultados cuando hay búsqueda activa, sin tocar this.tratamientos
+  // ✅ CORREGIDO: cruza los resultados de ES contra this.tratamientos (datos frescos)
+  // para que el filtro por estado/activo/fechas nunca dependa de un documento desactualizado
+  // en Elasticsearch (por ejemplo, un tratamiento que ya se suspendió/reactivó pero cuyo
+  // documento indexado todavía dice el estado viejo).
   filtrarTratamientos() {
     const hoy = this.formatearFechaLocal(new Date());
     const usarBusquedaES = this.terminoBusqueda.trim().length >= this.MIN_SEARCH_CHARS
       && this.tratamientosResultados.length > 0;
 
-    let filtrados = usarBusquedaES ? [...this.tratamientosResultados] : [...this.tratamientos];
+    let filtrados: Tratamiento[];
+
+    if (usarBusquedaES) {
+      // Para cada resultado de ES, si existe localmente usamos la versión fresca (this.tratamientos).
+      // Si no existe localmente (por ejemplo, se eliminó), lo descartamos para no mostrar datos fantasma.
+      filtrados = this.tratamientosResultados
+        .map((t: Tratamiento) => this.getTratamientoCompleto(t.id as string))
+        .filter((t: Tratamiento | null): t is Tratamiento => t !== null);
+    } else {
+      filtrados = [...this.tratamientos];
+    }
 
     if (this.filtroActual === 'suspendidos') {
       filtrados = filtrados.filter((t: Tratamiento) => t.activo === false);
@@ -1081,6 +1094,10 @@ export class TratamientosComponent implements OnInit {
             this.cargarTratamientos();
             this.cerrarModalTratamiento();
             this.showToast('Tratamiento actualizado correctamente', 'success');
+            // ✅ Reindexar de inmediato con los datos actualizados
+            if (response.data) {
+              this.indexarTratamiento(response.data);
+            }
           } else {
             this.errorGuardando = response.error || 'Error al actualizar';
             this.showToast(this.errorGuardando, 'error');
@@ -1200,6 +1217,8 @@ export class TratamientosComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  // ✅ CORREGIDO: reindexa de inmediato tras suspender, en vez de depender solo
+  // del reindex masivo dentro de cargarTratamientos() (que puede fallar por timeout).
   confirmarSuspenderTratamiento() {
     if (!this.tratamientoSuspensionId) return;
 
@@ -1221,6 +1240,10 @@ export class TratamientosComponent implements OnInit {
           this.cargarTratamientos();
           this.cerrarModalSuspenderTratamiento();
           this.showToast('Tratamiento suspendido correctamente', 'success');
+          // ✅ Reindexar de inmediato
+          if (response.data) {
+            this.indexarTratamiento(response.data);
+          }
         } else {
           this.errorGuardando = response.error || 'Error al suspender';
           this.showToast(this.errorGuardando, 'error');
@@ -1236,6 +1259,7 @@ export class TratamientosComponent implements OnInit {
     });
   }
 
+  // ✅ CORREGIDO: reindexa de inmediato tras reactivar
   reactivarTratamiento(id: string) {
     this.isLoading = true;
     this.cdr.detectChanges();
@@ -1245,6 +1269,10 @@ export class TratamientosComponent implements OnInit {
         if (response.success) {
           this.cargarTratamientos();
           this.showToast('Tratamiento reactivado correctamente', 'success');
+          // ✅ Reindexar de inmediato
+          if (response.data) {
+            this.indexarTratamiento(response.data);
+          }
         }
         this.cdr.detectChanges();
       },
@@ -1536,6 +1564,8 @@ export class TratamientosComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  // ✅ CORREGIDO: reindexa el medicamento de inmediato tras el ajuste (extender,
+  // cambiar frecuencia o suspender), sin depender del reindex masivo posterior.
   guardarAjuste() {
     if (!this.medicamentoAjusteId || !this.tipoAjuste) return;
 
@@ -1585,6 +1615,12 @@ export class TratamientosComponent implements OnInit {
         return;
     }
 
+    // ✅ Guardamos referencia del tratamiento antes de que cerrarModalAjuste() limpie el estado
+    const medicamentoIdAjustado = this.medicamentoAjusteId;
+    const tratamientoDelAjuste = this.tratamientos.find((t: Tratamiento) =>
+      (t.medicamentos || []).some((m: Medicamento) => m.id === medicamentoIdAjustado)
+    );
+
     observable.subscribe({
       next: (response: any) => {
         this.isLoadingAjuste = false;
@@ -1592,6 +1628,14 @@ export class TratamientosComponent implements OnInit {
           this.cargarTratamientos();
           this.cerrarModalAjuste();
           this.showToast(mensajeExito[this.tipoAjuste!] || 'Ajuste realizado', 'success');
+          // ✅ Reindexar de inmediato con los datos actualizados del medicamento
+          if (response.data && tratamientoDelAjuste) {
+            this.indexarMedicamento(
+              response.data,
+              tratamientoDelAjuste.id as string,
+              tratamientoDelAjuste.nombre
+            );
+          }
         } else {
           this.showToast(response.error || 'Error al realizar el ajuste', 'error');
         }
@@ -1605,9 +1649,15 @@ export class TratamientosComponent implements OnInit {
     });
   }
 
+  // ✅ CORREGIDO: reindexa el medicamento de inmediato tras reactivarlo
   reactivarMedicamentoDesdeTemplate(medicamentoId: string) {
     this.isLoading = true;
     this.cdr.detectChanges();
+
+    // ✅ Guardamos referencia del tratamiento antes de recargar
+    const tratamientoDelMed = this.tratamientos.find((t: Tratamiento) =>
+      (t.medicamentos || []).some((m: Medicamento) => m.id === medicamentoId)
+    );
 
     this.tratamientosService.reactivarMedicamento(medicamentoId).subscribe({
       next: (response: any) => {
@@ -1615,6 +1665,14 @@ export class TratamientosComponent implements OnInit {
         if (response.success) {
           this.cargarTratamientos();
           this.showToast('Medicamento reactivado correctamente', 'success');
+          // ✅ Reindexar de inmediato
+          if (response.data && tratamientoDelMed) {
+            this.indexarMedicamento(
+              response.data,
+              tratamientoDelMed.id as string,
+              tratamientoDelMed.nombre
+            );
+          }
         } else {
           this.showToast(response.error || 'Error al reactivar', 'error');
         }
