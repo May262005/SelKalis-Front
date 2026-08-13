@@ -10,6 +10,7 @@ import { CitasComponent } from './pages/citas/citas.component';
 import { EstudiosComponent } from './pages/estudios/estudios.component';
 import { DocumentosComponent } from './pages/documentos/documentos.component';
 import { PerfilComponent } from './pages/perfil/perfil.component';
+import { AdminComponent } from './pages/admin/admin.component';
 import { authGuard } from './guards/auth.guard';
 
 // IMPORTAR LOS COMPONENTES LEGALES
@@ -48,7 +49,7 @@ export const routes: Routes = [
   { path: 'estudios', component: EstudiosComponent, canActivate: [authGuard] },
   { path: 'documentos', component: DocumentosComponent, canActivate: [authGuard] },
   { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
-  
+  { path: 'admin', component: AdminComponent, canActivate: [authGuard] },
   // Redirección para rutas no encontradas
   { path: '**', redirectTo: '' }
 ];

@@ -1,0 +1,385 @@
+<!-- admin/admin.component.html -->
+<div class="admin-container">
+  <!-- Header -->
+  <header class="admin-header">
+    <div class="header-left">
+      <div class="header-logo">
+        <span>Sel<span>Kalis</span></span>
+        <span class="admin-badge">Admin</span>
+      </div>
+      <h1>Panel de Administración</h1>
+    </div>
+    <div class="header-right">
+      <span class="user-info">Administrador</span>
+      <button class="btn-logout" (click)="logout()">
+        <i class="fas fa-sign-out-alt"></i>
+        Salir
+      </button>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <div class="admin-stats">
+    <div class="stat-card">
+      <div class="stat-number">{{ usuarios.length }}</div>
+      <div class="stat-label">Total Usuarios</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ usuarios.filter(u => u.activo).length }}</div>
+      <div class="stat-label">Usuarios Activos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ usuarios.filter(u => !u.activo).length }}</div>
+      <div class="stat-label">Usuarios Suspendidos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ usuarios.filter(u => u.rol === 'admin').length }}</div>
+      <div class="stat-label">Administradores</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="admin-controls">
+    <div class="controls-left">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input
+          type="text"
+          [(ngModel)]="filtroTexto"
+          placeholder="Buscar usuarios..."
+          class="search-input"
+        />
+      </div>
+      <select [(ngModel)]="filtroRol" class="filter-select">
+        <option value="todos">Todos los roles</option>
+        <option value="admin">Administradores</option>
+        <option value="user">Usuarios</option>
+      </select>
+      <select [(ngModel)]="filtroEstado" class="filter-select">
+        <option value="todos">Todos los estados</option>
+        <option value="activo">Activos</option>
+        <option value="inactivo">Suspendidos</option>
+      </select>
+    </div>
+    <button class="btn-primary" (click)="abrirModal('crear')">
+      <i class="fas fa-plus"></i>
+      Nuevo Usuario
+    </button>
+  </div>
+
+  <!-- Error/Success -->
+  <div *ngIf="error" class="alert alert-error">
+    <i class="fas fa-exclamation-circle"></i>
+    {{ error }}
+  </div>
+  <div *ngIf="success" class="alert alert-success">
+    <i class="fas fa-check-circle"></i>
+    {{ success }}
+  </div>
+
+  <!-- Table -->
+  <div class="admin-table-container">
+    <div class="table-header">
+      <span>Mostrando {{ usuariosPaginados.length }} de {{ totalUsuarios }} usuarios</span>
+    </div>
+
+    <div *ngIf="loading" class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Cargando usuarios...</p>
+    </div>
+
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Email</th>
+          <th>Teléfono</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th>Registro</th>
+          <th>Último Login</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="usuariosPaginados.length === 0">
+          <td colspan="8" class="no-data">
+            <i class="fas fa-users"></i>
+            <p>No hay usuarios para mostrar</p>
+          </td>
+        </tr>
+        <tr *ngFor="let usuario of usuariosPaginados">
+          <td>
+            <div class="user-cell">
+              <div class="user-avatar">
+                {{ usuario.nombre[0] }}{{ usuario.apellido[0] }}
+              </div>
+              <div>
+                <div class="user-name">{{ usuario.nombre }} {{ usuario.apellido }}</div>
+                <div class="user-id">ID: {{ usuario.id.slice(0, 8) }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ usuario.email }}</td>
+          <td>{{ usuario.telefono || '—' }}</td>
+          <td>
+            <span class="badge" [class]="getRolClass(usuario.rol)">
+              {{ getRolTexto(usuario.rol) }}
+            </span>
+          </td>
+          <td>
+            <span class="badge" [class]="getEstadoClass(usuario.activo)">
+              {{ getEstadoTexto(usuario.activo) }}
+            </span>
+          </td>
+          <td>{{ formatearFecha(usuario.created_at) }}</td>
+          <td>{{ formatearFecha(usuario.ultimo_login) }}</td>
+          <td>
+            <div class="actions">
+              <button
+                class="btn-action btn-view"
+                (click)="abrirModal('detalle', usuario)"
+                title="Ver detalles"
+              >
+                <i class="fas fa-eye"></i>
+              </button>
+              <button
+                class="btn-action btn-edit"
+                (click)="abrirModal('editar', usuario)"
+                title="Editar"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                *ngIf="usuario.activo"
+                class="btn-action btn-suspend"
+                (click)="abrirConfirmacion('suspender', usuario)"
+                title="Suspender"
+              >
+                <i class="fas fa-pause-circle"></i>
+              </button>
+              <button
+                *ngIf="!usuario.activo"
+                class="btn-action btn-activate"
+                (click)="abrirConfirmacion('activar', usuario)"
+                title="Activar"
+              >
+                <i class="fas fa-play-circle"></i>
+              </button>
+              <button
+                class="btn-action btn-delete"
+                (click)="abrirConfirmacion('eliminar', usuario)"
+                title="Eliminar"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPaginas > 1">
+      <button
+        class="btn-page"
+        (click)="cambiarPagina(paginaActual - 1)"
+        [disabled]="paginaActual === 1"
+      >
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <span class="page-info">
+        Página {{ paginaActual }} de {{ totalPaginas }}
+      </span>
+      <button
+        class="btn-page"
+        (click)="cambiarPagina(paginaActual + 1)"
+        [disabled]="paginaActual === totalPaginas"
+      >
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" *ngIf="modalAbierto" (click)="cerrarModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 *ngIf="modalTipo === 'crear'">Crear Nuevo Usuario</h3>
+      <h3 *ngIf="modalTipo === 'editar'">Editar Usuario</h3>
+      <h3 *ngIf="modalTipo === 'detalle'">Detalles del Usuario</h3>
+      <h3 *ngIf="modalTipo === 'confirmar'">Confirmar Acción</h3>
+      <button class="modal-close" (click)="cerrarModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Modal: Detalles -->
+    <div class="modal-body" *ngIf="modalTipo === 'detalle' && usuarioSeleccionado">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Nombre completo</label>
+          <p>{{ usuarioSeleccionado.nombre }} {{ usuarioSeleccionado.apellido }}</p>
+        </div>
+        <div class="detail-item">
+          <label>Email</label>
+          <p>{{ usuarioSeleccionado.email }}</p>
+        </div>
+        <div class="detail-item">
+          <label>Teléfono</label>
+          <p>{{ usuarioSeleccionado.telefono || 'No registrado' }}</p>
+        </div>
+        <div class="detail-item">
+          <label>Rol</label>
+          <p><span class="badge" [class]="getRolClass(usuarioSeleccionado.rol)">{{ getRolTexto(usuarioSeleccionado.rol) }}</span></p>
+        </div>
+        <div class="detail-item">
+          <label>Estado</label>
+          <p><span class="badge" [class]="getEstadoClass(usuarioSeleccionado.activo)">{{ getEstadoTexto(usuarioSeleccionado.activo) }}</span></p>
+        </div>
+        <div class="detail-item">
+          <label>Fecha de registro</label>
+          <p>{{ formatearFecha(usuarioSeleccionado.created_at) }}</p>
+        </div>
+        <div class="detail-item">
+          <label>Último login</label>
+          <p>{{ formatearFecha(usuarioSeleccionado.ultimo_login) }}</p>
+        </div>
+        <div class="detail-item">
+          <label>ID de usuario</label>
+          <p class="id-text">{{ usuarioSeleccionado.id }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Crear/Editar -->
+    <div class="modal-body" *ngIf="modalTipo === 'crear' || modalTipo === 'editar'">
+      <form [formGroup]="usuarioForm" (ngSubmit)="guardarUsuario()">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input
+              type="text"
+              formControlName="nombre"
+              class="form-control"
+              placeholder="Nombre"
+            />
+            <div class="error-text" *ngIf="usuarioForm.get('nombre')?.invalid && usuarioForm.get('nombre')?.touched">
+              El nombre es requerido
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Apellido *</label>
+            <input
+              type="text"
+              formControlName="apellido"
+              class="form-control"
+              placeholder="Apellido"
+            />
+            <div class="error-text" *ngIf="usuarioForm.get('apellido')?.invalid && usuarioForm.get('apellido')?.touched">
+              El apellido es requerido
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email *</label>
+            <input
+              type="email"
+              formControlName="email"
+              class="form-control"
+              placeholder="correo@ejemplo.com"
+            />
+            <div class="error-text" *ngIf="usuarioForm.get('email')?.invalid && usuarioForm.get('email')?.touched">
+              Ingresa un email válido
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Teléfono</label>
+            <input
+              type="text"
+              formControlName="telefono"
+              class="form-control"
+              placeholder="Teléfono"
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contraseña <span *ngIf="modalTipo === 'crear'">*</span></label>
+            <input
+              type="password"
+              formControlName="password"
+              class="form-control"
+              [placeholder]="modalTipo === 'crear' ? 'Mínimo 6 caracteres' : 'Dejar vacío para mantener actual'"
+            />
+            <div class="error-text" *ngIf="usuarioForm.get('password')?.invalid && usuarioForm.get('password')?.touched">
+              La contraseña debe tener al menos 6 caracteres
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Rol</label>
+            <select formControlName="rol" class="form-control">
+              <option value="user">Usuario</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" (click)="cerrarModal()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="loading">
+            {{ loading ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal: Confirmación -->
+    <div class="modal-body" *ngIf="modalTipo === 'confirmar'">
+      <div class="confirm-content">
+        <div class="confirm-icon" [class]="confirmacionAccion === 'eliminar' ? 'danger' : 'warning'">
+          <i class="fas" [class]="{
+            'fa-trash': confirmacionAccion === 'eliminar',
+            'fa-pause': confirmacionAccion === 'suspender',
+            'fa-play': confirmacionAccion === 'activar'
+          }"></i>
+        </div>
+        <h4>¿Estás seguro?</h4>
+        <p>
+          ¿Deseas <strong>{{ confirmacionAccion }}</strong> al usuario
+          <strong>"{{ confirmacionNombre }}"</strong>?
+        </p>
+        <p class="confirm-warning" *ngIf="confirmacionAccion === 'eliminar'">
+          Esta acción es irreversible y eliminará todos los datos del usuario.
+        </p>
+        <p class="confirm-warning" *ngIf="confirmacionAccion === 'suspender'">
+          El usuario no podrá iniciar sesión hasta que sea reactivado.
+        </p>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" (click)="cerrarModal()">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn-confirm"
+            [class]="{
+              'btn-danger': confirmacionAccion === 'eliminar',
+              'btn-warning': confirmacionAccion === 'suspender',
+              'btn-success': confirmacionAccion === 'activar'
+            }"
+            (click)="ejecutarConfirmacion()"
+            [disabled]="loading"
+          >
+            {{ loading ? 'Procesando...' : 'Confirmar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
