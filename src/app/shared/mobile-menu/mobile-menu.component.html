@@ -25,10 +25,14 @@
     <a routerLink="/estudios" routerLinkActive="active"
        class="mobile-nav-item" (click)="closeMenu()">
       <i class="fas fa-vials"></i><span>Estudios</span>
-    </a>  
+    </a>
     <a routerLink="/documentos" routerLinkActive="active"
        class="mobile-nav-item" (click)="closeMenu()">
       <i class="fas fa-folder-open"></i><span>Documentos</span>
+    </a>
+    <a *ngIf="esAdmin" routerLink="/admin" routerLinkActive="active"
+       class="mobile-nav-item mobile-nav-item-admin" (click)="closeMenu()">
+      <i class="fas fa-user-shield"></i><span>Admin</span>
     </a>
   </nav>
 

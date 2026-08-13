@@ -12,6 +12,7 @@ import { DocumentosComponent } from './pages/documentos/documentos.component';
 import { PerfilComponent } from './pages/perfil/perfil.component';
 import { AdminComponent } from './pages/admin/admin.component';
 import { authGuard } from './guards/auth.guard';
+import { adminGuard } from './guards/admin.guard';
 
 // IMPORTAR LOS COMPONENTES LEGALES
 import { TerminosComponent } from './pages/legal/terminos/terminos.component';
@@ -30,18 +31,18 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'registro', component: RegistroComponent },
   { path: 'recuperar', component: RecuperarComponent },
-  
+
   // PÁGINAS LEGALES (públicas, sin autenticación)
   { path: 'terminos', component: TerminosComponent },
   { path: 'privacidad', component: PrivacidadComponent },
   { path: 'aviso-legal', component: AvisoLegalComponent },
   { path: 'proteccion-datos', component: ProteccionDatosComponent },
   { path: 'cookies', component: CookiesComponent },
-  
+
   // PÁGINAS DE SOPORTE (públicas, sin autenticación)
   { path: 'ayuda', component: AyudaComponent },
   { path: 'faq', component: FaqComponent },
-  
+
   // Páginas protegidas (requieren autenticación)
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'tratamientos', component: TratamientosComponent, canActivate: [authGuard] },
@@ -49,7 +50,10 @@ export const routes: Routes = [
   { path: 'estudios', component: EstudiosComponent, canActivate: [authGuard] },
   { path: 'documentos', component: DocumentosComponent, canActivate: [authGuard] },
   { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
-  { path: 'admin', component: AdminComponent, canActivate: [authGuard] },
+
+  // Página protegida solo para administradores
+  { path: 'admin', component: AdminComponent, canActivate: [authGuard, adminGuard] },
+
   // Redirección para rutas no encontradas
   { path: '**', redirectTo: '' }
 ];

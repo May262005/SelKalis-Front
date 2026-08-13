@@ -6,6 +6,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 
 const SK_TOKEN = 'sk_token';
+const SK_USER = 'user';
 
 @Component({
   selector: 'app-login',
@@ -41,7 +42,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
 
     if (this.hasValidSession()) {
-      this.router.navigate(['/dashboard'], { replaceUrl: true });
+      this.redirigirSegunRol({ replaceUrl: true });
     }
   }
 
@@ -64,6 +65,27 @@ export class LoginComponent implements OnInit, OnDestroy {
       localStorage.removeItem(SK_TOKEN);
       return false;
     }
+  }
+
+  // Lee el usuario guardado en localStorage y decide a dónde mandarlo
+  private redirigirSegunRol(navExtras: { replaceUrl?: boolean } = {}): void {
+    let destino = '/dashboard';
+
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        const userRaw = localStorage.getItem(SK_USER);
+        if (userRaw) {
+          const user = JSON.parse(userRaw);
+          if (user?.rol === 'admin') {
+            destino = '/admin';
+          }
+        }
+      } catch {
+        // Si el JSON está corrupto, mandamos a dashboard por default
+      }
+    }
+
+    this.router.navigate([destino], navExtras);
   }
 
   private clearLoadingTimeout(): void {
@@ -97,7 +119,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   onRememberMeChange(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    
+
     if (!this.rememberMe) {
       this.authService.eliminarCredenciales();
       this.email = '';
@@ -206,8 +228,14 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.authService.login(this.email.trim(), this.password, this.rememberMe).subscribe({
       next: (response: any) => {
         this.setLoading(false);
+
+        // Guardamos el usuario para que el guard de /admin y el menú sepan el rol
+        if (isPlatformBrowser(this.platformId) && response?.user) {
+          localStorage.setItem(SK_USER, JSON.stringify(response.user));
+        }
+
         this.showToast('Bienvenido a SelKalis', 'success');
-        this.router.navigate(['/dashboard']);
+        this.redirigirSegunRol();
       },
       error: (error: any) => {
         this.setLoading(false);
