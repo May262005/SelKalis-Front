@@ -6,7 +6,6 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 
 const SK_TOKEN = 'sk_token';
-const SK_USER = 'user';
 
 @Component({
   selector: 'app-login',
@@ -67,24 +66,10 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Lee el usuario guardado en localStorage y decide a dónde mandarlo
+  // Usa el usuario que AuthService ya conoce (mismo mecanismo que header/mobile-menu)
   private redirigirSegunRol(navExtras: { replaceUrl?: boolean } = {}): void {
-    let destino = '/dashboard';
-
-    if (isPlatformBrowser(this.platformId)) {
-      try {
-        const userRaw = localStorage.getItem(SK_USER);
-        if (userRaw) {
-          const user = JSON.parse(userRaw);
-          if (user?.rol === 'admin') {
-            destino = '/admin';
-          }
-        }
-      } catch {
-        // Si el JSON está corrupto, mandamos a dashboard por default
-      }
-    }
-
+    const user = this.authService.getCurrentUser();
+    const destino = user?.rol === 'admin' ? '/admin' : '/dashboard';
     this.router.navigate([destino], navExtras);
   }
 
@@ -228,12 +213,6 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.authService.login(this.email.trim(), this.password, this.rememberMe).subscribe({
       next: (response: any) => {
         this.setLoading(false);
-
-        // Guardamos el usuario para que el guard de /admin y el menú sepan el rol
-        if (isPlatformBrowser(this.platformId) && response?.user) {
-          localStorage.setItem(SK_USER, JSON.stringify(response.user));
-        }
-
         this.showToast('Bienvenido a SelKalis', 'success');
         this.redirigirSegunRol();
       },

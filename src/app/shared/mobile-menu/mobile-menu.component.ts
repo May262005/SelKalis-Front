@@ -15,6 +15,7 @@ export class MobileMenuComponent implements OnInit {
   isOpen = false;
   user: any = null;
   userInitials: string = 'U';
+  esAdmin: boolean = false;
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: object,
@@ -35,12 +36,16 @@ export class MobileMenuComponent implements OnInit {
       this.user = this.authService.getCurrentUser();
       if (this.user) {
         this.userInitials = this.user.nombre.charAt(0).toUpperCase();
+        this.esAdmin = this.user.rol === 'admin';
       }
-      
+
       this.authService.currentUser$.subscribe(user => {
         this.user = user;
         if (user) {
           this.userInitials = user.nombre.charAt(0).toUpperCase();
+          this.esAdmin = user.rol === 'admin';
+        } else {
+          this.esAdmin = false;
         }
       });
     }

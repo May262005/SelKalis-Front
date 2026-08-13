@@ -15,6 +15,7 @@ export class HeaderComponent implements OnInit {
   iniciales: string = 'U';
   nombreUsuario: string = 'Usuario';
   menuAbierto: boolean = false;
+  esAdmin: boolean = false;
 
   constructor(
     private router: Router,
@@ -29,12 +30,16 @@ export class HeaderComponent implements OnInit {
       if (user) {
         this.nombreUsuario = user.nombre;
         this.iniciales = user.nombre.charAt(0).toUpperCase();
+        this.esAdmin = user.rol === 'admin';
       }
-      
+
       this.authService.currentUser$.subscribe(user => {
         if (user) {
           this.nombreUsuario = user.nombre;
           this.iniciales = user.nombre.charAt(0).toUpperCase();
+          this.esAdmin = user.rol === 'admin';
+        } else {
+          this.esAdmin = false;
         }
       });
     }

@@ -13,6 +13,7 @@ interface User {
   telefono?: string;
   created_at?: string;
   ultimo_login?: string;
+  rol?: string;
 }
 
 const SK_TOKEN = 'sk_token';
@@ -23,7 +24,7 @@ const SK_USER_DATA = 'sk_user_data';
 export class AuthService {
   // URL del backend en Render
   private apiUrl = 'https://selkalis-auth-service.onrender.com';
-  
+
   private readonly REQUEST_TIMEOUT = 60000;
   private readonly RETRY_DELAY = 2000;
   private readonly MAX_RETRIES = 2;
@@ -51,7 +52,7 @@ export class AuthService {
   }
 
   // ==================== LIMPIEZA DE DATOS LEGACY ====================
-  
+
   private limpiarLegacy() {
     ['auth_token', 'user_data', 'selkalis_token',
      'selkalis_remember_token', 'selkalis_saved_email',
@@ -64,10 +65,10 @@ export class AuthService {
   }
 
   // ==================== CARGA DE SESIÓN ====================
-  
+
   private cargarSesion() {
     const token = localStorage.getItem(SK_TOKEN);
-    
+
     if (!token) {
       return;
     }
@@ -93,7 +94,8 @@ export class AuthService {
             email: payload.email || userData.email,
             telefono: userData.telefono || '',
             created_at: userData.created_at || '',
-            ultimo_login: userData.ultimo_login || ''
+            ultimo_login: userData.ultimo_login || '',
+            rol: payload.rol || userData.rol || 'user'
           });
           return;
         } catch (error) {
@@ -109,7 +111,8 @@ export class AuthService {
         email: payload.email,
         telefono: payload.telefono || '',
         created_at: payload.created_at || '',
-        ultimo_login: payload.ultimo_login || ''
+        ultimo_login: payload.ultimo_login || '',
+        rol: payload.rol || 'user'
       });
     } catch (error) {
       console.error('Error al cargar sesión:', error);
@@ -125,7 +128,7 @@ export class AuthService {
   }
 
   // ==================== CREDENCIALES GUARDADAS ====================
-  
+
   guardarCredenciales(email: string, password: string): void {
     if (!this.isBrowser) return;
     const encrypted = btoa(JSON.stringify({ email, password }));
@@ -155,7 +158,7 @@ export class AuthService {
   }
 
   // ==================== CONFIGURACIÓN DE PETICIONES ====================
-  
+
   private requestWithRetry<T>(request: Observable<T>): Observable<T> {
     return request.pipe(
       timeout(this.REQUEST_TIMEOUT),
@@ -177,11 +180,11 @@ export class AuthService {
     let headers = new HttpHeaders({
       'Content-Type': 'application/json'
     });
-    
+
     if (token) {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
-    
+
     return headers;
   }
 
@@ -208,7 +211,7 @@ export class AuthService {
         console.log('✅ Login exitoso:', response);
         if (response.token && response.user) {
           this.handleSuccessfulLogin(response.token, response.user);
-          
+
           if (rememberMe) {
             this.guardarCredenciales(email, password);
           } else {
@@ -221,23 +224,24 @@ export class AuthService {
 
   private handleSuccessfulLogin(token: string, user: any): void {
     if (!this.isBrowser) return;
-    
+
     // Guardar token
     localStorage.setItem(SK_TOKEN, token);
-    
+
     // Guardar datos completos del usuario
-    const userData = {
+    const userData: User = {
       id: user.id,
       nombre: user.nombre || '',
       apellido: user.apellido || '',
       email: user.email || '',
       telefono: user.telefono || '',
       created_at: user.created_at || '',
-      ultimo_login: user.ultimo_login || ''
+      ultimo_login: user.ultimo_login || '',
+      rol: user.rol || 'user'
     };
-    
+
     localStorage.setItem(SK_USER_DATA, JSON.stringify(userData));
-    
+
     // Actualizar el BehaviorSubject
     this.currentUserSubject.next(userData);
     this.tokenReadySubject.next(true);
@@ -361,12 +365,12 @@ export class AuthService {
     if (currentUser) {
       const updatedUser = { ...currentUser, ...userData };
       this.currentUserSubject.next(updatedUser);
-      
+
       // Guardar en localStorage
       if (this.isBrowser) {
         localStorage.setItem(SK_USER_DATA, JSON.stringify(updatedUser));
       }
-      
+
       console.log('🔄 Datos de usuario actualizados:', updatedUser);
     } else {
       // Si no hay usuario actual, crear uno nuevo
@@ -383,7 +387,7 @@ export class AuthService {
   getUserData(): User | null {
     const user = this.currentUserSubject.value;
     if (user) return user;
-    
+
     // Intentar recuperar del localStorage
     if (this.isBrowser) {
       const stored = localStorage.getItem(SK_USER_DATA);
@@ -428,7 +432,7 @@ export class AuthService {
   isTokenValid(): boolean {
     const token = this.getToken();
     if (!token) return false;
-    
+
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const nowSec = Math.floor(Date.now() / 1000);
@@ -454,10 +458,10 @@ export class AuthService {
   private handleError(error: any): Observable<never> {
     let errorMessage = 'Error en la conexión';
     let statusCode = 0;
-    
+
     if (error instanceof HttpErrorResponse) {
       statusCode = error.status;
-      
+
       switch (error.status) {
         case 0:
           errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.';
@@ -497,7 +501,7 @@ export class AuthService {
         default:
           errorMessage = error.error?.error || error.error?.mensaje || 'Error en el servidor';
       }
-      
+
       console.error(`❌ Error ${error.status}:`, errorMessage);
     } else {
       console.error('❌ Error desconocido:', error);
