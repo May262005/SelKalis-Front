@@ -417,8 +417,8 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   // Salir
   logout(): void {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('sk_token');
+    localStorage.removeItem('sk_user_data');
     this.router.navigate(['/login']);
   }
 }

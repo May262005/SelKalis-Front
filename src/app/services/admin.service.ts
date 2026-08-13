@@ -32,16 +32,19 @@ export interface ApiResponse {
   data?: any;
 }
 
+const SK_TOKEN = 'sk_token';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AdminService {
-  private apiUrl = 'http://localhost:3001'; // Tu URL del backend
+  // Mismo backend que auth.service.ts
+  private apiUrl = 'https://selkalis-auth-service.onrender.com';
 
   constructor(private http: HttpClient) {}
 
   private getHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem(SK_TOKEN);
     return new HttpHeaders({
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -125,11 +128,11 @@ export class AdminService {
   // Manejo de errores
   private handleError(error: any): Observable<never> {
     let errorMessage = 'Ocurrió un error en la operación';
-    
+
     if (error.error) {
       errorMessage = error.error.error || error.error.message || errorMessage;
     }
-    
+
     console.error('Error en AdminService:', error);
     return throwError(() => new Error(errorMessage));
   }
