@@ -3,12 +3,12 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AdminService, Usuario } from '../../services/admin.service';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.css']
 })
@@ -93,6 +93,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       error: (err: { message: string; }) => {
         this.error = err.message || 'Error al cargar usuarios';
         this.loading = false;
+        this.showToast(this.error, 'error');
       }
     });
   }
@@ -202,6 +203,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         next: () => {
           this.success = 'Usuario creado exitosamente';
           this.loading = false;
+          this.showToast(this.success, 'success');
           setTimeout(() => {
             this.cerrarModal();
             this.cargarUsuarios();
@@ -210,6 +212,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         error: (err: { message: string; }) => {
           this.error = err.message || 'Error al crear usuario';
           this.loading = false;
+          this.showToast(this.error, 'error');
         }
       });
     } else if (this.modalTipo === 'editar' && this.usuarioSeleccionado) {
@@ -230,6 +233,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         next: () => {
           this.success = 'Usuario actualizado exitosamente';
           this.loading = false;
+          this.showToast(this.success, 'success');
           setTimeout(() => {
             this.cerrarModal();
             this.cargarUsuarios();
@@ -238,6 +242,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         error: (err: { message: string; }) => {
           this.error = err.message || 'Error al actualizar usuario';
           this.loading = false;
+          this.showToast(this.error, 'error');
         }
       });
     }
@@ -277,6 +282,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         };
         this.success = mensajes[accion];
         this.loading = false;
+        this.showToast(this.success, 'success');
         setTimeout(() => {
           this.cerrarModal();
           this.cargarUsuarios();
@@ -287,6 +293,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       error: (err: { message: string; }) => {
         this.error = err.message || 'Error al ejecutar acción';
         this.loading = false;
+        this.showToast(this.error, 'error');
       }
     });
   }
@@ -315,7 +322,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   // Formatear fecha
-  formatearFecha(fecha: string): string {
+  // Acepta string | null | undefined porque usuario.ultimo_login puede venir null (usuario que nunca inició sesión)
+  formatearFecha(fecha: string | null | undefined): string {
     if (!fecha) return 'Nunca';
     const date = new Date(fecha);
     return date.toLocaleDateString('es-MX', {
@@ -325,6 +333,86 @@ export class AdminComponent implements OnInit, OnDestroy {
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  // Toast flotante (mismo estilo que citas.component.ts)
+  showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info'): void {
+    const existingToast = document.getElementById('selkalis-toast');
+    if (existingToast) existingToast.remove();
+
+    const iconMap = {
+      success: 'fa-check-circle',
+      error: 'fa-times-circle',
+      warning: 'fa-exclamation-triangle',
+      info: 'fa-info-circle'
+    };
+
+    const toast = document.createElement('div');
+    toast.id = 'selkalis-toast';
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      padding: 18px 32px;
+      background: #E8F0FE;
+      border-radius: 14px;
+      box-shadow: 0 6px 24px rgba(31, 58, 95, 0.18);
+      border: 1px solid #B8D4F0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      z-index: 9999;
+      max-width: 90vw;
+      min-width: 320px;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    `;
+
+    const container = document.createElement('div');
+    container.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    `;
+
+    const icon = document.createElement('i');
+    icon.className = `fas ${iconMap[type]}`;
+    icon.style.cssText = `
+      font-size: 28px;
+      color: #4A6FA5;
+      flex-shrink: 0;
+      width: 32px;
+      text-align: center;
+    `;
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = message;
+    textSpan.style.cssText = `
+      font-size: 16px;
+      font-weight: 500;
+      color: #1F3A5F;
+      line-height: 1.5;
+      word-break: break-word;
+    `;
+
+    container.appendChild(icon);
+    container.appendChild(textSpan);
+    toast.appendChild(container);
+    document.body.appendChild(toast);
+    toast.offsetHeight;
+
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(-100px)';
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 400);
+    }, 4000);
   }
 
   // Salir
