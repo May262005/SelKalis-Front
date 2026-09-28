@@ -57,3 +57,13 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## PWA
+
+The production build generates the Angular service worker and web manifest. The service worker caches the application shell and static assets; API responses are not cached.
+
+```bash
+ng build --configuration production
+```
+
+Serve the production output from HTTPS (or `localhost`) to test installation. On Android, open the site in Chrome and choose **Install app** or **Add to Home screen**. On iPhone/iPad, open it in Safari, tap **Share**, then **Add to Home Screen**. After the first load, switch to airplane mode and reopen the app to verify cached navigation. Service workers are disabled by `ng serve` development builds.

@@ -26,8 +26,11 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 300px;
+  width: min(300px, 88vw);
   height: 100vh;
+  height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
   background: #FFFFFF;
   transform: translateX(-100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
