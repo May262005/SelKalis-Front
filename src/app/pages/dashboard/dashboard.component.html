@@ -11,6 +11,21 @@
       <p>{{ fechaActual }} · {{ horaActual }}</p>
     </div>
 
+    <!-- TARJETA DE BIOMETRÍA -->
+    <div class="card-biometria" *ngIf="biometriaDisponible && !biometriaRegistrada">
+      <div class="card-biometria-icon">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <div class="card-biometria-content">
+        <h3>Protege tu cuenta con biometría</h3>
+        <p>Usa tu huella o Face ID para iniciar sesión sin contraseña la próxima vez.</p>
+        <button class="btn-activar-biometria" (click)="activarBiometriaDesdeDashboard()" [disabled]="cargandoBiometria">
+          <i class="fas" [class.fa-fingerprint]="!cargandoBiometria" [class.fa-spinner]="cargandoBiometria" [class.fa-spin]="cargandoBiometria"></i>
+          {{ cargandoBiometria ? 'Activando...' : 'Activar biometría ahora' }}
+        </button>
+      </div>
+    </div>
+
     <!-- Tarjetas superiores -->
     <div class="stats">
       <div class="stat">

@@ -62,8 +62,6 @@ export class DispositivoService {
     );
   }
 
-  // ==================== HELPERS DEL NAVEGADOR ====================
-
   obtenerDeviceId(): string {
     if (!this.isBrowser) return 'unknown';
     const KEY = 'sk_device_id';

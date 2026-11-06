@@ -1,7 +1,8 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
-import { Observable } from 'rxjs';
+import { Observable, timer } from 'rxjs';
+import { retry, timeout } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
 export class WebAuthnService {
@@ -15,7 +16,6 @@ export class WebAuthnService {
     this.isBrowser = isPlatformBrowser(platformId);
   }
 
-  /** ¿El navegador soporta biometría de plataforma? */
   async disponible(): Promise<boolean> {
     if (!this.isBrowser) return false;
     if (!window.PublicKeyCredential) return false;
@@ -26,43 +26,46 @@ export class WebAuthnService {
     }
   }
 
-  /** Pregunta al backend si el email tiene biometría configurada */
+  estaRegistrada(): boolean {
+    if (!this.isBrowser) return false;
+    return localStorage.getItem('sk_biometric_registered') === 'true';
+  }
+
+  marcarRegistrada(): void {
+    if (this.isBrowser) {
+      localStorage.setItem('sk_biometric_registered', 'true');
+    }
+  }
+
   estado(email: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/webauthn/estado/${encodeURIComponent(email)}`);
   }
 
-  /** Pide al backend las opciones de registro */
+  private postConRetry(url: string, body: any, token?: string): Observable<any> {
+    let headers = new HttpHeaders({ 'Content-Type': 'application/json' });
+    if (token) headers = headers.set('Authorization', `Bearer ${token}`);
+
+    return this.http.post(url, body, { headers }).pipe(
+      timeout(90000),
+      retry({ count: 2, delay: () => timer(3000) })
+    );
+  }
+
   opcionesRegistro(token: string): Observable<any> {
-    return this.http.post(
-      `${this.apiUrl}/webauthn/registro/opciones`,
-      {},
-      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
-    );
+    return this.postConRetry(`${this.apiUrl}/webauthn/registro/opciones`, {}, token);
   }
 
-  /** Envía al backend la credencial creada por el navegador */
   verificarRegistro(token: string, credential: any, deviceLabel: string): Observable<any> {
-    return this.http.post(
-      `${this.apiUrl}/webauthn/registro/verificar`,
-      { credential, device_label: deviceLabel },
-      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) }
-    );
+    return this.postConRetry(`${this.apiUrl}/webauthn/registro/verificar`, { credential, device_label: deviceLabel }, token);
   }
 
-  /** Pide opciones de login biométrico */
   opcionesLogin(email: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/webauthn/login/opciones`, { email });
+    return this.postConRetry(`${this.apiUrl}/webauthn/login/opciones`, { email });
   }
 
-  /** Envía la respuesta del navegador al backend */
   verificarLogin(email: string, credential: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/webauthn/login/verificar`, {
-      email,
-      credential
-    });
+    return this.postConRetry(`${this.apiUrl}/webauthn/login/verificar`, { email, credential });
   }
-
-  // ==================== HELPERS BASE64URL ====================
 
   private base64urlToBuffer(base64url: string): ArrayBuffer {
     const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
@@ -81,11 +84,10 @@ export class WebAuthnService {
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   }
 
-  /** Crea una credencial WebAuthn con el navegador (huella/FaceID/PIN) */
   async crearCredencial(optionsFromServer: any): Promise<any> {
-    if (!this.isBrowser) throw new Error('No disponible en SSR');
-
+    if (!this.isBrowser) throw new Error('No disponible');
     const opts = optionsFromServer;
+
     const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
       challenge: this.base64urlToBuffer(opts.challenge),
       rp: opts.rp,
@@ -113,7 +115,6 @@ export class WebAuthnService {
     })) as PublicKeyCredential;
 
     if (!credential) throw new Error('No se creó la credencial');
-
     const response = credential.response as AuthenticatorAttestationResponse;
 
     return {
@@ -128,11 +129,10 @@ export class WebAuthnService {
     };
   }
 
-  /** Pide al navegador autenticarse con huella/FaceID */
   async obtenerCredencial(optionsFromServer: any): Promise<any> {
-    if (!this.isBrowser) throw new Error('No disponible en SSR');
-
+    if (!this.isBrowser) throw new Error('No disponible');
     const opts = optionsFromServer;
+
     const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
       challenge: this.base64urlToBuffer(opts.challenge),
       timeout: opts.timeout || 60000,
@@ -149,7 +149,6 @@ export class WebAuthnService {
     })) as PublicKeyCredential;
 
     if (!credential) throw new Error('No se obtuvo credencial');
-
     const response = credential.response as AuthenticatorAssertionResponse;
 
     return {
@@ -160,9 +159,7 @@ export class WebAuthnService {
         clientDataJSON: this.bufferToBase64url(response.clientDataJSON),
         authenticatorData: this.bufferToBase64url(response.authenticatorData),
         signature: this.bufferToBase64url(response.signature),
-        userHandle: response.userHandle
-          ? this.bufferToBase64url(response.userHandle)
-          : null
+        userHandle: response.userHandle ? this.bufferToBase64url(response.userHandle) : null
       },
       clientExtensionResults: credential.getClientExtensionResults()
     };

@@ -1,11 +1,10 @@
-// login.component.ts
 import { Component, ChangeDetectorRef, Inject, PLATFORM_ID, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
-import { DispositivoService } from '../../services/dispositivo.service';
 import { WebAuthnService } from '../../services/webauthn.service';
+import { DispositivoService } from '../../services/dispositivo.service';
 
 const SK_TOKEN = 'sk_token';
 
@@ -16,23 +15,22 @@ const SK_TOKEN = 'sk_token';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-
 export class LoginComponent implements OnInit, OnDestroy {
   email: string = '';
   password: string = '';
   isLoading: boolean = false;
   showPassword: boolean = false;
-  rememberMe: boolean = false;  
-  // ============ ETAPA 2 — WebAuthn / Biometría ============
+  rememberMe: boolean = false;
+
   biometriaDisponible = false;
+  biometriaRegistrada = false;
   biometriaCargando = false;
   biometriaError = '';
-  biometriaRegistrada = false;
+
   mostrarModalTelefono = false;
   telefonoModal = '';
   telefonoModalError = '';
   telefonoModalCargando = false;
-  // =======================================================
 
   private loadingTimeout: any = null;
 
@@ -41,183 +39,15 @@ export class LoginComponent implements OnInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object,
-    private dispositivoService: DispositivoService,
-    private webAuthnService: WebAuthnService
+    private webAuthnService: WebAuthnService,
+    private dispositivoService: DispositivoService
   ) {}
 
-  // ============ ETAPA 2 — MÉTODOS NUEVOS ============
-
-  async ngOnChanges(): Promise<void> {}
-  async ionViewWillEnter(): Promise<void> {}
-
-  /** Detecta biometría disponible al cargar la página */
-  async detectarBiometria(): Promise<void> {
+  async ngOnInit() {
     if (!isPlatformBrowser(this.platformId)) return;
+
     this.biometriaDisponible = await this.webAuthnService.disponible();
-  }
-
-  /** Login con biometría */
-  async loginConBiometria(): Promise<void> {
-    this.biometriaError = '';
-
-    if (!this.email || !this.email.trim()) {
-      this.biometriaError = 'Primero escribe tu correo electrónico';
-      return;
-    }
-
-    const email = this.email.trim().toLowerCase();
-    this.biometriaCargando = true;
-
-    try {
-      // 1. Pedir opciones al backend
-      const opcionesRes = await this.webAuthnService.opcionesLogin(email).toPromise();
-
-      if (!opcionesRes?.success) {
-        throw new Error(opcionesRes?.error || 'Biometría no disponible');
-      }
-
-      // 2. Pedir al navegador huella/FaceID
-      const credential = await this.webAuthnService.obtenerCredencial(opcionesRes.options);
-
-      // 3. Verificar en el backend
-      const verificacion = await this.webAuthnService
-        .verificarLogin(email, credential)
-        .toPromise();
-
-      if (!verificacion?.success) {
-        throw new Error(verificacion?.error || 'Verificación fallida');
-      }
-
-      // 4. Guardar sesión como en login normal
-      localStorage.setItem('sk_token', verificacion.token);
-      localStorage.setItem('sk_user_data', JSON.stringify(verificacion.user));
-
-      this.showToast('Bienvenido a SelKalis', 'success');
-      this.redirigirSegunRol();
-    } catch (e: any) {
-      console.error(e);
-      this.biometriaError =
-        e?.error?.error ||
-        e?.message ||
-        'No se pudo autenticar con biometría';
-    } finally {
-      this.biometriaCargando = false;
-    }
-  }
-
-  /** Después del login exitoso, verifica si falta vincular teléfono */
-  private verificarVinculacionPostLogin(): void {
-    const user = this.authService.getCurrentUser();
-    if (!user) return;
-
-    // Si no tiene teléfono → mostrar modal
-    if (!user.telefono) {
-      this.mostrarModalTelefono = true;
-      return;
-    }
-
-    // Si ya tiene teléfono pero no biometría → ofrecer activarla
-    if (!this.biometriaRegistrada && this.biometriaDisponible) {
-      // Esperar 1s para no interrumpir la transición
-      setTimeout(() => {
-        const quiere = confirm(
-          '¿Quieres activar el inicio de sesión con biometría para la próxima vez?'
-        );
-        if (quiere) {
-          this.registrarBiometria();
-        }
-      }, 800);
-    }
-  }
-
-  /** Guarda el teléfono del modal */
-  guardarTelefonoModal(): void {
-    this.telefonoModalError = '';
-    const tel = this.telefonoModal.trim();
-    if (!/^\+?[0-9]{10,15}$/.test(tel)) {
-      this.telefonoModalError = 'Número inválido (10-15 dígitos, opcional +)';
-      return;
-    }
-
-    const user = this.authService.getCurrentUser();
-    if (!user) return;
-
-    this.telefonoModalCargando = true;
-    this.dispositivoService.vincularTelefono(user.id, tel).subscribe({
-      next: async () => {
-        // Asociar el dispositivo también
-        this.dispositivoService
-          .asociarDispositivo(user.id, {
-            device_id: this.dispositivoService.obtenerDeviceId(),
-            device_platform: this.dispositivoService.detectarPlataforma(),
-            device_model: this.dispositivoService.detectarModelo()
-          })
-          .subscribe({
-            next: () => {
-              this.telefonoModalCargando = false;
-              this.mostrarModalTelefono = false;
-              this.authService.updateUserData({ telefono: tel });
-              this.showToast('Teléfono y dispositivo vinculados', 'success');
-
-              // Ofrecer biometría
-              if (this.biometriaDisponible) {
-                setTimeout(() => {
-                  const quiere = confirm(
-                    '¿Activar biometría para próximos inicios de sesión?'
-                  );
-                  if (quiere) this.registrarBiometria();
-                }, 500);
-              }
-            },
-            error: (err) => {
-              this.telefonoModalCargando = false;
-              this.telefonoModalError =
-                err?.error?.error || 'Error al asociar dispositivo';
-            }
-          });
-      },
-      error: (err) => {
-        this.telefonoModalCargando = false;
-        this.telefonoModalError = err?.error?.error || 'Error al guardar teléfono';
-      }
-    });
-  }
-
-  /** Registra biometría WebAuthn para el usuario logueado */
-  async registrarBiometria(): Promise<void> {
-    const user = this.authService.getCurrentUser();
-    const token = this.authService.getToken();
-    if (!user || !token) return;
-
-    this.biometriaCargando = true;
-    this.biometriaError = '';
-
-    try {
-      const opcionesRes = await this.webAuthnService.opcionesRegistro(token).toPromise();
-      if (!opcionesRes?.success) throw new Error('Error obteniendo opciones');
-
-      const credential = await this.webAuthnService.crearCredencial(opcionesRes.options);
-      const deviceLabel = this.dispositivoService.detectarModelo();
-
-      const verificacion = await this.webAuthnService
-        .verificarRegistro(token, credential, deviceLabel)
-        .toPromise();
-
-      if (!verificacion?.success) throw new Error('Error al registrar');
-
-      this.biometriaRegistrada = true;
-      this.showToast('Biometría activada correctamente', 'success');
-    } catch (e: any) {
-      this.biometriaError = e?.error?.error || e?.message || 'Error al registrar biometría';
-    } finally {
-      this.biometriaCargando = false;
-    }
-  }
-
-  // =======================================================
-
-  ngOnInit(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
+    this.biometriaRegistrada = this.webAuthnService.estaRegistrada();
 
     const creds = this.authService.obtenerCredenciales();
     if (creds) {
@@ -229,8 +59,6 @@ export class LoginComponent implements OnInit, OnDestroy {
     if (this.hasValidSession()) {
       this.redirigirSegunRol({ replaceUrl: true });
     }
-
-    this.detectarBiometria();
   }
 
   ngOnDestroy(): void {
@@ -254,7 +82,6 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Usa el usuario que AuthService ya conoce (mismo mecanismo que header/mobile-menu)
   private redirigirSegunRol(navExtras: { replaceUrl?: boolean } = {}): void {
     const user = this.authService.getCurrentUser();
     const destino = user?.rol === 'admin' ? '/admin' : '/dashboard';
@@ -298,6 +125,129 @@ export class LoginComponent implements OnInit, OnDestroy {
       this.email = '';
       this.password = '';
     }
+  }
+
+  async loginConBiometria(): Promise<void> {
+    this.biometriaError = '';
+    if (!this.email || !this.email.trim()) {
+      this.biometriaError = 'Primero escribe tu correo electrónico';
+      return;
+    }
+
+    const email = this.email.trim().toLowerCase();
+    this.biometriaCargando = true;
+    this.cdr.detectChanges();
+
+    try {
+      const opcionesRes = await this.webAuthnService.opcionesLogin(email).toPromise();
+      if (!opcionesRes?.success) {
+        throw new Error(opcionesRes?.error || 'Biometría no disponible');
+      }
+
+      const credential = await this.webAuthnService.obtenerCredencial(opcionesRes.options);
+      const verificacion = await this.webAuthnService.verificarLogin(email, credential).toPromise();
+
+      if (!verificacion?.success) {
+        throw new Error(verificacion?.error || 'Verificación fallida');
+      }
+
+      localStorage.setItem('sk_token', verificacion.token);
+      localStorage.setItem('sk_user_data', JSON.stringify(verificacion.user));
+
+      this.showToast('Bienvenido a SelKalis', 'success');
+      this.redirigirSegunRol();
+    } catch (e: any) {
+      this.biometriaError = e?.error?.error || e?.message || 'Error al autenticar con biometría';
+    } finally {
+      this.biometriaCargando = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private verificarVinculacionPostLogin(): void {
+    const user = this.authService.getCurrentUser();
+    if (!user) return;
+
+    if (!user.telefono) {
+      this.mostrarModalTelefono = true;
+      this.cdr.detectChanges();
+    }
+  }
+
+  guardarTelefonoModal(): void {
+    this.telefonoModalError = '';
+    const tel = this.telefonoModal.trim();
+    if (!/^\+?[0-9]{10,15}$/.test(tel)) {
+      this.telefonoModalError = 'Número inválido (10-15 dígitos, opcional +)';
+      return;
+    }
+
+    const user = this.authService.getCurrentUser();
+    if (!user) return;
+
+    this.telefonoModalCargando = true;
+    this.dispositivoService.vincularTelefono(user.id, tel).subscribe({
+      next: () => {
+        this.dispositivoService.asociarDispositivo(user.id, {
+          device_id: this.dispositivoService.obtenerDeviceId(),
+          device_platform: this.dispositivoService.detectarPlataforma(),
+          device_model: this.dispositivoService.detectarModelo()
+        }).subscribe({
+          next: () => {
+            this.telefonoModalCargando = false;
+            this.mostrarModalTelefono = false;
+            this.authService.updateUserData({ telefono: tel });
+            this.showToast('Teléfono y dispositivo vinculados', 'success');
+            setTimeout(() => this.redirigirSegunRol(), 800);
+          },
+          error: (err) => {
+            this.telefonoModalCargando = false;
+            this.telefonoModalError = err?.error?.error || 'Error al asociar dispositivo';
+          }
+        });
+      },
+      error: (err) => {
+        this.telefonoModalCargando = false;
+        this.telefonoModalError = err?.error?.error || 'Error al guardar teléfono';
+      }
+    });
+  }
+
+  onSubmit(): void {
+    if (!this.email || !this.email.trim()) {
+      this.showToast('Por favor, ingresa tu correo electrónico', 'warning');
+      return;
+    }
+    if (!this.password || !this.password.trim()) {
+      this.showToast('Por favor, ingresa tu contraseña', 'warning');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.email.trim())) {
+      this.showToast('Por favor, ingresa un correo electrónico válido', 'warning');
+      return;
+    }
+
+    this.setLoading(true);
+
+    this.authService.login(this.email.trim(), this.password, this.rememberMe).subscribe({
+      next: (response: any) => {
+        this.setLoading(false);
+        this.showToast('Bienvenido a SelKalis', 'success');
+        this.verificarVinculacionPostLogin();
+        
+        if (!this.mostrarModalTelefono) {
+          this.redirigirSegunRol();
+        }
+      },
+      error: (error: any) => {
+        this.setLoading(false);
+        let mensaje = 'Error al iniciar sesión.';
+        if (error.error?.error) mensaje = error.error.error;
+        else if (error.status === 401) mensaje = 'Correo o contraseña incorrectos.';
+        this.showToast(mensaje, 'error');
+      }
+    });
   }
 
   showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info'): void {
@@ -379,44 +329,5 @@ export class LoginComponent implements OnInit, OnDestroy {
         if (toast.parentNode) toast.remove();
       }, 400);
     }, 4000);
-  }
-
-  onSubmit(): void {
-    if (!this.email || !this.email.trim()) {
-      this.showToast('Por favor, ingresa tu correo electrónico', 'warning');
-      return;
-    }
-    if (!this.password || !this.password.trim()) {
-      this.showToast('Por favor, ingresa tu contraseña', 'warning');
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(this.email.trim())) {
-      this.showToast('Por favor, ingresa un correo electrónico válido', 'warning');
-      return;
-    }
-
-    this.setLoading(true);
-
-    this.authService.login(this.email.trim(), this.password, this.rememberMe).subscribe({
-      next: (response: any) => {
-        this.setLoading(false);
-        this.showToast('Bienvenido a SelKalis', 'success');
-        this.verificarVinculacionPostLogin();
-        setTimeout(() => this.redirigirSegunRol() , 1200);
-      },
-      error: (error: any) => {
-        this.setLoading(false);
-
-        let mensaje = 'Error al iniciar sesión. Por favor, intenta de nuevo.';
-        if (error.error?.error) mensaje = error.error.error;
-        else if (error.status === 401) mensaje = 'Correo o contraseña incorrectos. Verifica tus datos.';
-        else if (error.status === 400) mensaje = 'Por favor, verifica que todos los datos sean correctos.';
-        else if (error.status === 500) mensaje = 'Hubo un problema en el servidor. Por favor, intenta más tarde.';
-        else if (error.status === 0) mensaje = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
-
-        this.showToast(mensaje, 'error');
-      }
-    });
   }
 }

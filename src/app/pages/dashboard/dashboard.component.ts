@@ -3,6 +3,8 @@ import { RouterLink } from '@angular/router';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { DashboardService, DashboardData } from '../../services/dashboard.service';
+import { WebAuthnService } from '../../services/webauthn.service';
+import { DispositivoService } from '../../services/dispositivo.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -29,14 +31,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
   proximosEstudios: any[] = [];
   documentosRecientes: any[] = [];
 
+  biometriaDisponible = false;
+  biometriaRegistrada = false;
+  cargandoBiometria = false;
+
   constructor(
     @Inject(PLATFORM_ID) private platformId: object,
     private authService: AuthService,
     private dashboardService: DashboardService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private webAuthn: WebAuthnService,
+    private dispositivoService: DispositivoService
   ) {}
 
-  ngOnInit() {
+  async ngOnInit() {
+    if (isPlatformBrowser(this.platformId)) {
+      this.biometriaDisponible = await this.webAuthn.disponible();
+      this.biometriaRegistrada = this.webAuthn.estaRegistrada();
+    }
+
     this.authService.tokenReady$.subscribe((ready: boolean) => {
       if (ready) {
         this.cargarUsuario();
@@ -67,6 +80,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  async activarBiometriaDesdeDashboard() {
+    const token = this.authService.getToken();
+    if (!token) return;
+
+    this.cargandoBiometria = true;
+    this.cdr.detectChanges();
+    try {
+      const opciones = await this.webAuthn.opcionesRegistro(token).toPromise();
+      const credential = await this.webAuthn.crearCredencial(opciones.options);
+      const deviceLabel = this.dispositivoService.detectarModelo();
+      
+      await this.webAuthn.verificarRegistro(token, credential, deviceLabel).toPromise();
+      
+      this.webAuthn.marcarRegistrada();
+      this.biometriaRegistrada = true;
+      this.cdr.detectChanges();
+      alert('✅ Biometría activada. La próxima vez podrás entrar sin contraseña.');
+    } catch (e: any) {
+      alert('Error: ' + (e.error?.error || e.message));
+    } finally {
+      this.cargandoBiometria = false;
+      this.cdr.detectChanges();
+    }
+  }
+
   cargarUsuario() {
     const user = this.authService.getCurrentUser();
     if (user) {
@@ -77,36 +115,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   actualizarFechaHora() {
     const ahora = new Date();
-    
-    const opcionesFecha: Intl.DateTimeFormatOptions = { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    };
+    const opcionesFecha: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
     this.fechaActual = ahora.toLocaleDateString('es-ES', opcionesFecha);
-    
-    const opcionesHora: Intl.DateTimeFormatOptions = { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    };
+    const opcionesHora: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
     this.horaActual = ahora.toLocaleTimeString('es-ES', opcionesHora);
     
     const hora = ahora.getHours();
-    if (hora >= 5 && hora < 12) {
-      this.saludo = 'Buenos dias';
-    } else if (hora >= 12 && hora < 19) {
-      this.saludo = 'Buenas tardes';
-    } else {
-      this.saludo = 'Buenas noches';
-    }
+    if (hora >= 5 && hora < 12) this.saludo = 'Buenos dias';
+    else if (hora >= 12 && hora < 19) this.saludo = 'Buenas tardes';
+    else this.saludo = 'Buenas noches';
   }
 
   cargarDashboard() {
     const token = this.authService.getToken();
-    if (!token) {
-      return;
-    }
+    if (!token) return;
 
     this.isLoading = true;
     this.cdr.detectChanges();
@@ -114,27 +136,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.dashboardService.getDashboardData().subscribe({
       next: (data: DashboardData) => {
         this.isLoading = false;
-        
         this.proximaToma = data.proximaToma;
-        
         if (data.proximaCita) {
-          this.proximaCita = {
-            doctor: data.proximaCita.doctor,
-            fecha: data.proximaCita.fecha,
-            hora: data.proximaCita.hora
-          };
+          this.proximaCita = { doctor: data.proximaCita.doctor, fecha: data.proximaCita.fecha, hora: data.proximaCita.hora };
         } else {
           this.proximaCita = null;
         }
-        
         this.tratamientosActivos = data.totalTratamientosActivos;
         this.completadosHoy = data.tomasCompletadasHoy;
-        
         this.tratamientosActivosLista = data.tratamientosActivos;
         this.proximasCitas = data.proximaCita ? [data.proximaCita] : [];
         this.proximosEstudios = data.proximosEstudios;
         this.documentosRecientes = data.documentosRecientes;
-        
         this.cdr.detectChanges();
       },
       error: (error: any) => {
@@ -158,21 +171,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
           progreso: 0
         }));
         this.cdr.detectChanges();
-      } catch (e) {
-        // Error silencioso
-      }
+      } catch (e) {}
     }
   }
 
-  subirDocumento() {
-    window.location.href = '/documentos';
-  }
-
+  subirDocumento() { window.location.href = '/documentos'; }
   verDocumento(doc: any) {
-    if (doc.url) {
-      window.open(doc.url, '_blank');
-    } else {
-      alert('Abriendo: ' + doc.nombre);
-    }
+    if (doc.url) window.open(doc.url, '_blank');
+    else alert('Abriendo: ' + doc.nombre);
   }
 }

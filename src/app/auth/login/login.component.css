@@ -916,3 +916,183 @@
   border-radius: 10px;
   font-size: 13px;
 }
+
+/* ============================================
+   LOGIN — BOTÓN DE BIOMETRÍA DISCRETO
+   ============================================ */
+.biometria-inline {
+  margin-top: 20px;
+}
+
+.biometria-divider {
+  text-align: center;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.biometria-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--border-light, #D6E2EE);
+}
+
+.biometria-divider span {
+  position: relative;
+  background: var(--white-card, #fff);
+  padding: 0 16px;
+  color: var(--text-soft, #7B8CA8);
+  font-size: 13px;
+}
+
+.btn-biometria-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  color: var(--steel-blue, #4A6FA5);
+  border: 1.5px solid var(--steel-blue, #4A6FA5);
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.btn-biometria-inline:hover:not(:disabled) {
+  background: var(--soft-blue-bg, #EEF3F8);
+  transform: translateY(-1px);
+}
+
+.btn-biometria-inline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-biometria-inline i {
+  font-size: 18px;
+}
+
+.biometria-error {
+  margin: 12px 0 0;
+  padding: 10px;
+  background: rgba(90, 125, 179, 0.1);
+  color: var(--error-blue, #5A7DB3);
+  border-radius: 10px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ============================================
+   MODAL VINCULAR TELÉFONO
+   ============================================ */
+.modal-telefono-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 58, 95, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-telefono {
+  background: white;
+  border-radius: 24px;
+  padding: 36px 32px;
+  width: min(440px, 92vw);
+  box-shadow: 0 24px 60px -12px rgba(31, 58, 95, 0.4);
+  text-align: center;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-telefono-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: var(--soft-blue-bg, #EEF3F8);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--steel-blue, #4A6FA5);
+  font-size: 28px;
+}
+
+.modal-telefono h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: var(--text-primary, #1F3A5F);
+  font-weight: 700;
+}
+
+.modal-telefono-desc {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: var(--text-soft, #7B8CA8);
+  line-height: 1.6;
+}
+
+.modal-telefono-input {
+  width: 100%;
+  padding: 14px 18px;
+  border: 1.5px solid var(--border-light, #D6E2EE);
+  border-radius: 14px;
+  font-size: 15px;
+  color: var(--text-primary, #1F3A5F);
+  background: white;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  font-family: inherit;
+  margin-bottom: 12px;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.modal-telefono-input:focus {
+  outline: none;
+  border-color: var(--steel-blue, #4A6FA5);
+  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
+}
+
+.modal-telefono-input::placeholder {
+  color: var(--text-soft, #7B8CA8);
+  font-weight: 400;
+  letter-spacing: normal;
+}
+
+.modal-telefono-error {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  background: rgba(90, 125, 179, 0.1);
+  color: var(--error-blue, #5A7DB3);
+  border-radius: 10px;
+  font-size: 13px;
+}
