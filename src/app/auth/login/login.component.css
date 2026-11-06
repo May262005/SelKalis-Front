@@ -8,7 +8,6 @@
 }
 
 .auth-container {
-  /* Paleta SelKalis */
   --marine-blue: #1F3A5F;
   --steel-blue: #4A6FA5;
   --steel-hover: #3D5F91;
@@ -181,7 +180,6 @@
   padding: 0;
 }
 
-/* Ocultar el checkbox nativo */
 .remember-checkbox input[type="checkbox"] {
   position: absolute;
   opacity: 0;
@@ -192,7 +190,6 @@
   cursor: pointer;
 }
 
-/* Custom checkbox - diseño redondeado y elegante */
 .custom-checkbox-remember {
   display: inline-block;
   width: 22px;
@@ -208,14 +205,12 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-/* Hover state - más suave */
 .remember-checkbox:hover .custom-checkbox-remember {
   border-color: var(--steel-blue);
   box-shadow: 0 0 0 5px rgba(74, 111, 165, 0.08);
   transform: scale(1.03);
 }
 
-/* Checked state - con gradiente suave */
 .remember-checkbox input[type="checkbox"]:checked + .custom-checkbox-remember {
   background: var(--steel-blue);
   border-color: var(--steel-blue);
@@ -223,7 +218,6 @@
   transform: scale(1.05);
 }
 
-/* Checkmark más elegante */
 .remember-checkbox input[type="checkbox"]:checked + .custom-checkbox-remember::after {
   content: '';
   position: absolute;
@@ -239,13 +233,11 @@
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
 }
 
-/* Focus state */
 .remember-checkbox input[type="checkbox"]:focus-visible + .custom-checkbox-remember {
   outline: 2.5px solid var(--steel-blue);
   outline-offset: 3px;
 }
 
-/* Disabled state */
 .remember-checkbox input[type="checkbox"]:disabled + .custom-checkbox-remember {
   opacity: 0.4;
   cursor: not-allowed;
@@ -258,20 +250,10 @@
   cursor: not-allowed;
 }
 
-/* Animación de check mejorada */
 @keyframes checkPop {
-  0% {
-    transform: rotate(45deg) scale(0.3);
-    opacity: 0;
-  }
-  60% {
-    transform: rotate(45deg) scale(1.15);
-    opacity: 1;
-  }
-  100% {
-    transform: rotate(45deg) scale(1);
-    opacity: 1;
-  }
+  0% { transform: rotate(45deg) scale(0.3); opacity: 0; }
+  60% { transform: rotate(45deg) scale(1.15); opacity: 1; }
+  100% { transform: rotate(45deg) scale(1); opacity: 1; }
 }
 
 .remember-label {
@@ -297,7 +279,6 @@
   margin-bottom: 20px;
 }
 
-/* Ocultar el checkbox nativo */
 .terminos-checkbox input[type="checkbox"] {
   position: absolute;
   opacity: 0;
@@ -308,7 +289,6 @@
   cursor: pointer;
 }
 
-/* Custom checkbox - diseño redondeado y elegante */
 .custom-checkbox-terminos {
   display: inline-block;
   width: 22px;
@@ -324,14 +304,12 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-/* Hover state - más suave */
 .terminos-checkbox:hover .custom-checkbox-terminos {
   border-color: var(--steel-blue);
   box-shadow: 0 0 0 5px rgba(74, 111, 165, 0.08);
   transform: scale(1.03);
 }
 
-/* Checked state - con gradiente suave */
 .terminos-checkbox input[type="checkbox"]:checked + .custom-checkbox-terminos {
   background: var(--steel-blue);
   border-color: var(--steel-blue);
@@ -339,7 +317,6 @@
   transform: scale(1.05);
 }
 
-/* Checkmark más elegante */
 .terminos-checkbox input[type="checkbox"]:checked + .custom-checkbox-terminos::after {
   content: '';
   position: absolute;
@@ -355,13 +332,11 @@
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
 }
 
-/* Focus state */
 .terminos-checkbox input[type="checkbox"]:focus-visible + .custom-checkbox-terminos {
   outline: 2.5px solid var(--steel-blue);
   outline-offset: 3px;
 }
 
-/* Disabled state */
 .terminos-checkbox input[type="checkbox"]:disabled + .custom-checkbox-terminos {
   opacity: 0.4;
   cursor: not-allowed;
@@ -444,14 +419,8 @@
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .meter-bars {
@@ -468,25 +437,11 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.meter-bar.fill {
-  background: var(--steel-blue);
-}
-
-.meter-bar.weak {
-  background: var(--error-blue);
-}
-
-.meter-bar.medium {
-  background: var(--warning-blue);
-}
-
-.meter-bar.strong {
-  background: var(--success-blue);
-}
-
-.meter-bar.very-strong {
-  background: var(--steel-blue);
-}
+.meter-bar.fill { background: var(--steel-blue); }
+.meter-bar.weak { background: var(--error-blue); }
+.meter-bar.medium { background: var(--warning-blue); }
+.meter-bar.strong { background: var(--success-blue); }
+.meter-bar.very-strong { background: var(--steel-blue); }
 
 .meter-header {
   display: flex;
@@ -503,21 +458,10 @@
   font-weight: 600;
 }
 
-.meter-label.weak {
-  color: var(--error-blue);
-}
-
-.meter-label.medium {
-  color: var(--warning-blue);
-}
-
-.meter-label.strong {
-  color: var(--success-blue);
-}
-
-.meter-label.very-strong {
-  color: var(--steel-blue);
-}
+.meter-label.weak { color: var(--error-blue); }
+.meter-label.medium { color: var(--warning-blue); }
+.meter-label.strong { color: var(--success-blue); }
+.meter-label.very-strong { color: var(--steel-blue); }
 
 .meter-score {
   font-size: 11px;
@@ -627,299 +571,12 @@
   transform: translateX(-50%) translateY(0);
 }
 
-.selkalis-toast--success {
-  border-left: 4px solid #7CA6D8;
-}
+.selkalis-toast--success { border-left: 4px solid #7CA6D8; }
+.selkalis-toast--error { border-left: 4px solid #5A7DB3; }
+.selkalis-toast--warning { border-left: 4px solid #8FB5E5; }
+.selkalis-toast--info { border-left: 4px solid #6FA8DC; }
 
-.selkalis-toast--error {
-  border-left: 4px solid #5A7DB3;
-}
-
-.selkalis-toast--warning {
-  border-left: 4px solid #8FB5E5;
-}
-
-.selkalis-toast--info {
-  border-left: 4px solid #6FA8DC;
-}
-
-/* ===========================================
-   RESPONSIVE
-   =========================================== */
-
-@media (max-width: 768px) {
-  .auth-container {
-    padding: 24px 16px;
-  }
-
-  .auth-card {
-    padding: 32px 28px;
-    border-radius: 24px;
-  }
-
-  .auth-header h2 {
-    font-size: 30px;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .requirements-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-options {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .auth-card {
-    padding: 24px 20px;
-  }
-
-  .auth-header h2 {
-    font-size: 26px;
-  }
-
-  .btn-submit {
-    padding: 13px;
-    font-size: 15px;
-  }
-
-  .selkalis-toast {
-    min-width: auto;
-    width: 90vw;
-    padding: 14px 20px;
-    font-size: 14px;
-  }
-
-  .custom-checkbox-remember,
-  .custom-checkbox-terminos {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    min-height: 20px;
-  }
-
-  .remember-checkbox input[type="checkbox"]:checked + .custom-checkbox-remember::after,
-  .terminos-checkbox input[type="checkbox"]:checked + .custom-checkbox-terminos::after {
-    left: 5px;
-    top: 1px;
-    width: 6px;
-    height: 11px;
-  }
-
-  .remember-label,
-  .terminos-lebel {
-    font-size: 13px;
-  }
-}
-
-/* ============================================
-   ETAPA 2 — BIOMETRÍA Y MODAL TELÉFONO
-   ============================================ */
-
-/* Separador "o" */
-.biometria-section {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-light, #D6E2EE);
-}
-
-.biometria-divider {
-  text-align: center;
-  margin-bottom: 20px;
-  position: relative;
-}
-
-.biometria-divider::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
-  background: var(--border-light, #D6E2EE);
-}
-
-.biometria-divider span {
-  position: relative;
-  background: var(--white-card, #fff);
-  padding: 0 16px;
-  color: var(--text-soft, #7B8CA8);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* Botón de biometría */
-.btn-biometria {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  padding: 15px;
-  background: var(--soft-blue-bg, #EEF3F8);
-  color: var(--steel-blue, #4A6FA5);
-  border: 1.5px solid var(--steel-blue, #4A6FA5);
-  border-radius: 50px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.btn-biometria:hover:not(:disabled) {
-  background: var(--steel-blue, #4A6FA5);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(74, 111, 165, 0.25);
-}
-
-.btn-biometria:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-biometria i {
-  font-size: 18px;
-}
-
-/* Hint y error */
-.biometria-hint {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--text-soft, #7B8CA8);
-  text-align: center;
-  line-height: 1.5;
-}
-
-.biometria-error {
-  margin: 12px 0 0;
-  padding: 10px 14px;
-  background: rgba(90, 125, 179, 0.1);
-  color: var(--error-blue, #5A7DB3);
-  border-radius: 10px;
-  font-size: 13px;
-  text-align: center;
-}
-
-/* ============================================
-   MODAL VINCULAR TELÉFONO
-   ============================================ */
-.modal-telefono-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(31, 58, 95, 0.55);
-  backdrop-filter: blur(4px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-telefono {
-  background: white;
-  border-radius: 24px;
-  padding: 36px 32px;
-  width: min(440px, 92vw);
-  box-shadow: 0 24px 60px -12px rgba(31, 58, 95, 0.4);
-  text-align: center;
-  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.modal-telefono-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 20px;
-  background: var(--soft-blue-bg, #EEF3F8);
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--steel-blue, #4A6FA5);
-  font-size: 28px;
-}
-
-.modal-telefono h3 {
-  margin: 0 0 8px;
-  font-size: 20px;
-  color: var(--text-primary, #1F3A5F);
-  font-weight: 700;
-}
-
-.modal-telefono-desc {
-  margin: 0 0 24px;
-  font-size: 14px;
-  color: var(--text-soft, #7B8CA8);
-  line-height: 1.6;
-}
-
-.modal-telefono-input {
-  width: 100%;
-  padding: 14px 18px;
-  border: 1.5px solid var(--border-light, #D6E2EE);
-  border-radius: 14px;
-  font-size: 15px;
-  color: var(--text-primary, #1F3A5F);
-  background: white;
-  transition: all 0.2s;
-  box-sizing: border-box;
-  font-family: inherit;
-  margin-bottom: 12px;
-  text-align: center;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.modal-telefono-input:focus {
-  outline: none;
-  border-color: var(--steel-blue, #4A6FA5);
-  box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
-}
-
-.modal-telefono-input::placeholder {
-  color: var(--text-soft, #7B8CA8);
-  font-weight: 400;
-  letter-spacing: normal;
-}
-
-.modal-telefono-error {
-  margin: 0 0 16px;
-  padding: 10px 14px;
-  background: rgba(90, 125, 179, 0.1);
-  color: var(--error-blue, #5A7DB3);
-  border-radius: 10px;
-  font-size: 13px;
-}
-
-/* ============================================
-   LOGIN — BOTÓN DE BIOMETRÍA DISCRETO
-   ============================================ */
+/* =================== BIOMETRÍA INLINE =================== */
 .biometria-inline {
   margin-top: 20px;
 }
@@ -1022,14 +679,8 @@
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .modal-telefono-icon {
@@ -1095,4 +746,110 @@
   color: var(--error-blue, #5A7DB3);
   border-radius: 10px;
   font-size: 13px;
+}
+
+/* ✅ BOTÓN AZUL FORZADO PARA EL MODAL */
+.btn-modal-azul {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px;
+  background: #4A6FA5 !important;
+  color: white !important;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-modal-azul:hover:not(:disabled) {
+  background: #3D5F91 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(74, 111, 165, 0.25);
+}
+
+.btn-modal-azul:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===========================================
+   RESPONSIVE
+   =========================================== */
+
+@media (max-width: 768px) {
+  .auth-container {
+    padding: 24px 16px;
+  }
+
+  .auth-card {
+    padding: 32px 28px;
+    border-radius: 24px;
+  }
+
+  .auth-header h2 {
+    font-size: 30px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .requirements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-options {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px 20px;
+  }
+
+  .auth-header h2 {
+    font-size: 26px;
+  }
+
+  .btn-submit {
+    padding: 13px;
+    font-size: 15px;
+  }
+
+  .selkalis-toast {
+    min-width: auto;
+    width: 90vw;
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+
+  .custom-checkbox-remember,
+  .custom-checkbox-terminos {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+  }
+
+  .remember-checkbox input[type="checkbox"]:checked + .custom-checkbox-remember::after,
+  .terminos-checkbox input[type="checkbox"]:checked + .custom-checkbox-terminos::after {
+    left: 5px;
+    top: 1px;
+    width: 6px;
+    height: 11px;
+  }
+
+  .remember-label,
+  .terminos-lebel {
+    font-size: 13px;
+  }
 }

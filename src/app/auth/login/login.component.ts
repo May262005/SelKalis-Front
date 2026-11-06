@@ -49,12 +49,16 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.biometriaDisponible = await this.webAuthnService.disponible();
     this.biometriaRegistrada = this.webAuthnService.estaRegistrada();
 
-    // ✅ CORRECCIÓN: Recuperar los datos guardados del "Recordarme"
+    // ✅ CORRECCIÓN: Cargar los datos y forzar el renderizado en el móvil
     const creds = this.authService.obtenerCredenciales();
     if (creds) {
       this.email = creds.email;
       this.password = creds.password;
       this.rememberMe = true;
+      
+      // Forzamos a Angular a pintar los datos inmediatamente
+      this.cdr.detectChanges();
+      setTimeout(() => this.cdr.detectChanges(), 100);
     }
 
     if (this.hasValidSession()) {
@@ -169,7 +173,6 @@ export class LoginComponent implements OnInit, OnDestroy {
     const user = this.authService.getCurrentUser();
     if (!user) return;
 
-    // ✅ CORRECCIÓN: Verificar si no tiene teléfono O si el string está vacío
     if (!user.telefono || user.telefono.trim() === '') {
       this.mostrarModalTelefono = true;
       this.cdr.detectChanges();
@@ -236,7 +239,6 @@ export class LoginComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.setLoading(false);
         
-        // ✅ CORRECCIÓN: Guardar credenciales si marcó "Recordarme"
         if (this.rememberMe) {
           this.authService.guardarCredenciales(this.email.trim(), this.password);
         }
