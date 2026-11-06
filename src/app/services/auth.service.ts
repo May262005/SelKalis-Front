@@ -22,7 +22,6 @@ const SK_USER_DATA = 'sk_user_data';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  // URL del backend en Render
   private apiUrl = 'https://selkalis-auth-service.onrender.com';
 
   private readonly REQUEST_TIMEOUT = 60000;
@@ -51,8 +50,6 @@ export class AuthService {
     }
   }
 
-  // ==================== LIMPIEZA DE DATOS LEGACY ====================
-
   private limpiarLegacy() {
     ['auth_token', 'user_data', 'selkalis_token',
      'selkalis_remember_token', 'selkalis_saved_email',
@@ -63,8 +60,6 @@ export class AuthService {
       sessionStorage.removeItem(k);
     });
   }
-
-  // ==================== CARGA DE SESIÓN ====================
 
   private cargarSesion() {
     const token = localStorage.getItem(SK_TOKEN);
@@ -82,7 +77,6 @@ export class AuthService {
         return;
       }
 
-      // Intentar cargar datos completos del usuario desde almacenamiento local
       const storedUser = localStorage.getItem(SK_USER_DATA);
       if (storedUser) {
         try {
@@ -103,7 +97,6 @@ export class AuthService {
         }
       }
 
-      // Si no hay datos almacenados, usar solo el payload del token
       this.currentUserSubject.next({
         id: payload.id,
         nombre: payload.nombre,
@@ -225,10 +218,8 @@ export class AuthService {
   private handleSuccessfulLogin(token: string, user: any): void {
     if (!this.isBrowser) return;
 
-    // Guardar token
     localStorage.setItem(SK_TOKEN, token);
 
-    // Guardar datos completos del usuario
     const userData: User = {
       id: user.id,
       nombre: user.nombre || '',
@@ -242,7 +233,6 @@ export class AuthService {
 
     localStorage.setItem(SK_USER_DATA, JSON.stringify(userData));
 
-    // Actualizar el BehaviorSubject
     this.currentUserSubject.next(userData);
     this.tokenReadySubject.next(true);
   }
@@ -309,13 +299,9 @@ export class AuthService {
       tap((response: any) => {
         console.log('📥 Datos completos del usuario:', response);
         if (response && response.user) {
-          // Actualizar los datos del usuario en el almacenamiento local
           const currentUser = this.currentUserSubject.value;
           if (currentUser) {
-            const updatedUser = {
-              ...currentUser,
-              ...response.user
-            };
+            const updatedUser = { ...currentUser, ...response.user };
             this.updateUserData(updatedUser);
           }
         }
@@ -331,13 +317,9 @@ export class AuthService {
       tap((response: any) => {
         console.log('✅ Usuario actualizado:', response);
         if (response && response.user) {
-          // Actualizar los datos del usuario en el almacenamiento local
           const currentUser = this.currentUserSubject.value;
           if (currentUser) {
-            const updatedUser = {
-              ...currentUser,
-              ...response.user
-            };
+            const updatedUser = { ...currentUser, ...response.user };
             this.updateUserData(updatedUser);
           }
         }
@@ -357,23 +339,18 @@ export class AuthService {
 
   // ==================== ACTUALIZACIÓN DE DATOS DEL USUARIO ====================
 
-  /**
-   * Actualiza los datos del usuario en el BehaviorSubject y en localStorage
-   */
   updateUserData(userData: Partial<User>): void {
     const currentUser = this.currentUserSubject.value;
     if (currentUser) {
       const updatedUser = { ...currentUser, ...userData };
       this.currentUserSubject.next(updatedUser);
 
-      // Guardar en localStorage
       if (this.isBrowser) {
         localStorage.setItem(SK_USER_DATA, JSON.stringify(updatedUser));
       }
 
       console.log('🔄 Datos de usuario actualizados:', updatedUser);
     } else {
-      // Si no hay usuario actual, crear uno nuevo
       if (this.isBrowser) {
         localStorage.setItem(SK_USER_DATA, JSON.stringify(userData));
         this.currentUserSubject.next(userData as User);
@@ -381,14 +358,10 @@ export class AuthService {
     }
   }
 
-  /**
-   * Obtiene los datos completos del usuario actual
-   */
   getUserData(): User | null {
     const user = this.currentUserSubject.value;
     if (user) return user;
 
-    // Intentar recuperar del localStorage
     if (this.isBrowser) {
       const stored = localStorage.getItem(SK_USER_DATA);
       if (stored) {
@@ -402,9 +375,6 @@ export class AuthService {
     return null;
   }
 
-  /**
-   * Obtiene solo el ID del usuario actual
-   */
   getUserId(): string | null {
     const user = this.getUserData();
     return user ? user.id : null;
@@ -426,9 +396,6 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  /**
-   * Verifica si el token es válido
-   */
   isTokenValid(): boolean {
     const token = this.getToken();
     if (!token) return false;
@@ -442,9 +409,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Refresca los datos del usuario desde el servidor
-   */
   refreshUserData(): Observable<any> {
     const userId = this.getUserId();
     if (!userId) {
@@ -471,7 +435,6 @@ export class AuthService {
           break;
         case 401:
           errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
-          // Limpiar sesión si el token expiró
           if (this.isBrowser) {
             this.clearAllStorage();
             this.tokenReadySubject.next(false);

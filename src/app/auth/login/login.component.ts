@@ -49,6 +49,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.biometriaDisponible = await this.webAuthnService.disponible();
     this.biometriaRegistrada = this.webAuthnService.estaRegistrada();
 
+    // ✅ CORRECCIÓN: Recuperar los datos guardados del "Recordarme"
     const creds = this.authService.obtenerCredenciales();
     if (creds) {
       this.email = creds.email;
@@ -144,7 +145,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         throw new Error(opcionesRes?.error || 'Biometría no disponible');
       }
 
-      const credential = await this.webAuthnService.obtenerCredencial(opcionesRes.options);
+      const credential = await this.webAuthnService.obtenerCredencial( opcionesRes.options);
       const verificacion = await this.webAuthnService.verificarLogin(email, credential).toPromise();
 
       if (!verificacion?.success) {
@@ -168,7 +169,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     const user = this.authService.getCurrentUser();
     if (!user) return;
 
-    if (!user.telefono) {
+    // ✅ CORRECCIÓN: Verificar si no tiene teléfono O si el string está vacío
+    if (!user.telefono || user.telefono.trim() === '') {
       this.mostrarModalTelefono = true;
       this.cdr.detectChanges();
     }
@@ -233,6 +235,12 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.authService.login(this.email.trim(), this.password, this.rememberMe).subscribe({
       next: (response: any) => {
         this.setLoading(false);
+        
+        // ✅ CORRECCIÓN: Guardar credenciales si marcó "Recordarme"
+        if (this.rememberMe) {
+          this.authService.guardarCredenciales(this.email.trim(), this.password);
+        }
+
         this.showToast('Bienvenido a SelKalis', 'success');
         this.verificarVinculacionPostLogin();
         
