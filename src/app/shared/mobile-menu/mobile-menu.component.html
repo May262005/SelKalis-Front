@@ -29,6 +29,10 @@
     <a routerLink="/documentos" routerLinkActive="active"
        class="mobile-nav-item" (click)="closeMenu()">
       <i class="fas fa-folder-open"></i><span>Documentos</span>
+    </a>  
+    <a routerLink="/seguridad-flutter" routerLinkActive="active"
+       class="mobile-nav-item" (click)="closeMenu()">
+      <i class="fas fa-shield-alt"></i><span>Seguridad</span>
     </a>
     <a *ngIf="esAdmin" routerLink="/admin" routerLinkActive="active"
        class="mobile-nav-item mobile-nav-item-admin" (click)="closeMenu()">

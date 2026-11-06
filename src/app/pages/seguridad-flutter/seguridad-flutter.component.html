@@ -1,0 +1,52 @@
+<div class="seguridad-flutter-container">
+
+  <div class="hero-card">
+    <div class="hero-icon">
+      <i class="fas fa-shield-alt"></i>
+    </div>
+    <h1>Seguridad móvil</h1>
+    <p>
+      Vincula tu teléfono, asocia este dispositivo y activa la biometría
+      directamente desde tu cuenta de SelKalis.
+    </p>
+
+    <button class="btn-open-flutter" (click)="abrirModulo()">
+      <i class="fas fa-mobile-alt"></i>
+      Abrir módulo de seguridad
+    </button>
+  </div>
+
+  <div class="modal-overlay" *ngIf="mostrarModal" (click)="cerrarModulo()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fas fa-shield-alt"></i>
+          <span>Seguridad móvil</span>
+        </div>
+        <button class="btn-close" (click)="cerrarModulo()" aria-label="Cerrar">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="loading-overlay" *ngIf="cargando">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Cargando módulo...</p>
+        </div>
+
+        <iframe
+          #flutterFrame
+          *ngIf="mostrarModal"
+          [src]="flutterUrl"
+          class="flutter-frame"
+          (load)="onIframeLoad()"
+          allow="camera; microphone; publickey-credentials-get; publickey-credentials-create"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals">
+        </iframe>
+      </div>
+
+    </div>
+  </div>
+
+</div>
