@@ -516,4 +516,62 @@ export class AuthService {
 
     return throwError(() => enrichedError);
   }
+
+  // ============================================================
+  // ETAPA 2 — VINCULACIÓN DE TELÉFONO, DISPOSITIVO Y BIOMETRÍA
+  // ============================================================
+
+  obtenerVinculacion(userId: string): Observable<any> {
+    return this.requestWithRetry(
+      this.http.get(`${this.apiUrl}/usuarios/${userId}/dispositivo`, {
+        headers: this.getAuthHeaders()
+      })
+    );
+  }
+
+  vincularTelefono(userId: string, telefono: string): Observable<any> {
+    return this.requestWithRetry(
+      this.http.post(`${this.apiUrl}/usuarios/${userId}/telefono`,
+        { telefono },
+        { headers: this.getAuthHeaders() }
+      )
+    ).pipe(
+      tap((response: any) => {
+        if (response?.success) {
+          this.updateUserData({ telefono });
+        }
+      })
+    );
+  }
+
+  asociarDispositivo(userId: string, device: {
+    device_id: string;
+    device_platform: 'android' | 'ios' | 'web';
+    device_model?: string;
+    device_token?: string;
+  }): Observable<any> {
+    return this.requestWithRetry(
+      this.http.post(`${this.apiUrl}/usuarios/${userId}/dispositivo`,
+        device,
+        { headers: this.getAuthHeaders() }
+      )
+    );
+  }
+
+  desasociarDispositivo(userId: string): Observable<any> {
+    return this.requestWithRetry(
+      this.http.delete(`${this.apiUrl}/usuarios/${userId}/dispositivo`, {
+        headers: this.getAuthHeaders()
+      })
+    );
+  }
+
+  actualizarBiometria(userId: string, enabled: boolean): Observable<any> {
+    return this.requestWithRetry(
+      this.http.patch(`${this.apiUrl}/usuarios/${userId}/biometria`,
+        { enabled },
+        { headers: this.getAuthHeaders() }
+      )
+    );
+  }
 }
