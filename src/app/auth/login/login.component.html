@@ -69,10 +69,73 @@
 
     </form>
 
+    <!-- ==================== ETAPA 2 — BIOMETRÍA ==================== -->
+    <div class="biometria-section" *ngIf="biometriaDisponible">
+      <div class="biometria-divider">
+        <span>o</span>
+      </div>
+
+      <button
+        type="button"
+        class="btn-biometria"
+        (click)="loginConBiometria()"
+        [disabled]="biometriaCargando || isLoading"
+      >
+        <i class="fas" [class.fa-fingerprint]="!biometriaCargando" [class.fa-spinner]="biometriaCargando" [class.fa-spin]="biometriaCargando"></i>
+        <span *ngIf="!biometriaCargando">Ingresar con biometría</span>
+        <span *ngIf="biometriaCargando">Verificando...</span>
+      </button>
+
+      <p class="biometria-hint">
+        Usa tu huella, Face ID o Windows Hello para entrar sin contraseña.
+      </p>
+
+      <p class="biometria-error" *ngIf="biometriaError">{{ biometriaError }}</p>
+    </div>
+    <!-- ==================== FIN ETAPA 2 ==================== -->
+
     <div class="auth-footer">
       <p>¿No tienes cuenta? <a routerLink="/registro" class="link-primary link-bold">Regístrate aquí</a></p>
       <a class="link-primary link-bold" routerLink="/recuperar">¿Olvidaste tu contraseña?</a>
     </div>
 
   </div>
+
+  <!-- ==================== MODAL: VINCULAR TELÉFONO ==================== -->
+  <div class="modal-telefono-overlay" *ngIf="mostrarModalTelefono">
+    <div class="modal-telefono">
+      <div class="modal-telefono-icon">
+        <i class="fas fa-phone"></i>
+      </div>
+      <h3>Vincula tu número telefónico</h3>
+      <p class="modal-telefono-desc">
+        Para identificar tu dispositivo y poder enviarte recordatorios
+        importantes, necesitamos tu número de teléfono.
+      </p>
+
+      <input
+        type="tel"
+        class="modal-telefono-input"
+        [(ngModel)]="telefonoModal"
+        placeholder="+52 55 1234 5678"
+        [disabled]="telefonoModalCargando"
+        autofocus
+      />
+
+      <p class="modal-telefono-error" *ngIf="telefonoModalError">
+        {{ telefonoModalError }}
+      </p>
+
+      <button
+        class="btn-submit"
+        (click)="guardarTelefonoModal()"
+        [disabled]="telefonoModalCargando"
+      >
+        <i class="fas" [class.fa-check]="!telefonoModalCargando" [class.fa-spinner]="telefonoModalCargando" [class.fa-spin]="telefonoModalCargando"></i>
+        <span *ngIf="!telefonoModalCargando">Guardar y continuar</span>
+        <span *ngIf="telefonoModalCargando">Guardando...</span>
+      </button>
+    </div>
+  </div>
+  <!-- ==================== FIN MODAL ==================== -->
 </div>
