@@ -1,194 +1,142 @@
-:host {
-  display: block;
+.seguridad-container {
+  padding: 40px 20px;
+  max-width: 800px;
+  margin: 0 auto;
   font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
-.seguridad-flutter-container {
-  --marine-blue: #1F3A5F;
-  --steel-blue: #4A6FA5;
-  --steel-hover: #3D5F91;
-  --soft-blue-bg: #EEF3F8;
-  --white-card: #FFFFFF;
-  --border-light: #D6E2EE;
-  --text-primary: #1F3A5F;
-  --text-soft: #7B8CA8;
-
-  min-height: calc(100dvh - 120px);
-  background: var(--soft-blue-bg);
-  padding: 40px 20px 32px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+.header-seguridad h1 {
+  color: #1F3A5F;
+  font-size: 32px;
+  margin-bottom: 8px;
 }
 
-.hero-card {
-  background: var(--white-card);
-  border-radius: 32px;
-  border: 1px solid var(--border-light);
-  padding: 48px 52px;
-  width: min(650px, 92vw);
-  box-shadow: 0 20px 35px -12px rgba(31, 58, 95, 0.12);
+.header-seguridad p {
+  color: #7B8CA8;
+  font-size: 16px;
+  margin-bottom: 32px;
+}
+
+.card-flutter {
+  background: white;
+  border-radius: 24px;
+  padding: 40px;
   text-align: center;
+  box-shadow: 0 10px 30px rgba(31, 58, 95, 0.08);
+  border: 1px solid #E3EAF3;
 }
 
-.hero-icon {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 24px;
-  background: var(--soft-blue-bg);
+.icon-flutter {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: #EEF3F8;
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--steel-blue);
-  font-size: 32px;
+  color: #4A6FA5;
+  font-size: 36px;
 }
 
-.hero-card h1 {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -1px;
-  margin: 0 0 12px;
+.card-flutter h2 {
+  color: #1F3A5F;
+  margin-bottom: 12px;
 }
 
-.hero-card p {
-  font-size: 16px;
-  color: var(--text-soft);
+.card-flutter p {
+  color: #7B8CA8;
   line-height: 1.6;
-  margin: 0 0 32px;
+  margin-bottom: 24px;
 }
 
-.btn-open-flutter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 16px 36px;
-  background: var(--steel-blue);
+.btn-abrir {
+  background: #4A6FA5;
   color: white;
   border: none;
+  padding: 14px 28px;
   border-radius: 50px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s;
 }
 
-.btn-open-flutter:hover {
-  background: var(--steel-hover);
+.btn-abrir:hover {
+  background: #1F3A5F;
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(74, 111, 165, 0.3);
 }
 
-.btn-open-flutter i {
-  font-size: 18px;
-}
-
-.modal-overlay {
+/* MODAL */
+.modal-flutter-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(31, 58, 95, 0.55);
+  background: rgba(31, 58, 95, 0.7);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
 }
 
-.modal-content {
-  background: var(--white-card);
+.modal-flutter-content {
+  background: white;
+  width: 100%;
+  max-width: 900px;
+  height: 85vh;
   border-radius: 24px;
-  width: min(900px, 95vw);
-  height: min(780px, 92vh);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 60px -12px rgba(31, 58, 95, 0.4);
   overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
 }
 
 .modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 24px;
-  background: var(--marine-blue);
+  background: #1F3A5F;
   color: white;
-  flex-shrink: 0;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.modal-title {
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 17px;
-  font-weight: 600;
+  gap: 10px;
 }
 
-.btn-close {
+.btn-cerrar {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.12);
-  color: white;
-  border: none;
+  border-radius: 50%;
   cursor: pointer;
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
 }
 
-.btn-close:hover {
-  background: rgba(255,255,255,0.25);
+.btn-cerrar:hover {
+  background: rgba(255,255,255,0.4);
 }
 
 .modal-body {
   flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: var(--soft-blue-bg);
+  background: #f5f7fa;
 }
 
-.flutter-frame {
+.flutter-iframe {
   width: 100%;
   height: 100%;
   border: none;
-  display: block;
-}
-
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: var(--soft-blue-bg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  z-index: 2;
-  color: var(--steel-blue);
-}
-
-.loading-overlay i { font-size: 40px; }
-.loading-overlay p {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-soft);
-}
-
-@media (max-width: 768px) {
-  .hero-card { padding: 32px 28px; border-radius: 24px; }
-  .hero-card h1 { font-size: 26px; }
-  .modal-content {
-    width: 100vw;
-    height: 100dvh;
-    border-radius: 0;
-    max-width: 100vw;
-    max-height: 100dvh;
-  }
-  .modal-overlay { padding: 0; }
 }
