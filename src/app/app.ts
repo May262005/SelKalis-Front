@@ -22,14 +22,15 @@ export class App implements OnInit, OnDestroy {
   constructor(private router: Router) {}
 
   private updateLayout(url: string) {
-    // Páginas protegidas (requieren autenticación)
+    // Páginas protegidas (requieren autenticación y muestran el sidebar)
     const protectedPages = [
       '/dashboard', 
       '/tratamientos', 
       '/citas',
       '/estudios',
       '/documentos', 
-      '/perfil'
+      '/perfil',
+      '/seguridad-flutter' // ✅ AGREGADO AQUÍ
     ];
     
     // Páginas públicas (sin autenticación)

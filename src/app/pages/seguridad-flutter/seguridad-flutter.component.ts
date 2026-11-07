@@ -1,4 +1,4 @@
-import { Component, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -10,7 +10,7 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './seguridad-flutter.component.html',
   styleUrls: ['./seguridad-flutter.component.css']
 })
-export class SeguridadFlutterComponent {
+export class SeguridadFlutterComponent implements OnInit {
   mostrarModal = false;
   readonly flutterUrl = '/flutter/index.html';
   userEmail: string = 'Usuario';
@@ -18,7 +18,9 @@ export class SeguridadFlutterComponent {
   constructor(
     private authService: AuthService,
     @Inject(PLATFORM_ID) private platformId: Object
-  ) {
+  ) {}
+
+  ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       const user = this.authService.getCurrentUser();
       if (user) {
