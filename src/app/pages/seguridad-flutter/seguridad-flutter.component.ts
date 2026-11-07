@@ -1,7 +1,7 @@
 import { Component, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser'; // ✅ IMPORTANTE
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -14,17 +14,14 @@ import { AuthService } from '../../services/auth.service';
 export class SeguridadFlutterComponent {
   mostrarModal = false;
   userEmail: string = 'Usuario';
-  
-  // ✅ Aquí guardaremos la URL ya "confiada"
   flutterUrlSafe: SafeResourceUrl;
 
   constructor(
     private authService: AuthService,
-    private sanitizer: DomSanitizer, // ✅ Inyectamos el sanitizador
+    private sanitizer: DomSanitizer,
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef
   ) {
-    // ✅ Marcamos la URL de Flutter como segura al construir el componente
     this.flutterUrlSafe = this.sanitizer.bypassSecurityTrustResourceUrl('/flutter/index.html');
 
     if (isPlatformBrowser(this.platformId)) {
@@ -47,5 +44,34 @@ export class SeguridadFlutterComponent {
   cerrarModulo() {
     this.mostrarModal = false;
     this.cdr.detectChanges();
+  }
+
+  // ✅ ESTA ES LA MAGIA: Se ejecuta cuando Flutter termina de cargar
+  onIframeLoad(event: Event) {
+    const iframe = event.target as HTMLIFrameElement;
+    
+    if (iframe.contentWindow) {
+      const token = this.authService.getToken();
+      const user = this.authService.getCurrentUser();
+
+      if (token && user) {
+        const payload = {
+          type: 'AUTH_TOKEN',
+          token: token,
+          user: {
+            id: user.id,
+            nombre: user.nombre,
+            apellido: user.apellido,
+            email: user.email,
+            telefono: user.telefono || '',
+            rol: user.rol || 'user'
+          }
+        };
+
+        // Enviamos el token al Flutter que está dentro del iframe
+        iframe.contentWindow.postMessage(payload, window.location.origin);
+        console.log('📤 Auth enviada a Flutter:', payload.user.email);
+      }
+    }
   }
 }
