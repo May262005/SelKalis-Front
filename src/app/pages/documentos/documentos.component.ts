@@ -16,6 +16,7 @@ import { SearchService } from '../../services/search.service';
   styleUrls: ['./documentos.component.css']
 })
 export class DocumentosComponent implements OnInit, OnDestroy {
+  Math = Math;
   documentos: Documento[] = [];
   documentosFiltrados: Documento[] = [];
   terminoBusqueda: string = '';

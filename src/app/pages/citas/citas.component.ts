@@ -14,6 +14,7 @@ import { SearchService } from '../../services/search.service';
   styleUrls: ['./citas.component.css']
 })
 export class CitasComponent implements OnInit {
+  Math = Math;
   citasOriginales: Cita[] = [];
   citas: Cita[] = [];
   citasFiltradas: Cita[] = [];
@@ -52,7 +53,6 @@ export class CitasComponent implements OnInit {
 
   itemsPorPagina: number = 10;
   paginaActual: number = 1;
-  Math = Math;
 
   // ✅ Resultados de Elasticsearch (cache separado, nunca pisa this.citas)
   citasResultados: Cita[] = [];

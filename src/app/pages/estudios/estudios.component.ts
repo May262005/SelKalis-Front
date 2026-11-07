@@ -14,6 +14,7 @@ import { SearchService } from '../../services/search.service';
   styleUrls: ['./estudios.component.css']
 })
 export class EstudiosComponent implements OnInit {
+  Math = Math;
   estudiosOriginales: Estudio[] = [];
   estudios: Estudio[] = [];
   estudiosFiltrados: Estudio[] = [];
@@ -37,7 +38,6 @@ export class EstudiosComponent implements OnInit {
 
   itemsPorPagina: number = 10;
   paginaActual: number = 1;
-  Math = Math;
 
   vistaActual: 'lista' | 'mes' | 'semana' | 'dia' = 'lista';
   mesActual: number = new Date().getMonth() + 1;

@@ -14,6 +14,7 @@ import { SearchService } from '../../services/search.service';
   styleUrls: ['./tratamientos.component.css']
 })
 export class TratamientosComponent implements OnInit {
+  Math = Math;
   tratamientos: Tratamiento[] = [];
   tratamientosFiltrados: Tratamiento[] = [];
   terminoBusqueda: string = '';
@@ -38,7 +39,6 @@ export class TratamientosComponent implements OnInit {
   itemsPorPagina: number = 10;
   paginaActual: number = 1;
   paginaMedicamentos: number = 1;
-  Math = Math;
 
   // Subject para búsqueda con debounce
   private searchSubject = new Subject<string>();

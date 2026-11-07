@@ -14,7 +14,7 @@ export class SeguridadFlutterComponent implements OnInit {
   mostrarModal = false;
   readonly flutterUrl = '/flutter/index.html';
   userEmail: string = 'Usuario';
-
+  Math = Math;
   constructor(
     private authService: AuthService,
     @Inject(PLATFORM_ID) private platformId: Object
