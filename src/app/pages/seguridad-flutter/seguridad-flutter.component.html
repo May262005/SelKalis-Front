@@ -1,39 +1,51 @@
-<div class="seguridad-container">
-  <div class="header-seguridad">
-    <h1>Seguridad Móvil</h1>
-    <p>Hola {{ userEmail }}, gestiona el acceso biométrico y la vinculación de tu dispositivo.</p>
+<div class="tratamientos-container" style="min-height: calc(100vh - 100px);">
+
+  <div class="hero" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <h1>Seguridad <span>Móvil</span></h1>
+      <p>Hola {{ userEmail }}, gestiona el acceso biométrico y la vinculación de tu dispositivo.</p>
+    </div>
+    <!-- Botón para volver al dashboard (con el mismo estilo de tu app) -->
+    <a routerLink="/dashboard" class="btn-add" style="text-decoration: none;">
+      <i class="fas fa-arrow-left"></i> Volver al Dashboard
+    </a>
   </div>
 
-  <div class="card-flutter">
-    <div class="icon-flutter">
-      <i class="fas fa-mobile-alt"></i>
+  <div class="tratamiento-card" style="text-align: center; padding: 40px 20px;">
+    <div class="medicamento-card" style="border: none; box-shadow: none; background: transparent;">
+      <div class="confirm-icon" style="margin: 0 auto 20px;">
+        <i class="fas fa-mobile-alt"></i>
+      </div>
+      <h2 style="color: #1F3A5F; margin-bottom: 12px;">Módulo de Seguridad Móvil (Flutter)</h2>
+      <p style="color: #7B8CA8; line-height: 1.6; margin-bottom: 24px; max-width: 500px; margin-left: auto; margin-right: auto;">
+        Este módulo utiliza Flutter integrado en tu PWA para acceder a las funciones 
+        nativas del dispositivo, como la vinculación del número telefónico y la biometría.
+      </p>
+      <button class="btn-add" (click)="abrirModulo()" style="padding: 12px 28px; font-size: 15px;">
+        <i class="fas fa-external-link-alt"></i> Abrir Módulo de Seguridad
+      </button>
     </div>
-    <h2>Módulo de Seguridad Móvil (Flutter)</h2>
-    <p>
-      Este módulo utiliza Flutter integrado en tu PWA para acceder a las funciones 
-      nativas del dispositivo, como la vinculación del número telefónico y la biometría.
-    </p>
-    <button class="btn-abrir" (click)="abrirModulo()">
-      <i class="fas fa-external-link-alt"></i> Abrir Módulo de Seguridad
-    </button>
   </div>
 </div>
 
 <!-- MODAL CON FLUTTER EMBEBIDO -->
-<div class="modal-flutter-overlay" *ngIf="mostrarModal">
-  <div class="modal-flutter-content">
-    <div class="modal-header">
+<div class="modal-overlay" *ngIf="mostrarModal" (click)="cerrarModulo()">
+  <div class="modal-container modal-large" (click)="$event.stopPropagation()" style="max-width: 900px; height: 85vh; display: flex; flex-direction: column; padding: 0;">
+    
+    <div class="modal-header" style="flex-shrink: 0;">
       <h3><i class="fas fa-shield-alt"></i> Módulo Flutter - Seguridad</h3>
-      <button class="btn-cerrar" (click)="cerrarModulo()">
+      <button class="modal-close" (click)="cerrarModulo()">
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <div class="modal-body">
+    
+    <div style="flex: 1; position: relative; overflow: hidden; background: #f5f7fa;">
       <iframe 
         [src]="flutterUrl" 
-        class="flutter-iframe"
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
         allow="camera; microphone; publickey-credentials-get; publickey-credentials-create">
       </iframe>
     </div>
+
   </div>
 </div>

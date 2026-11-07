@@ -3,6 +3,25 @@
   max-width: 800px;
   margin: 0 auto;
   font-family: 'Segoe UI', system-ui, sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.btn-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #4A6FA5;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 20px;
+  transition: all 0.2s;
+}
+
+.btn-volver:hover {
+  color: #1F3A5F;
+  transform: translateX(-4px);
 }
 
 .header-seguridad h1 {
@@ -87,7 +106,7 @@
   background: white;
   width: 100%;
   max-width: 900px;
-  height: 85vh;
+  height: 85vh; /* Altura controlada */
   border-radius: 24px;
   display: flex;
   flex-direction: column;
@@ -102,6 +121,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -133,9 +153,14 @@
 .modal-body {
   flex: 1;
   background: #f5f7fa;
+  position: relative;
+  overflow: hidden;
 }
 
 .flutter-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   border: none;

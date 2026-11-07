@@ -12,17 +12,19 @@ import { AuthService } from '../../services/auth.service';
 })
 export class SeguridadFlutterComponent {
   mostrarModal = false;
-  
-  // Apunta al index.html de Flutter que copiamos en public/flutter
   readonly flutterUrl = '/flutter/index.html';
-  readonly userEmail: string;
+  userEmail: string = 'Usuario';
 
   constructor(
     private authService: AuthService,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
-    const user = this.authService.getCurrentUser();
-    this.userEmail = user ? user.email : 'Usuario';
+    if (isPlatformBrowser(this.platformId)) {
+      const user = this.authService.getCurrentUser();
+      if (user) {
+        this.userEmail = user.email;
+      }
+    }
   }
 
   abrirModulo() {
