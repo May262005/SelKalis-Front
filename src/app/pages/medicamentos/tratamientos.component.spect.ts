@@ -4,13 +4,13 @@ import { TratamientosService } from '../../services/tratamientos.service';
 import { SearchService } from '../../services/search.service';
 import { ChangeDetectorRef, PLATFORM_ID } from '@angular/core';
 import { of, throwError } from 'rxjs';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
   let component: TratamientosComponent;
   let fixture: ComponentFixture<TratamientosComponent>;
-  let tratamientosService: TratamientosService;
 
-  const getTratamientosSpy = jasmine.createSpy('getTratamientos').and.returnValue(of({ success: true, data: [] }));
+  const getTratamientosSpy = vi.fn().mockReturnValue(of({ success: true, data: [] }));
 
   const mockTratamientosService = {
     getTratamientos: getTratamientosSpy
@@ -21,6 +21,7 @@ describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
   };
 
   beforeEach(async () => {
+    getTratamientosSpy.mockClear();
     await TestBed.configureTestingModule({
       imports: [TratamientosComponent],
       providers: [
@@ -33,7 +34,6 @@ describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
 
     fixture = TestBed.createComponent(TratamientosComponent);
     component = fixture.componentInstance;
-    tratamientosService = TestBed.inject(TratamientosService);
   });
 
   // ✅ AUT-01: Cálculo de horarios
@@ -53,7 +53,7 @@ describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
   it('debe detectar si una fecha es pasada correctamente', () => {
     const fechaPasada = '2020-01-01';
     const esPasada = (component as any)['esFechaPasada'](fechaPasada);
-    expect(esPasada).toBeTrue();
+    expect(esPasada).toBe(true);
   });
 
   // ✅ AUT-04: Paginación
@@ -80,12 +80,12 @@ describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
 
   // ✅ AUT-07 (Integración 2): Manejo de error del servidor
   it('debe manejar un error del servidor al cargar tratamientos', () => {
-    getTratamientosSpy.and.returnValue(throwError(() => new Error('Error de red')));
-    const toastSpy = spyOn(component as any, 'showToast');
+    getTratamientosSpy.mockReturnValue(throwError(() => new Error('Error de red')));
+    const toastSpy = vi.spyOn(component as any, 'showToast');
     
     component.cargarTratamientos();
     
-    expect(component.isLoading).toBeFalse();
+    expect(component.isLoading).toBe(false);
     expect(component.errorMessage).toContain('Error al cargar los tratamientos');
     expect(toastSpy).toHaveBeenCalledWith('Error al cargar los tratamientos', 'error');
   });
