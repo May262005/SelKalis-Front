@@ -1,4 +1,5 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed, getTestBed } from '@angular/core/testing';
+import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from '@angular/platform-browser-dynamic/testing';
 import { TratamientosComponent } from './tratamientos.component';
 import { TratamientosService } from '../../services/tratamientos.service';
 import { SearchService } from '../../services/search.service';
@@ -6,11 +7,22 @@ import { ChangeDetectorRef, PLATFORM_ID } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// 🛠️ Inicializar el entorno de pruebas de Angular para Vitest
+try {
+  getTestBed().initTestEnvironment(
+    BrowserDynamicTestingModule,
+    platformBrowserDynamicTesting()
+  );
+} catch {
+  // Evita errores si ya fue inicializado previamente
+}
+
 describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
   let component: TratamientosComponent;
   let fixture: ComponentFixture<TratamientosComponent>;
+  let tratamientosService: TratamientosService;
 
-  const getTratamientosSpy = vi.fn().mockReturnValue(of({ success: true, data: [] }));
+  const getTratamientosSpy = vi.fn(() => of({ success: true, data: [] }));
 
   const mockTratamientosService = {
     getTratamientos: getTratamientosSpy
@@ -21,7 +33,9 @@ describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
   };
 
   beforeEach(async () => {
-    getTratamientosSpy.mockClear();
+    getTratamientosSpy.mockReset();
+    getTratamientosSpy.mockReturnValue(of({ success: true, data: [] }));
+
     await TestBed.configureTestingModule({
       imports: [TratamientosComponent],
       providers: [
@@ -72,16 +86,17 @@ describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
     expect(component.formatearHora12('')).toBe('');
   });
 
-  // ✅ AUT-06 (Integración 1): Llamada al servicio al iniciar
+  // ✅ AUT-06: Llamada al servicio al iniciar
   it('debe llamar al servicio getTratamientos al inicializar', () => {
     component.ngOnInit();
     expect(getTratamientosSpy).toHaveBeenCalled();
   });
 
-  // ✅ AUT-07 (Integración 2): Manejo de error del servidor
+  // ✅ AUT-07: Manejo de error del servidor
   it('debe manejar un error del servidor al cargar tratamientos', () => {
     getTratamientosSpy.mockReturnValue(throwError(() => new Error('Error de red')));
-    const toastSpy = vi.spyOn(component as any, 'showToast');
+    const toastSpy = vi.fn();
+    (component as any).showToast = toastSpy;
     
     component.cargarTratamientos();
     
