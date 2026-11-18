@@ -23,8 +23,5 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Instalar proveedor de navegador para Vitest
-        run: npm install --save-dev @vitest/browser-playwright playwright
-
       - name: Ejecutar pruebas unitarias
-        run: npm test -- --watch=false --browsers=chromium --browser.enabled=true
+        run: npx vitest run
