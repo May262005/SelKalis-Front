@@ -23,5 +23,5 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      - name: Ejecutar pruebas unitarias
-        run: npx vitest run
+      - name: Ejecutar pruebas unitarias e integración
+        run: npm test -- --watch=false

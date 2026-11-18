@@ -1,21 +1,10 @@
-import { TestBed, getTestBed } from '@angular/core/testing';
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from '@angular/platform-browser-dynamic/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TratamientosComponent } from './tratamientos.component';
 import { TratamientosService } from '../../services/tratamientos.service';
 import { SearchService } from '../../services/search.service';
 import { ChangeDetectorRef, PLATFORM_ID } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-// 🛠️ Inicializar el entorno de pruebas de Angular para Vitest
-try {
-  getTestBed().initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting()
-  );
-} catch {
-  // Evita errores si ya fue inicializado previamente
-}
 
 describe('TratamientosComponent - Pruebas Unitarias y de Integración', () => {
   let component: TratamientosComponent;
