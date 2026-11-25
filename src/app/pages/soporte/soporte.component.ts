@@ -62,7 +62,7 @@ export class SoporteComponent implements OnInit {
     }
   }
 
-  cambiarPestaña(tab: SupportTab): void {
+  cambiarPestana(tab: SupportTab): void {
     this.pestana.set(tab);
     this.error.set('');
     this.aviso.set('');

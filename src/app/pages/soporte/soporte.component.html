@@ -13,11 +13,11 @@
 
   <div class="support-tabs" role="tablist" aria-label="Opciones de soporte">
     <button type="button" role="tab" [attr.aria-selected]="pestana() === 'chat'"
-      [class.active]="pestana() === 'chat'" (click)="cambiarPestaña('chat')">
+      [class.active]="pestana() === 'chat'" (click)="cambiarPestana('chat')">
       <i class="fas fa-comments" aria-hidden="true"></i> ChatBox
     </button>
     <button type="button" role="tab" [attr.aria-selected]="pestana() === 'tickets'"
-      [class.active]="pestana() === 'tickets'" (click)="cambiarPestaña('tickets')">
+      [class.active]="pestana() === 'tickets'" (click)="cambiarPestana('tickets')">
       <i class="fas fa-ticket" aria-hidden="true"></i> Reportar incidencia
     </button>
   </div>
