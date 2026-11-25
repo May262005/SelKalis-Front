@@ -33,6 +33,7 @@ export class PerfilComponent implements OnInit {
     push_enabled: false,
     medicamentos_enabled: true,
     citas_enabled: true,
+    estudios_enabled: true,
     soporte_enabled: true,
     timezone: 'America/Mexico_City'
   };
@@ -388,7 +389,7 @@ export class PerfilComponent implements OnInit {
     }
   }
 
-  cambiarCategoriaNotificacion(categoria: 'medicamentos_enabled' | 'citas_enabled' | 'soporte_enabled'): void {
+  cambiarCategoriaNotificacion(categoria: 'medicamentos_enabled' | 'citas_enabled' | 'estudios_enabled' | 'soporte_enabled'): void {
     const updated = {
       ...this.notificationPreferences,
       [categoria]: !this.notificationPreferences[categoria]
@@ -397,6 +398,7 @@ export class PerfilComponent implements OnInit {
     this.notificationsService.updatePreferences({
       medicamentos_enabled: updated.medicamentos_enabled,
       citas_enabled: updated.citas_enabled,
+      estudios_enabled: updated.estudios_enabled,
       soporte_enabled: updated.soporte_enabled,
       timezone: updated.timezone
     }).subscribe({

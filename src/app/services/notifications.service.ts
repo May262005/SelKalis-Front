@@ -5,12 +5,13 @@ import { SwPush } from '@angular/service-worker';
 import { firstValueFrom, Observable, take } from 'rxjs';
 import { AuthService } from './auth.service';
 
-export type NotificationType = 'medicamento' | 'cita' | 'soporte';
+export type NotificationType = 'medicamento' | 'cita' | 'estudio' | 'soporte';
 
 export interface NotificationPreferences {
   push_enabled: boolean;
   medicamentos_enabled: boolean;
   citas_enabled: boolean;
+  estudios_enabled: boolean;
   soporte_enabled: boolean;
   timezone: string;
 }
