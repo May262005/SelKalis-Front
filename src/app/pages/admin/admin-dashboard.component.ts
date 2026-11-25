@@ -1,8 +1,13 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { AdminService, Usuario } from '../../services/admin.service';
+import { AuthService } from '../../services/auth.service';
 import { SoporteService, SupportTicket, TicketStatus } from '../../services/soporte.service';
+import { WebAuthnService } from '../../services/webauthn.service';
+import { DispositivoService } from '../../services/dispositivo.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -21,14 +26,58 @@ export class AdminDashboardComponent implements OnInit {
   errorUsuarios = '';
   errorTickets = '';
 
+  biometriaDisponible = false;
+  biometriaRegistrada = false;
+  cargandoBiometria = false;
+  biometriaAviso = '';
+  biometriaError = '';
+
   constructor(
     private adminService: AdminService,
     private soporteService: SoporteService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) private platformId: object,
+    private authService: AuthService,
+    private webAuthn: WebAuthnService,
+    private dispositivoService: DispositivoService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.cargarDatos();
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    this.biometriaDisponible = await this.webAuthn.disponible();
+    this.biometriaRegistrada = this.webAuthn.estaRegistrada();
+    this.cdr.detectChanges();
+  }
+
+  async activarBiometriaDesdeDashboard(): Promise<void> {
+    const token = this.authService.getToken();
+    if (!token) {
+      this.biometriaError = 'No se encontró una sesión activa. Vuelve a iniciar sesión e inténtalo de nuevo.';
+      return;
+    }
+
+    this.cargandoBiometria = true;
+    this.biometriaAviso = '';
+    this.biometriaError = '';
+    this.cdr.detectChanges();
+
+    try {
+      const opciones = await firstValueFrom(this.webAuthn.opcionesRegistro(token));
+      const credential = await this.webAuthn.crearCredencial(opciones.options);
+      const deviceLabel = this.dispositivoService.detectarModelo();
+
+      await firstValueFrom(this.webAuthn.verificarRegistro(token, credential, deviceLabel));
+      this.webAuthn.marcarRegistrada();
+      this.biometriaRegistrada = true;
+      this.biometriaAviso = 'Biometría activada. La próxima vez podrás entrar sin contraseña.';
+    } catch (error: unknown) {
+      this.biometriaError = this.errorBiometria(error);
+    } finally {
+      this.cargandoBiometria = false;
+      this.cdr.detectChanges();
+    }
   }
 
   get usuariosActivos(): number {
@@ -85,18 +134,18 @@ export class AdminDashboardComponent implements OnInit {
     this.cargandoTickets = true;
     this.errorUsuarios = '';
     this.errorTickets = '';
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
 
     this.adminService.getUsuarios().subscribe({
       next: usuarios => {
         this.usuarios = usuarios;
         this.cargandoUsuarios = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.errorUsuarios = error?.message || 'No se pudieron cargar los usuarios.';
         this.cargandoUsuarios = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
 
@@ -104,12 +153,12 @@ export class AdminDashboardComponent implements OnInit {
       next: tickets => {
         this.tickets = tickets;
         this.cargandoTickets = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.errorTickets = error?.error?.error || error?.message || 'No se pudieron cargar las incidencias.';
         this.cargandoTickets = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -143,5 +192,14 @@ export class AdminDashboardComponent implements OnInit {
       month: 'short',
       year: 'numeric'
     }).format(new Date(fecha));
+  }
+
+  private errorBiometria(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      return error.error?.error || error.message || 'Error al activar biometría.';
+    }
+    return error instanceof Error && error.message
+      ? error.message
+      : 'Error al activar biometría.';
   }
 }

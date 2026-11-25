@@ -84,25 +84,25 @@ export class AdminComponent implements OnInit, OnDestroy {
   cargarUsuarios(): void {
     this.loading = true;
     this.error = null;
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
 
     this.adminService.getUsuarios().subscribe({
       next: (data: Usuario[]) => {
         if (!Array.isArray(data)) {
           this.error = 'El servicio devolvió una lista de usuarios no válida';
           this.loading = false;
-          this.cdr.markForCheck();
+          this.cdr.detectChanges();
           return;
         }
         this.usuarios = data;
         this.loading = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: (err: { message?: string; }) => {
         this.error = err.message || 'Error al cargar usuarios';
         this.loading = false;
         this.showToast(this.error, 'error');
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
