@@ -82,14 +82,6 @@ export class NotificationsService {
     );
   }
 
-  sendTestPush(): Observable<ApiResponse<{ sent: number }>> {
-    return this.http.post<ApiResponse<{ sent: number }>>(
-      `${this.apiUrl}/notifications/test-push`,
-      {},
-      { headers: this.auth.getAuthHeaders() }
-    );
-  }
-
   async enablePush(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) {
       throw new Error('Las notificaciones solo se pueden configurar desde el navegador.');

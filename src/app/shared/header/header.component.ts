@@ -77,6 +77,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (this.notificationsOpen) this.cargarNotificaciones();
   }
 
+  @HostListener('document:click', ['$event'])
+  cerrarNotificacionesAlHacerClickFuera(event: MouseEvent): void {
+    if (!this.notificationsOpen) return;
+    const target = event.target;
+    if (target instanceof Element && !target.closest('.notifications-control')) {
+      this.notificationsOpen = false;
+    }
+  }
+
   cargarNotificaciones(): void {
     this.notificationsService.getNotifications().subscribe({
       next: response => this.notifications = response.data || [],
