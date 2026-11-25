@@ -113,6 +113,98 @@
   background: #f8fafc;
 }
 
+.chat-guide {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid #d6e2ee;
+  border-radius: 14px;
+  background: #fff;
+  color: #1f3a5f;
+}
+
+.chat-guide > strong {
+  font-size: 15px;
+}
+
+.chat-guide p,
+.chat-guide small {
+  margin: 0;
+  color: #7b8ca8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.guide-label {
+  color: #4f6b8a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.guide-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.guide-suggestions button {
+  padding: 7px 10px;
+  border: 1px solid #d6e2ee;
+  border-radius: 40px;
+  background: #fff;
+  color: #4a6fa5;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.guide-suggestions button:hover {
+  border-color: #4a6fa5;
+  background: #eef3f8;
+}
+
+.chat-day {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid #d6e2ee;
+  border-radius: 40px;
+  background: #eef3f8;
+  color: #4f6b8a;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.chat-day-heading::-webkit-details-marker {
+  display: none;
+}
+
+.chat-day-heading small {
+  color: #7b8ca8;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.chat-day[open] .chat-day-heading {
+  margin-bottom: 2px;
+}
+
+.chat-day-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .chat-message {
   width: fit-content;
   max-width: 84%;
@@ -155,9 +247,20 @@
 .chat-error {
   margin: 0;
   padding: 8px 14px;
-  background: #fff0f0;
-  color: #9e2424;
+  border-top: 1px solid #b8d4f0;
+  background: #e8f0fe;
+  color: #1f3a5f;
   font-size: 12px;
+}
+
+.chat-follow-up {
+  margin: 0;
+  padding: 9px 14px;
+  border-top: 1px solid #d6e2ee;
+  background: #eef3f8;
+  color: #4f6b8a;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .chat-composer {
@@ -183,7 +286,8 @@
 .chat-composer textarea:focus,
 .chat-launcher:focus-visible,
 .icon-button:focus-visible,
-.send-button:focus-visible {
+.send-button:focus-visible,
+.guide-suggestions button:focus-visible {
   outline: 3px solid #9dbbe0;
   outline-offset: 2px;
 }

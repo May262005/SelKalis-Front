@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">SEL KALIS · ATENCIÓN</p>
       <h1>Mesa de <span>ayuda</span></h1>
-      <p>Registra una incidencia y consulta el seguimiento de tus reportes.</p>
+      <p>{{ esAdmin ? 'Atiende consultas pendientes y da seguimiento a las incidencias.' : 'Registra una incidencia y consulta el seguimiento de tus reportes.' }}</p>
     </div>
     <button class="button button-secondary" type="button" (click)="recargar()" [disabled]="cargando()">
       <i class="fas fa-rotate-right" aria-hidden="true"></i>
@@ -15,7 +15,7 @@
     <div class="support-tabs" role="tablist" aria-label="Opciones de soporte">
       <button type="button" role="tab" [attr.aria-selected]="pestana() === 'chat'"
         [class.active]="pestana() === 'chat'" (click)="cambiarPestana('chat')">
-        <i class="fas fa-comments" aria-hidden="true"></i> Conversaciones
+        <i class="fas fa-comments" aria-hidden="true"></i> Chats pendientes
       </button>
       <button type="button" role="tab" [attr.aria-selected]="pestana() === 'tickets'"
         [class.active]="pestana() === 'tickets'" (click)="cambiarPestana('tickets')">
@@ -35,7 +35,7 @@
     <section class="chat-layout" aria-label="Chat de soporte">
       @if (esAdmin) {
         <aside class="conversation-list">
-          <h2>Conversaciones</h2>
+          <h2>Chats pendientes de respuesta</h2>
           @for (conversation of conversaciones(); track conversation.id) {
             <button type="button" class="conversation-option"
               [class.selected]="conversacionSeleccionada()?.id === conversation.id"
@@ -44,7 +44,7 @@
               <span class="conversation-preview">{{ conversation.ultimo_mensaje || 'Sin mensajes todavía' }}</span>
             </button>
           } @empty {
-            <p class="empty-state">Todavía no hay conversaciones.</p>
+            <p class="empty-state">No hay consultas que requieran respuesta por ahora.</p>
           }
         </aside>
       }
@@ -59,14 +59,24 @@
         </div>
 
         <div class="message-list" role="log" aria-label="Mensajes del chat" aria-live="polite">
-          @for (message of mensajes(); track message.id) {
-            <article class="message" [class.message-own]="esMensajePropio(message.sender_id)">
-              <span class="message-author">{{ esMensajePropio(message.sender_id) ? 'Tú' : (message.sender_role === 'admin' ? (message.mensaje.startsWith('Respuesta automática: ') ? 'Asistente automático' : 'Soporte') : 'Usuario') }}</span>
-              <p>{{ message.mensaje.replace('Respuesta automática: ', '') }}</p>
-              <time [attr.datetime]="message.created_at">{{ message.created_at | date:'short' }}</time>
-            </article>
+          @for (group of gruposMensajes(); track group.key) {
+            <details class="message-day" [open]="group.expanded">
+              <summary class="message-day-heading">
+                <span>{{ group.label }}</span>
+                <small>{{ group.messages.length }} {{ group.messages.length === 1 ? 'mensaje' : 'mensajes' }}</small>
+              </summary>
+              <div class="message-day-items">
+                @for (message of group.messages; track message.id) {
+                  <article class="message" [class.message-own]="esMensajePropio(message.sender_id)">
+                    <span class="message-author">{{ esMensajePropio(message.sender_id) ? 'Tú' : (message.sender_role === 'admin' ? 'Soporte' : 'Usuario') }}</span>
+                    <p>{{ message.mensaje }}</p>
+                    <time [attr.datetime]="message.created_at">{{ message.created_at | date:'shortTime' }}</time>
+                  </article>
+                }
+              </div>
+            </details>
           } @empty {
-            <p class="empty-state">Aún no hay mensajes. Escribe para iniciar la conversación.</p>
+            <p class="empty-state">Selecciona un chat pendiente para ver los mensajes.</p>
           }
           @if (cargando()) { <p class="loading-note">Cargando mensajes…</p> }
         </div>

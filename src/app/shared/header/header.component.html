@@ -38,10 +38,6 @@
           <i class="fas fa-user"></i>
           <span>Mi Perfil</span>
         </a>
-        <a *ngIf="esAdmin" routerLink="/admin" class="dropdown-item" (click)="cerrarMenu()">
-          <i class="fas fa-user-shield"></i>
-          <span>Panel de Administración</span>
-        </a>
         <div class="dropdown-divider"></div>
         <button class="dropdown-item logout" (click)="cerrarSesion()">
           <i class="fas fa-sign-out-alt"></i>

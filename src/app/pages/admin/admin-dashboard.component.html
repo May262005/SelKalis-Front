@@ -1,29 +1,164 @@
 <main class="admin-dashboard">
   <header class="admin-hero">
-    <p class="eyebrow">SEL KALIS · ADMINISTRACIÓN</p>
-    <h1>Panel de <span>administración</span></h1>
-    <p>Gestiona las cuentas y atiende las solicitudes de soporte desde un espacio exclusivo para administradores.</p>
+    <div class="hero-copy">
+      <p class="eyebrow">SEL KALIS · ADMINISTRACIÓN</p>
+      <h1>Panel de <span>administración</span></h1>
+      <p>Un vistazo a la actividad de usuarios y al soporte de la plataforma.</p>
+    </div>
+    <button class="refresh-button" type="button" (click)="cargarDatos()" [disabled]="estaCargando">
+      <i class="fas fa-sync-alt" [class.fa-spin]="estaCargando" aria-hidden="true"></i>
+      {{ estaCargando ? 'Actualizando…' : 'Actualizar datos' }}
+    </button>
   </header>
 
-  <section class="admin-shortcuts" aria-label="Accesos administrativos">
-    <a routerLink="/admin/usuarios" class="admin-shortcut">
-      <span class="shortcut-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
-      <span class="shortcut-content">
-        <span class="shortcut-kicker">GESTIÓN</span>
-        <strong>Usuarios</strong>
-        <span>Consulta, busca y administra las cuentas registradas.</span>
+  <section class="stats-grid" aria-label="Estadísticas de administración">
+    <article class="stat-card">
+      <div class="stat-heading">
+        <span class="stat-icon users-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
+        <span class="stat-trend">CUENTAS</span>
+      </div>
+      <strong class="stat-value">
+        <ng-container *ngIf="cargandoUsuarios; else usuariosValue">···</ng-container>
+        <ng-template #usuariosValue>{{ errorUsuarios ? '—' : usuarios.length }}</ng-template>
+      </strong>
+      <span class="stat-label">Usuarios registrados</span>
+      <span class="stat-note" *ngIf="!errorUsuarios && !cargandoUsuarios">
+        {{ usuariosActivos }} cuentas activas
       </span>
-      <i class="fas fa-arrow-right shortcut-arrow" aria-hidden="true"></i>
-    </a>
+      <span class="stat-error" *ngIf="errorUsuarios">{{ errorUsuarios }}</span>
+    </article>
 
-    <a routerLink="/soporte" class="admin-shortcut">
-      <span class="shortcut-icon"><i class="fas fa-headset" aria-hidden="true"></i></span>
-      <span class="shortcut-content">
-        <span class="shortcut-kicker">ATENCIÓN</span>
-        <strong>Mesa de ayuda</strong>
-        <span>Revisa incidencias, estados y conversaciones de soporte.</span>
+    <article class="stat-card">
+      <div class="stat-heading">
+        <span class="stat-icon active-icon"><i class="fas fa-user-check" aria-hidden="true"></i></span>
+        <span class="stat-trend">ACTIVAS</span>
+      </div>
+      <strong class="stat-value">
+        <ng-container *ngIf="cargandoUsuarios; else activeUsersValue">···</ng-container>
+        <ng-template #activeUsersValue>{{ errorUsuarios ? '—' : usuariosActivos }}</ng-template>
+      </strong>
+      <span class="stat-label">Cuentas activas</span>
+      <span class="stat-note">Usuarios habilitados en la plataforma</span>
+      <span class="stat-error" *ngIf="errorUsuarios">{{ errorUsuarios }}</span>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-heading">
+        <span class="stat-icon tickets-icon"><i class="fas fa-life-ring" aria-hidden="true"></i></span>
+        <span class="stat-trend">ATENCIÓN</span>
+      </div>
+      <strong class="stat-value">
+        <ng-container *ngIf="cargandoTickets; else pendingTicketsValue">···</ng-container>
+        <ng-template #pendingTicketsValue>{{ errorTickets ? '—' : incidenciasPendientes }}</ng-template>
+      </strong>
+      <span class="stat-label">Incidencias por atender</span>
+      <span class="stat-note" *ngIf="!errorTickets && !cargandoTickets">
+        {{ incidenciasEnProceso }} en proceso
       </span>
-      <i class="fas fa-arrow-right shortcut-arrow" aria-hidden="true"></i>
-    </a>
+      <span class="stat-error" *ngIf="errorTickets">{{ errorTickets }}</span>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-heading">
+        <span class="stat-icon chat-icon"><i class="fas fa-comments" aria-hidden="true"></i></span>
+        <span class="stat-trend">PENDIENTES</span>
+      </div>
+      <strong class="stat-value">
+        <ng-container *ngIf="cargandoConversaciones; else conversationsValue">···</ng-container>
+        <ng-template #conversationsValue>{{ errorConversaciones ? '—' : conversaciones.length }}</ng-template>
+      </strong>
+      <span class="stat-label">Chats por responder</span>
+      <span class="stat-note">Consultas que necesitan atención del equipo</span>
+      <span class="stat-error" *ngIf="errorConversaciones">{{ errorConversaciones }}</span>
+    </article>
+  </section>
+
+  <section class="dashboard-grid">
+    <article class="panel recent-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">SEGUIMIENTO</p>
+          <h2>Incidencias recientes</h2>
+        </div>
+        <a routerLink="/soporte" class="panel-link">Ver mesa de ayuda <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
+      </div>
+
+      <div class="panel-state" *ngIf="cargandoTickets">
+        <i class="fas fa-circle-notch fa-spin" aria-hidden="true"></i>
+        <span>Cargando incidencias…</span>
+      </div>
+      <div class="panel-state error-state" *ngIf="!cargandoTickets && errorTickets" role="alert">
+        <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+        <span>{{ errorTickets }}</span>
+      </div>
+      <div class="panel-state" *ngIf="!cargandoTickets && !errorTickets && tickets.length === 0">
+        <i class="fas fa-inbox" aria-hidden="true"></i>
+        <span>Aún no hay incidencias registradas.</span>
+      </div>
+
+      <div class="ticket-list" *ngIf="!cargandoTickets && !errorTickets && tickets.length > 0">
+        <div class="ticket-row" *ngFor="let ticket of incidenciasRecientes">
+          <span class="ticket-mark" aria-hidden="true"><i class="fas fa-file-alt"></i></span>
+          <div class="ticket-info">
+            <strong>{{ ticket.asunto }}</strong>
+            <span>{{ nombreCategoria(ticket.categoria) }} <span class="meta-dot">·</span> {{ formatoFecha(ticket.created_at) }}</span>
+          </div>
+          <span class="status-badge" [ngClass]="'status-' + ticket.estado">{{ nombreEstado(ticket.estado) }}</span>
+        </div>
+      </div>
+    </article>
+
+    <aside class="right-column">
+      <article class="panel status-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">MESA DE AYUDA</p>
+            <h2>Estado de incidencias</h2>
+          </div>
+          <i class="fas fa-chart-pie panel-heading-icon" aria-hidden="true"></i>
+        </div>
+
+        <div class="panel-state compact-state" *ngIf="cargandoTickets">
+          Cargando resumen…
+        </div>
+        <div class="panel-state compact-state error-state" *ngIf="!cargandoTickets && errorTickets" role="alert">
+          {{ errorTickets }}
+        </div>
+        <ng-container *ngIf="!cargandoTickets && !errorTickets">
+          <div class="status-summary" *ngFor="let estado of resumenEstados">
+            <div class="status-summary-heading">
+              <span>{{ estado.etiqueta }}</span>
+              <strong>{{ estado.total }}</strong>
+            </div>
+            <div class="progress-track" role="progressbar"
+                 [attr.aria-label]="estado.etiqueta"
+                 [attr.aria-valuenow]="estado.porcentaje"
+                 aria-valuemin="0" aria-valuemax="100">
+              <span [ngClass]="'progress-' + estado.estado" [style.width.%]="estado.porcentaje"></span>
+            </div>
+          </div>
+          <p class="status-footnote">{{ tickets.length }} incidencias en total</p>
+        </ng-container>
+      </article>
+
+      <article class="panel shortcuts-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">ACCESOS DIRECTOS</p>
+            <h2>Administrar</h2>
+          </div>
+        </div>
+        <a routerLink="/admin/usuarios" class="quick-link">
+          <span class="quick-link-icon users-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
+          <span><strong>Usuarios</strong><small>Buscar y administrar cuentas</small></span>
+          <i class="fas fa-chevron-right quick-arrow" aria-hidden="true"></i>
+        </a>
+        <a routerLink="/soporte" class="quick-link">
+          <span class="quick-link-icon tickets-icon"><i class="fas fa-headset" aria-hidden="true"></i></span>
+          <span><strong>Mesa de ayuda</strong><small>Atender reportes y chats</small></span>
+          <i class="fas fa-chevron-right quick-arrow" aria-hidden="true"></i>
+        </a>
+      </article>
+    </aside>
   </section>
 </main>

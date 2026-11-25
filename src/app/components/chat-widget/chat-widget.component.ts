@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { ChatMessage, SoporteService } from '../../services/soporte.service';
+import { groupChatMessagesByDay } from '../../shared/chat-message-groups';
 
 @Component({
   selector: 'app-chat-widget',
@@ -17,23 +19,58 @@ export class ChatWidgetComponent {
   private readonly soporte = inject(SoporteService);
   private readonly auth = inject(AuthService);
 
-  readonly esAdmin = this.auth.getCurrentUser()?.rol === 'admin';
-  readonly usuarioId = this.auth.getCurrentUser()?.id ?? '';
+  private readonly usuarioActual = toSignal(this.auth.currentUser$, {
+    initialValue: this.auth.getCurrentUser()
+  });
+  readonly mostrarWidget = computed(() =>
+    !!this.usuarioActual() && this.usuarioActual()?.rol !== 'admin'
+  );
+  readonly usuarioId = computed(() => this.usuarioActual()?.id ?? '');
   readonly abierto = signal(false);
   readonly cargando = signal(false);
   readonly enviando = signal(false);
   readonly error = signal('');
+  readonly aviso = signal('');
+  readonly mostrarGuia = signal(false);
   readonly mensajes = signal<ChatMessage[]>([]);
+  readonly gruposPorDia = computed(() => groupChatMessagesByDay(this.mensajes()));
 
   readonly form = this.fb.nonNullable.group({
     mensaje: ['', [Validators.required, Validators.maxLength(1000)]]
   });
 
   private mensajesCargados = false;
+  private usuarioConversacionKey = this.identidadUsuario(this.auth.getCurrentUser());
+
+  constructor() {
+    this.auth.currentUser$.pipe(takeUntilDestroyed()).subscribe(user => {
+      const identity = this.identidadUsuario(user);
+      if (identity === this.usuarioConversacionKey) return;
+
+      this.usuarioConversacionKey = identity;
+      this.abierto.set(false);
+      this.cargando.set(false);
+      this.enviando.set(false);
+      this.mensajes.set([]);
+      this.mensajesCargados = false;
+      this.form.reset();
+      this.aviso.set('');
+      this.error.set('');
+    });
+  }
 
   toggle(): void {
     this.abierto.update(open => !open);
     if (this.abierto() && !this.mensajesCargados) this.cargarMensajes();
+  }
+
+  toggleGuia(): void {
+    this.mostrarGuia.update(visible => !visible);
+  }
+
+  usarPregunta(pregunta: string): void {
+    this.form.controls.mensaje.setValue(pregunta);
+    this.form.controls.mensaje.markAsTouched();
   }
 
   recargar(): void {
@@ -57,29 +94,40 @@ export class ChatWidgetComponent {
       return;
     }
 
+    const requestUserIdentity = this.identidadUsuario(this.usuarioActual());
     this.enviando.set(true);
     this.error.set('');
     this.soporte.sendChatMessage(mensaje).subscribe({
       next: newMessages => {
-        this.mensajes.update(messages => [...messages, ...newMessages]);
+        if (this.identidadUsuario(this.usuarioActual()) !== requestUserIdentity) return;
+        const messages = [...this.mensajes(), ...newMessages];
+        this.mensajes.set(messages);
+        this.actualizarAvisoSeguimiento(messages);
         this.form.reset();
         this.enviando.set(false);
         this.mensajesCargados = true;
       },
-      error: error => this.manejarError(error)
+      error: error => {
+        if (this.identidadUsuario(this.usuarioActual()) === requestUserIdentity) this.manejarError(error);
+      }
     });
   }
 
   private cargarMensajes(): void {
+    const requestUserIdentity = this.identidadUsuario(this.usuarioActual());
     this.cargando.set(true);
     this.error.set('');
     this.soporte.getChatMessages().subscribe({
       next: messages => {
+        if (this.identidadUsuario(this.usuarioActual()) !== requestUserIdentity) return;
         this.mensajes.set(messages);
+        this.actualizarAvisoSeguimiento(messages);
         this.mensajesCargados = true;
         this.cargando.set(false);
       },
-      error: error => this.manejarError(error)
+      error: error => {
+        if (this.identidadUsuario(this.usuarioActual()) === requestUserIdentity) this.manejarError(error);
+      }
     });
   }
 
@@ -93,5 +141,18 @@ export class ChatWidgetComponent {
     );
     this.cargando.set(false);
     this.enviando.set(false);
+  }
+
+  private actualizarAvisoSeguimiento(messages: ChatMessage[]): void {
+    const ultimoMensaje = messages[messages.length - 1];
+    this.aviso.set(
+      ultimoMensaje?.sender_role === 'user'
+        ? 'Tu consulta quedó en espera de respuesta del equipo de soporte.'
+        : ''
+    );
+  }
+
+  private identidadUsuario(user: { id: string; rol?: string } | null): string {
+    return user ? `${user.id}:${user.rol ?? 'user'}` : '';
   }
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { map, Observable } from 'rxjs';
@@ -12,6 +12,7 @@ import {
   TicketStatus,
   SoporteService
 } from '../../services/soporte.service';
+import { groupChatMessagesByDay } from '../../shared/chat-message-groups';
 
 type SupportTab = 'chat' | 'tickets';
 
@@ -35,6 +36,7 @@ export class SoporteComponent implements OnInit {
   readonly error = signal('');
   readonly aviso = signal('');
   readonly mensajes = signal<ChatMessage[]>([]);
+  readonly gruposMensajes = computed(() => groupChatMessagesByDay(this.mensajes()));
   readonly conversaciones = signal<SupportConversation[]>([]);
   readonly conversacionSeleccionada = signal<SupportConversation | null>(null);
   readonly tickets = signal<SupportTicket[]>([]);
@@ -85,7 +87,10 @@ export class SoporteComponent implements OnInit {
     this.cargando.set(true);
     this.service.getConversations().subscribe({
       next: conversaciones => {
-        this.conversaciones.set(conversaciones);
+        this.conversaciones.set(conversaciones.filter(conversacion =>
+          !conversacion.ultimo_mensaje?.startsWith('Respuesta automática: ')
+          && !conversacion.ultimo_mensaje?.startsWith('Soporte: ')
+        ));
         this.cargando.set(false);
       },
       error: error => this.manejarError(error)
@@ -94,6 +99,8 @@ export class SoporteComponent implements OnInit {
 
   seleccionarConversacion(conversacion: SupportConversation): void {
     this.conversacionSeleccionada.set(conversacion);
+    this.mensajes.set([]);
+    this.error.set('');
     this.cargarMensajesAdmin(conversacion);
   }
 
@@ -104,9 +111,9 @@ export class SoporteComponent implements OnInit {
       return;
     }
 
+    const conversacionId = this.esAdmin ? this.conversacionSeleccionada()?.id : null;
     let request: Observable<ChatMessage[]>;
     if (this.esAdmin) {
-      const conversacionId = this.conversacionSeleccionada()?.id;
       if (!conversacionId) return;
       request = this.service.sendAdminChatMessage(conversacionId, mensaje)
         .pipe(map(adminMessage => [adminMessage]));
@@ -118,10 +125,23 @@ export class SoporteComponent implements OnInit {
     this.error.set('');
     request.subscribe({
       next: newMessages => {
+        if (this.esAdmin && this.conversacionSeleccionada()?.id !== conversacionId) {
+          this.enviando.set(false);
+          this.cargarConversaciones();
+          return;
+        }
         this.mensajes.update(messages => [...messages, ...newMessages]);
         this.chatForm.reset();
         this.enviando.set(false);
-        if (this.esAdmin) this.cargarConversaciones();
+        if (this.esAdmin) {
+          this.conversaciones.update(conversaciones =>
+            conversaciones.filter(conversacion => conversacion.id !== conversacionId)
+          );
+          this.conversacionSeleccionada.set(null);
+          this.mensajes.set([]);
+          this.aviso.set('La respuesta se envió. El chat volverá a la bandeja si el usuario necesita más ayuda.');
+          this.cargarConversaciones();
+        }
       },
       error: error => this.manejarError(error)
     });
@@ -154,6 +174,7 @@ export class SoporteComponent implements OnInit {
 
   seleccionarTicket(ticket: SupportTicket): void {
     this.ticketSeleccionado.set(ticket);
+    this.respuestas.set([]);
     this.cargarRespuestas(ticket);
   }
 
@@ -220,10 +241,13 @@ export class SoporteComponent implements OnInit {
     this.cargando.set(true);
     this.service.getConversationMessages(conversacion.id).subscribe({
       next: mensajes => {
-        this.mensajes.set(mensajes);
+        if (this.conversacionSeleccionada()?.id !== conversacion.id) return;
+        this.mensajes.set(mensajes.filter(mensaje => !this.esRespuestaAutomatica(mensaje)));
         this.cargando.set(false);
       },
-      error: error => this.manejarError(error)
+      error: error => {
+        if (this.conversacionSeleccionada()?.id === conversacion.id) this.manejarError(error);
+      }
     });
   }
 
@@ -240,13 +264,21 @@ export class SoporteComponent implements OnInit {
 
   private cargarRespuestas(ticket: SupportTicket): void {
     this.service.getTicketReplies(ticket.id).subscribe({
-      next: replies => this.respuestas.set(replies),
-      error: error => this.manejarError(error)
+      next: replies => {
+        if (this.ticketSeleccionado()?.id === ticket.id) this.respuestas.set(replies);
+      },
+      error: error => {
+        if (this.ticketSeleccionado()?.id === ticket.id) this.manejarError(error);
+      }
     });
   }
 
   private esEstadoValido(value: string): value is TicketStatus {
     return ['abierto', 'en_proceso', 'resuelto', 'cerrado'].includes(value);
+  }
+
+  private esRespuestaAutomatica(message: ChatMessage): boolean {
+    return message.sender_role === 'admin' && message.mensaje.startsWith('Respuesta automática: ');
   }
 
   private manejarError(error: unknown): void {

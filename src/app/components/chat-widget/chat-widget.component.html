@@ -1,4 +1,4 @@
-@if (!esAdmin) {
+@if (mostrarWidget()) {
   <div class="chat-widget">
     @if (abierto()) {
       <section class="chat-window" role="dialog" aria-labelledby="chat-widget-title">
@@ -7,10 +7,14 @@
             <span class="chat-icon"><i class="fas fa-headset" aria-hidden="true"></i></span>
             <div>
               <h2 id="chat-widget-title">ChatBox</h2>
-              <p>Soporte técnico Sel Kalis</p>
+              <p>Guía y soporte Sel Kalis</p>
             </div>
           </div>
           <div class="chat-header-actions">
+            <button type="button" class="icon-button" aria-label="Mostrar guía del chat"
+              [attr.aria-expanded]="mostrarGuia()" (click)="toggleGuia()">
+              <i class="fas fa-circle-question" aria-hidden="true"></i>
+            </button>
             <button type="button" class="icon-button" aria-label="Actualizar mensajes"
               (click)="recargar()" [disabled]="cargando()">
               <i class="fas fa-rotate-right" aria-hidden="true"></i>
@@ -22,24 +26,50 @@
         </header>
 
         <div class="chat-messages" role="log" aria-label="Mensajes del chat" aria-live="polite">
-          @for (message of mensajes(); track message.id) {
-            <article class="chat-message"
-              [class.own-message]="message.sender_role === 'user' && message.sender_id === usuarioId">
-              <span>{{ message.sender_role === 'user'
-                ? (message.sender_id === usuarioId ? 'Tú' : 'Usuario')
-                : (esRespuestaAutomatica(message) ? 'Asistente automático' : 'Soporte') }}</span>
-              <p>{{ contenidoMensaje(message) }}</p>
-              <time [attr.datetime]="message.created_at">{{ message.created_at | date:'shortTime' }}</time>
-            </article>
-          } @empty {
-            @if (!cargando()) {
-              <p class="empty-message">¡Hola! Escríbenos y te ayudaremos.</p>
-            }
+          @if (mostrarGuia() || (!mensajes().length && !cargando())) {
+            <section class="chat-guide" aria-label="Guía rápida del chat">
+              <strong>¡Hola! ¿En qué te ayudo?</strong>
+              <p>Pregunta con tus propias palabras sobre cualquier sección de Sel Kalis. No necesitas usar palabras especiales.</p>
+              <span class="guide-label">Prueba con una pregunta:</span>
+              <div class="guide-suggestions">
+                <button type="button" (click)="usarPregunta('¿Cómo registro una cita?')">Registrar una cita</button>
+                <button type="button" (click)="usarPregunta('¿Cómo agrego un medicamento?')">Agregar un medicamento</button>
+                <button type="button" (click)="usarPregunta('¿Dónde subo un resultado?')">Subir un resultado</button>
+                <button type="button" (click)="usarPregunta('¿Cómo recupero mi cuenta?')">Recuperar mi cuenta</button>
+              </div>
+              <small>Si no puedo resolver tu consulta, la verá el equipo de soporte.</small>
+            </section>
           }
+
+          @for (group of gruposPorDia(); track group.key) {
+            <details class="chat-day" [open]="group.expanded">
+              <summary class="chat-day-heading">
+                <span>{{ group.label }}</span>
+                <small>{{ group.messages.length }} {{ group.messages.length === 1 ? 'mensaje' : 'mensajes' }}</small>
+              </summary>
+              <div class="chat-day-messages">
+                @for (message of group.messages; track message.id) {
+                  <article class="chat-message"
+                    [class.own-message]="message.sender_role === 'user' && message.sender_id === usuarioId()">
+                    <span>{{ message.sender_role === 'user'
+                      ? (message.sender_id === usuarioId() ? 'Tú' : 'Usuario')
+                      : (esRespuestaAutomatica(message) ? 'Asistente automático' : 'Soporte') }}</span>
+                    <p>{{ contenidoMensaje(message) }}</p>
+                    <time [attr.datetime]="message.created_at">{{ message.created_at | date:'shortTime' }}</time>
+                  </article>
+                }
+              </div>
+            </details>
+          }
+
           @if (cargando()) {
             <p class="empty-message" role="status">Cargando conversación…</p>
           }
         </div>
+
+        @if (aviso()) {
+          <p class="chat-follow-up" role="status">{{ aviso() }}</p>
+        }
 
         @if (error()) {
           <p class="chat-error" role="alert">{{ error() }}</p>

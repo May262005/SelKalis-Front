@@ -6,11 +6,12 @@ import { HeaderComponent } from './shared/header/header.component';
 import { MobileMenuComponent } from './shared/mobile-menu/mobile-menu.component';
 import { PublicHeaderComponent } from './shared/public-header/public-header.component';
 import { CookieBannerComponent } from './components/cookie-banner/cookie-banner.component';
+import { ChatWidgetComponent } from './components/chat-widget/chat-widget.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, HeaderComponent, MobileMenuComponent, PublicHeaderComponent, CookieBannerComponent],
+  imports: [RouterOutlet, CommonModule, HeaderComponent, MobileMenuComponent, PublicHeaderComponent, CookieBannerComponent, ChatWidgetComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
