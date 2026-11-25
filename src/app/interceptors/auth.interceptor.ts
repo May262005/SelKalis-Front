@@ -54,9 +54,11 @@ export class AuthInterceptor implements HttpInterceptor {
         const currentUrl = this.router.url;
         const isLoginPage = currentUrl.includes('/login') || currentUrl.includes('/auth');
         const isDocumentosPage = currentUrl.includes('/documentos');
+        const isSupportApi = req.url.includes('selkalis-soporte-service.onrender.com');
+        const tokenIsValid = this.authService.isTokenValid();
 
         if (error.status === 401 && !isLoginPage) {
-          if (isDocumentosPage) {
+          if (isDocumentosPage || (isSupportApi && tokenIsValid)) {
             return throwError(() => error);
           }
 
