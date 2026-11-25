@@ -1,14 +1,9 @@
 <main class="admin-dashboard">
   <header class="admin-hero">
     <div class="hero-copy">
-      <p class="eyebrow">SEL KALIS · ADMINISTRACIÓN</p>
       <h1>Panel de <span>administración</span></h1>
       <p>Un vistazo a la actividad de usuarios y al soporte de la plataforma.</p>
     </div>
-    <button class="refresh-button" type="button" (click)="cargarDatos()" [disabled]="estaCargando">
-      <i class="fas fa-sync-alt" [class.fa-spin]="estaCargando" aria-hidden="true"></i>
-      {{ estaCargando ? 'Actualizando…' : 'Actualizar datos' }}
-    </button>
   </header>
 
   <section class="stats-grid" aria-label="Estadísticas de administración">
@@ -60,16 +55,16 @@
 
     <article class="stat-card">
       <div class="stat-heading">
-        <span class="stat-icon chat-icon"><i class="fas fa-comments" aria-hidden="true"></i></span>
-        <span class="stat-trend">PENDIENTES</span>
+        <span class="stat-icon tickets-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></span>
+        <span class="stat-trend">RESUELTAS</span>
       </div>
       <strong class="stat-value">
-        <ng-container *ngIf="cargandoConversaciones; else conversationsValue">···</ng-container>
-        <ng-template #conversationsValue>{{ errorConversaciones ? '—' : conversaciones.length }}</ng-template>
+        <ng-container *ngIf="cargandoTickets; else resolvedTicketsValue">···</ng-container>
+        <ng-template #resolvedTicketsValue>{{ errorTickets ? '—' : incidenciasResueltas }}</ng-template>
       </strong>
-      <span class="stat-label">Chats por responder</span>
-      <span class="stat-note">Consultas que necesitan atención del equipo</span>
-      <span class="stat-error" *ngIf="errorConversaciones">{{ errorConversaciones }}</span>
+      <span class="stat-label">Incidencias resueltas</span>
+      <span class="stat-note">Reportes resueltos o cerrados</span>
+      <span class="stat-error" *ngIf="errorTickets">{{ errorTickets }}</span>
     </article>
   </section>
 
@@ -155,7 +150,7 @@
         </a>
         <a routerLink="/soporte" class="quick-link">
           <span class="quick-link-icon tickets-icon"><i class="fas fa-headset" aria-hidden="true"></i></span>
-          <span><strong>Mesa de ayuda</strong><small>Atender reportes y chats</small></span>
+          <span><strong>Mesa de ayuda</strong><small>Atender incidencias reportadas</small></span>
           <i class="fas fa-chevron-right quick-arrow" aria-hidden="true"></i>
         </a>
       </article>

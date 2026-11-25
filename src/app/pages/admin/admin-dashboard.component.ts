@@ -1,13 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminService, Usuario } from '../../services/admin.service';
-import {
-  SoporteService,
-  SupportConversation,
-  SupportTicket,
-  TicketStatus
-} from '../../services/soporte.service';
+import { SoporteService, SupportTicket, TicketStatus } from '../../services/soporte.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -19,27 +14,21 @@ import {
 export class AdminDashboardComponent implements OnInit {
   usuarios: Usuario[] = [];
   tickets: SupportTicket[] = [];
-  conversaciones: SupportConversation[] = [];
 
   cargandoUsuarios = true;
   cargandoTickets = true;
-  cargandoConversaciones = true;
 
   errorUsuarios = '';
   errorTickets = '';
-  errorConversaciones = '';
 
   constructor(
     private adminService: AdminService,
-    private soporteService: SoporteService
+    private soporteService: SoporteService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.cargarDatos();
-  }
-
-  get estaCargando(): boolean {
-    return this.cargandoUsuarios || this.cargandoTickets || this.cargandoConversaciones;
   }
 
   get usuariosActivos(): number {
@@ -94,19 +83,20 @@ export class AdminDashboardComponent implements OnInit {
   cargarDatos(): void {
     this.cargandoUsuarios = true;
     this.cargandoTickets = true;
-    this.cargandoConversaciones = true;
     this.errorUsuarios = '';
     this.errorTickets = '';
-    this.errorConversaciones = '';
+    this.cdr.markForCheck();
 
     this.adminService.getUsuarios().subscribe({
       next: usuarios => {
         this.usuarios = usuarios;
         this.cargandoUsuarios = false;
+        this.cdr.markForCheck();
       },
       error: error => {
         this.errorUsuarios = error?.message || 'No se pudieron cargar los usuarios.';
         this.cargandoUsuarios = false;
+        this.cdr.markForCheck();
       }
     });
 
@@ -114,21 +104,12 @@ export class AdminDashboardComponent implements OnInit {
       next: tickets => {
         this.tickets = tickets;
         this.cargandoTickets = false;
+        this.cdr.markForCheck();
       },
       error: error => {
         this.errorTickets = error?.error?.error || error?.message || 'No se pudieron cargar las incidencias.';
         this.cargandoTickets = false;
-      }
-    });
-
-    this.soporteService.getConversations().subscribe({
-      next: conversaciones => {
-        this.conversaciones = conversaciones;
-        this.cargandoConversaciones = false;
-      },
-      error: error => {
-        this.errorConversaciones = error?.error?.error || error?.message || 'No se pudieron cargar las conversaciones.';
-        this.cargandoConversaciones = false;
+        this.cdr.markForCheck();
       }
     });
   }

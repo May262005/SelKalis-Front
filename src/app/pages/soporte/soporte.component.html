@@ -1,28 +1,10 @@
 <main class="support-page">
   <header class="support-heading">
     <div>
-      <p class="eyebrow">SEL KALIS · ATENCIÓN</p>
       <h1>Mesa de <span>ayuda</span></h1>
-      <p>{{ esAdmin ? 'Atiende consultas pendientes y da seguimiento a las incidencias.' : 'Registra una incidencia y consulta el seguimiento de tus reportes.' }}</p>
+      <p>{{ esAdmin ? 'Revisa las incidencias reportadas y da seguimiento a su estado.' : 'Registra una incidencia y consulta el seguimiento de tus reportes.' }}</p>
     </div>
-    <button class="button button-secondary" type="button" (click)="recargar()" [disabled]="cargando()">
-      <i class="fas fa-rotate-right" aria-hidden="true"></i>
-      Actualizar
-    </button>
   </header>
-
-  @if (esAdmin) {
-    <div class="support-tabs" role="tablist" aria-label="Opciones de soporte">
-      <button type="button" role="tab" [attr.aria-selected]="pestana() === 'chat'"
-        [class.active]="pestana() === 'chat'" (click)="cambiarPestana('chat')">
-        <i class="fas fa-comments" aria-hidden="true"></i> Chats pendientes
-      </button>
-      <button type="button" role="tab" [attr.aria-selected]="pestana() === 'tickets'"
-        [class.active]="pestana() === 'tickets'" (click)="cambiarPestana('tickets')">
-        <i class="fas fa-ticket" aria-hidden="true"></i> Incidencias
-      </button>
-    </div>
-  }
 
   @if (error()) {
     <p class="notice notice-error" role="alert">{{ error() }}</p>
@@ -31,73 +13,8 @@
     <p class="notice notice-success" role="status">{{ aviso() }}</p>
   }
 
-  @if (esAdmin && pestana() === 'chat') {
-    <section class="chat-layout" aria-label="Chat de soporte">
-      @if (esAdmin) {
-        <aside class="conversation-list">
-          <h2>Chats pendientes de respuesta</h2>
-          @for (conversation of conversaciones(); track conversation.id) {
-            <button type="button" class="conversation-option"
-              [class.selected]="conversacionSeleccionada()?.id === conversation.id"
-              (click)="seleccionarConversacion(conversation)">
-              <span class="conversation-name">{{ conversation.nombre || conversation.email }}</span>
-              <span class="conversation-preview">{{ conversation.ultimo_mensaje || 'Sin mensajes todavía' }}</span>
-            </button>
-          } @empty {
-            <p class="empty-state">No hay consultas que requieran respuesta por ahora.</p>
-          }
-        </aside>
-      }
-
-      <div class="chat-panel">
-        <div class="chat-title">
-          <div class="avatar" aria-hidden="true"><i class="fas fa-headset"></i></div>
-          <div>
-            <h2>{{ esAdmin ? (conversacionSeleccionada()?.nombre || 'Selecciona una conversación') : 'Atención Sel Kalis' }}</h2>
-            <p>{{ esAdmin ? (conversacionSeleccionada()?.email || 'Bandeja de soporte') : 'Déjanos tu consulta y te responderemos aquí.' }}</p>
-          </div>
-        </div>
-
-        <div class="message-list" role="log" aria-label="Mensajes del chat" aria-live="polite">
-          @for (group of gruposMensajes(); track group.key) {
-            <details class="message-day" [open]="group.expanded">
-              <summary class="message-day-heading">
-                <span>{{ group.label }}</span>
-                <small>{{ group.messages.length }} {{ group.messages.length === 1 ? 'mensaje' : 'mensajes' }}</small>
-              </summary>
-              <div class="message-day-items">
-                @for (message of group.messages; track message.id) {
-                  <article class="message" [class.message-own]="esMensajePropio(message.sender_id)">
-                    <span class="message-author">{{ esMensajePropio(message.sender_id) ? 'Tú' : (message.sender_role === 'admin' ? 'Soporte' : 'Usuario') }}</span>
-                    <p>{{ message.mensaje }}</p>
-                    <time [attr.datetime]="message.created_at">{{ message.created_at | date:'shortTime' }}</time>
-                  </article>
-                }
-              </div>
-            </details>
-          } @empty {
-            <p class="empty-state">Selecciona un chat pendiente para ver los mensajes.</p>
-          }
-          @if (cargando()) { <p class="loading-note">Cargando mensajes…</p> }
-        </div>
-
-        <form class="composer" [formGroup]="chatForm" (ngSubmit)="enviarMensaje()">
-          <label for="chat-message">Escribe tu mensaje</label>
-          <div class="composer-row">
-            <textarea id="chat-message" formControlName="mensaje" rows="2" maxlength="1000"
-              placeholder="¿En qué podemos ayudarte?" [disabled]="esAdmin && !conversacionSeleccionada()"></textarea>
-            <button class="button button-primary" type="submit"
-              [disabled]="enviando() || (esAdmin && !conversacionSeleccionada())" aria-label="Enviar mensaje">
-              <i class="fas fa-paper-plane" aria-hidden="true"></i>
-              <span>Enviar</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
-  } @else {
-    <section class="tickets-layout" [class.tickets-layout-admin]="esAdmin" aria-label="Mesa de ayuda">
-      @if (!esAdmin) {
+  <section class="tickets-layout" [class.tickets-layout-admin]="esAdmin" aria-label="Mesa de ayuda">
+    @if (!esAdmin) {
       <section class="ticket-create">
         <h2>Nueva incidencia</h2>
         <p>Describe el problema para que podamos darle seguimiento.</p>
@@ -131,8 +48,11 @@
       </section>
       }
 
-      <section class="ticket-list">
-        <h2>{{ esAdmin ? 'Incidencias reportadas' : 'Mis reportes' }}</h2>
+    <section class="ticket-list">
+      <h2>{{ esAdmin ? 'Incidencias reportadas' : 'Mis reportes' }}</h2>
+      @if (cargando()) {
+        <p class="empty-state" role="status">Cargando incidencias…</p>
+      } @else {
         @if (tickets().length === 0) {
           <p class="empty-state">Aún no hay incidencias registradas.</p>
         }
@@ -151,10 +71,11 @@
             <time [attr.datetime]="ticket.created_at">{{ ticket.created_at | date:'mediumDate' }}</time>
           </button>
         }
-      </section>
+      }
+    </section>
 
-      @if (ticketSeleccionado(); as ticket) {
-        <section class="ticket-detail">
+    @if (ticketSeleccionado(); as ticket) {
+      <section class="ticket-detail">
           <div class="detail-heading">
             <div>
               <p class="eyebrow">INCIDENCIA · {{ ticket.id.slice(0, 8) }}</p>
@@ -194,8 +115,7 @@
               placeholder="Escribe una respuesta o información adicional"></textarea>
             <button class="button button-primary" type="submit" [disabled]="enviando()">Enviar respuesta</button>
           </form>
-        </section>
-      }
-    </section>
-  }
+      </section>
+    }
+  </section>
 </main>

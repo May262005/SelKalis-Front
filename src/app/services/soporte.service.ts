@@ -22,15 +22,6 @@ export interface ChatMessage {
   created_at: string;
 }
 
-export interface SupportConversation {
-  id: string;
-  usuario_id: string;
-  nombre: string;
-  email: string;
-  ultimo_mensaje: string | null;
-  updated_at: string;
-}
-
 export interface SupportTicket {
   id: string;
   usuario_id: string;
@@ -83,28 +74,6 @@ export class SoporteService {
   sendChatMessage(mensaje: string): Observable<ChatMessage[]> {
     return this.http.post<ApiResponse<ChatMessage[]>>(
       `${this.apiUrl}/chat/mensajes`,
-      { mensaje },
-      { headers: this.headers() }
-    ).pipe(map(response => response.data));
-  }
-
-  getConversations(): Observable<SupportConversation[]> {
-    return this.http.get<ApiResponse<SupportConversation[]>>(
-      `${this.apiUrl}/admin/conversaciones`,
-      { headers: this.headers() }
-    ).pipe(map(response => response.data));
-  }
-
-  getConversationMessages(conversationId: string): Observable<ChatMessage[]> {
-    return this.http.get<ApiResponse<ChatMessage[]>>(
-      `${this.apiUrl}/admin/conversaciones/${conversationId}/mensajes`,
-      { headers: this.headers() }
-    ).pipe(map(response => response.data));
-  }
-
-  sendAdminChatMessage(conversationId: string, mensaje: string): Observable<ChatMessage> {
-    return this.http.post<ApiResponse<ChatMessage>>(
-      `${this.apiUrl}/admin/conversaciones/${conversationId}/mensajes`,
       { mensaje },
       { headers: this.headers() }
     ).pipe(map(response => response.data));
