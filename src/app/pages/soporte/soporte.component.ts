@@ -29,7 +29,7 @@ export class SoporteComponent implements OnInit {
 
   readonly usuarioId = this.auth.getCurrentUser()?.id ?? '';
   readonly esAdmin = this.auth.getCurrentUser()?.rol === 'admin';
-  readonly pestana = signal<SupportTab>('chat');
+  readonly pestana = signal<SupportTab>('tickets');
   readonly cargando = signal(false);
   readonly enviando = signal(false);
   readonly error = signal('');
@@ -46,6 +46,7 @@ export class SoporteComponent implements OnInit {
   });
   readonly ticketForm = this.fb.nonNullable.group({
     asunto: ['', [Validators.required, Validators.maxLength(120)]],
+    categoria: this.fb.nonNullable.control<TicketCategory>('tecnica'),
     descripcion: ['', [Validators.required, Validators.minLength(15), Validators.maxLength(2000)]]
   });
   readonly respuestaForm = this.fb.nonNullable.group({
@@ -56,8 +57,6 @@ export class SoporteComponent implements OnInit {
     this.cargarTickets();
     if (this.esAdmin) {
       this.cargarConversaciones();
-    } else {
-      this.cargarMensajes();
     }
   }
 
@@ -68,7 +67,7 @@ export class SoporteComponent implements OnInit {
   }
 
   recargar(): void {
-    if (this.pestana() === 'tickets') {
+    if (!this.esAdmin || this.pestana() === 'tickets') {
       this.cargarTickets();
       const ticket = this.ticketSeleccionado();
       if (ticket) this.cargarRespuestas(ticket);
@@ -79,20 +78,7 @@ export class SoporteComponent implements OnInit {
       this.cargarConversaciones();
       const conversacion = this.conversacionSeleccionada();
       if (conversacion) this.cargarMensajesAdmin(conversacion);
-    } else {
-      this.cargarMensajes();
     }
-  }
-
-  cargarMensajes(): void {
-    this.cargando.set(true);
-    this.service.getChatMessages().subscribe({
-      next: mensajes => {
-        this.mensajes.set(mensajes);
-        this.cargando.set(false);
-      },
-      error: error => this.manejarError(error)
-    });
   }
 
   cargarConversaciones(): void {
@@ -150,11 +136,11 @@ export class SoporteComponent implements OnInit {
     this.error.set('');
     this.service.createTicket({
       ...this.ticketForm.getRawValue(),
-      categoria: 'tecnica'
+      categoria: this.ticketForm.controls.categoria.value
     }).subscribe({
       next: ticket => {
         this.tickets.update(tickets => [ticket, ...tickets]);
-        this.ticketForm.reset({ asunto: '', descripcion: '' });
+        this.ticketForm.reset({ asunto: '', categoria: 'tecnica', descripcion: '' });
         this.ticketSeleccionado.set(ticket);
         this.respuestas.set([]);
         this.aviso.set('Tu reporte quedó registrado.');

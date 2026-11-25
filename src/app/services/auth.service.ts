@@ -16,6 +16,10 @@ interface User {
   rol?: string;
 }
 
+interface TokenPayload extends Partial<User> {
+  exp?: number;
+}
+
 const SK_TOKEN = 'sk_token';
 const SK_CREDENTIALS = 'sk_credentials';
 const SK_USER_DATA = 'sk_user_data';
@@ -69,10 +73,10 @@ export class AuthService {
     }
 
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = this.decodeTokenPayload(token);
       const nowSec = Math.floor(Date.now() / 1000);
 
-      if (payload.exp && payload.exp < nowSec) {
+      if (typeof payload.exp !== 'number' || payload.exp <= nowSec) {
         this.clearAllStorage();
         return;
       }
@@ -98,10 +102,10 @@ export class AuthService {
       }
 
       this.currentUserSubject.next({
-        id: payload.id,
-        nombre: payload.nombre,
+        id: payload.id ?? '',
+        nombre: payload.nombre ?? '',
         apellido: payload.apellido || '',
-        email: payload.email,
+        email: payload.email ?? '',
         telefono: payload.telefono || '',
         created_at: payload.created_at || '',
         ultimo_login: payload.ultimo_login || '',
@@ -118,6 +122,24 @@ export class AuthService {
     localStorage.removeItem(SK_USER_DATA);
     this.currentUserSubject.next(null);
     this.tokenReadySubject.next(false);
+  }
+
+  private decodeTokenPayload(token: string): TokenPayload {
+    const encodedPayload = token.split('.')[1];
+    if (!encodedPayload) {
+      throw new Error('El token no contiene un payload');
+    }
+
+    const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const bytes = Uint8Array.from(atob(paddedBase64), character => character.charCodeAt(0));
+    const payload: unknown = JSON.parse(new TextDecoder().decode(bytes));
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new Error('El payload del token no es válido');
+    }
+
+    return payload as TokenPayload;
   }
 
   // ==================== CREDENCIALES GUARDADAS ====================
@@ -401,9 +423,9 @@ export class AuthService {
     if (!token) return false;
 
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = this.decodeTokenPayload(token);
       const nowSec = Math.floor(Date.now() / 1000);
-      return payload.exp && payload.exp > nowSec;
+      return typeof payload.exp === 'number' && payload.exp > nowSec;
     } catch {
       return false;
     }

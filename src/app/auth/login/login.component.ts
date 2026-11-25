@@ -64,20 +64,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   private hasValidSession(): boolean {
-    const token = localStorage.getItem(SK_TOKEN);
-    if (!token) return false;
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const nowSec = Math.floor(Date.now() / 1000);
-      if (payload.exp && payload.exp < nowSec) {
-        localStorage.removeItem(SK_TOKEN);
-        return false;
-      }
-      return true;
-    } catch {
-      localStorage.removeItem(SK_TOKEN);
-      return false;
-    }
+    return this.authService.isTokenValid();
   }
 
   private redirigirSegunRol(navExtras: { replaceUrl?: boolean } = {}): void {

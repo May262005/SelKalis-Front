@@ -2,8 +2,8 @@
   <header class="support-heading">
     <div>
       <p class="eyebrow">SEL KALIS · ATENCIÓN</p>
-      <h1>Chat y <span>mesa de ayuda</span></h1>
-      <p>Comunícate con nuestro equipo o consulta el seguimiento de tus reportes.</p>
+      <h1>Mesa de <span>ayuda</span></h1>
+      <p>Registra una incidencia y consulta el seguimiento de tus reportes.</p>
     </div>
     <button class="button button-secondary" type="button" (click)="recargar()" [disabled]="cargando()">
       <i class="fas fa-rotate-right" aria-hidden="true"></i>
@@ -11,16 +11,18 @@
     </button>
   </header>
 
-  <div class="support-tabs" role="tablist" aria-label="Opciones de soporte">
-    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'chat'"
-      [class.active]="pestana() === 'chat'" (click)="cambiarPestana('chat')">
-      <i class="fas fa-comments" aria-hidden="true"></i> ChatBox
-    </button>
-    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'tickets'"
-      [class.active]="pestana() === 'tickets'" (click)="cambiarPestana('tickets')">
-      <i class="fas fa-ticket" aria-hidden="true"></i> Reportar incidencia
-    </button>
-  </div>
+  @if (esAdmin) {
+    <div class="support-tabs" role="tablist" aria-label="Opciones de soporte">
+      <button type="button" role="tab" [attr.aria-selected]="pestana() === 'chat'"
+        [class.active]="pestana() === 'chat'" (click)="cambiarPestana('chat')">
+        <i class="fas fa-comments" aria-hidden="true"></i> Conversaciones
+      </button>
+      <button type="button" role="tab" [attr.aria-selected]="pestana() === 'tickets'"
+        [class.active]="pestana() === 'tickets'" (click)="cambiarPestana('tickets')">
+        <i class="fas fa-ticket" aria-hidden="true"></i> Incidencias
+      </button>
+    </div>
+  }
 
   @if (error()) {
     <p class="notice notice-error" role="alert">{{ error() }}</p>
@@ -29,7 +31,7 @@
     <p class="notice notice-success" role="status">{{ aviso() }}</p>
   }
 
-  @if (pestana() === 'chat') {
+  @if (esAdmin && pestana() === 'chat') {
     <section class="chat-layout" aria-label="Chat de soporte">
       @if (esAdmin) {
         <aside class="conversation-list">
@@ -93,10 +95,10 @@
           <input id="ticket-subject" type="text" formControlName="asunto" maxlength="120"
             placeholder="Ej. No puedo ver mis estudios">
 
-          <span class="support-category">
-            <i class="fas fa-screwdriver-wrench" aria-hidden="true"></i>
-            Categoría: Soporte técnico
-          </span>
+          <label for="ticket-category">Categoría</label>
+          <select id="ticket-category" formControlName="categoria">
+            <option value="tecnica">Soporte técnico</option>
+          </select>
 
           <label for="ticket-description">Descripción</label>
           <textarea id="ticket-description" formControlName="descripcion" rows="5" maxlength="2000"

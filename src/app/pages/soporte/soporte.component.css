@@ -4,7 +4,7 @@
 }
 
 .support-page {
-  max-width: 1600px;
+  max-width: 1200px;
   width: 100%;
   box-sizing: border-box;
   margin: 0 auto;
@@ -350,20 +350,6 @@ button:focus-visible {
 
 .ticket-create form label:not(:first-child) {
   margin-top: 7px;
-}
-
-.support-category {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  padding: 8px 14px;
-  border: 1px solid #d6e2ee;
-  border-radius: 40px;
-  background: #eef3f8;
-  color: #4a6fa5;
-  font-size: 13px;
-  font-weight: 600;
 }
 
 .ticket-create .button {
