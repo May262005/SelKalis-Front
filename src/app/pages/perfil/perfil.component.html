@@ -39,6 +39,7 @@
           <p>{{ miembroDesdeFormateado }}</p>
         </div>
       </div>
+
     </div>
 
     <!-- Seguridad -->
@@ -68,6 +69,121 @@
       </div>
     </div>
   </div>
+
+  <div class="perfil-grid">
+        <section class="card full-width" aria-labelledby="notification-settings-title">
+          <div class="card-header">
+            <h3 id="notification-settings-title"><i class="fas fa-bell"></i> Notificaciones</h3>
+          </div>
+          <p class="settings-description">
+            Elige qué avisos quieres recibir. Los recordatorios push requieren permiso del navegador y conexión segura.
+          </p>
+          <p class="permission-state">
+            Permiso del navegador: <strong>{{ notificationPermissionLabel }}</strong>
+          </p>
+          <div class="pref-item">
+            <div class="pref-info">
+              <i class="fas fa-mobile-alt"></i>
+              <div>
+                <strong>Notificaciones push</strong>
+                <p>{{ notificationPreferences.push_enabled ? 'Activas para tu cuenta' : 'Desactivadas para tu cuenta' }}</p>
+              </div>
+            </div>
+            <button type="button"
+                    class="btn-toggle"
+                    [class.active]="notificationPreferences.push_enabled"
+                    [attr.aria-pressed]="notificationPreferences.push_enabled"
+                    [attr.aria-label]="notificationPreferences.push_enabled ? 'Desactivar notificaciones push' : 'Activar notificaciones push'"
+                    [disabled]="pushLoading || preferencesLoading || !pushSupported"
+                    (click)="cambiarPush()">
+              <span class="toggle-slider"></span>
+            </button>
+          </div>
+          <p class="settings-description" *ngIf="!pushSupported">
+            Push requiere HTTPS, un navegador compatible y el service worker habilitado (en producción).
+          </p>
+          <div class="preferencias-list">
+            <div class="pref-item">
+              <div class="pref-info">
+                <i class="fas fa-pills"></i>
+                <div><strong>Medicamentos</strong><p>Recordatorio 15 minutos antes.</p></div>
+              </div>
+              <button type="button" class="btn-toggle"
+                      [class.active]="notificationPreferences.medicamentos_enabled"
+                      [attr.aria-pressed]="notificationPreferences.medicamentos_enabled"
+                      aria-label="Activar o desactivar avisos de medicamentos"
+                      [disabled]="preferencesLoading"
+                      (click)="cambiarCategoriaNotificacion('medicamentos_enabled')">
+                <span class="toggle-slider"></span>
+              </button>
+            </div>
+            <div class="pref-item">
+              <div class="pref-info">
+                <i class="fas fa-calendar-check"></i>
+                <div><strong>Citas</strong><p>Recordatorios 24 horas y 1 hora antes, y cambios importantes.</p></div>
+              </div>
+              <button type="button" class="btn-toggle"
+                      [class.active]="notificationPreferences.citas_enabled"
+                      [attr.aria-pressed]="notificationPreferences.citas_enabled"
+                      aria-label="Activar o desactivar avisos de citas"
+                      [disabled]="preferencesLoading"
+                      (click)="cambiarCategoriaNotificacion('citas_enabled')">
+                <span class="toggle-slider"></span>
+              </button>
+            </div>
+            <div class="pref-item">
+              <div class="pref-info">
+                <i class="fas fa-life-ring"></i>
+                <div><strong>Soporte</strong><p>Respuestas y cambios de estado de tus incidencias.</p></div>
+              </div>
+              <button type="button" class="btn-toggle"
+                      [class.active]="notificationPreferences.soporte_enabled"
+                      [attr.aria-pressed]="notificationPreferences.soporte_enabled"
+                      aria-label="Activar o desactivar avisos de soporte"
+                      [disabled]="preferencesLoading"
+                      (click)="cambiarCategoriaNotificacion('soporte_enabled')">
+                <span class="toggle-slider"></span>
+              </button>
+            </div>
+          </div>
+          <p class="settings-error" role="alert" *ngIf="notificationError">{{ notificationError }}</p>
+        </section>
+
+        <section class="card" aria-labelledby="biometric-settings-title">
+          <div class="card-header">
+            <h3 id="biometric-settings-title"><i class="fas fa-fingerprint"></i> Biometría</h3>
+          </div>
+          <p class="settings-description">
+            Usa el autenticador seguro de este dispositivo para iniciar sesión. No requiere permisos de cámara.
+          </p>
+          <p class="permission-state">
+            Estado: <strong>{{ biometriaRegistrada ? 'Activada' : (biometriaCredencialExistente ? 'Desactivada' : 'No configurada') }}</strong>
+          </p>
+          <button type="button" class="btn-primary settings-action"
+                  [disabled]="!biometriaDisponible || biometriaLoading"
+                  (click)="cambiarBiometria()">
+            <i class="fas" [class.fa-spinner]="biometriaLoading" [class.fa-spin]="biometriaLoading"
+               [class.fa-fingerprint]="!biometriaLoading"></i>
+            {{ biometriaLoading ? 'Actualizando...' : (biometriaRegistrada ? 'Desactivar biometría' : 'Configurar biometría') }}
+          </button>
+          <p class="settings-description" *ngIf="!biometriaDisponible">
+            Este dispositivo o navegador no ofrece autenticación biométrica compatible.
+          </p>
+        </section>
+
+        <section class="card" aria-labelledby="camera-settings-title">
+          <div class="card-header">
+            <h3 id="camera-settings-title"><i class="fas fa-camera"></i> Cámara</h3>
+          </div>
+          <p class="permission-state">
+            Estado del permiso: <strong>{{ cameraPermissionLabel }}</strong>
+          </p>
+          <p class="settings-description">
+            Sel Kalis solicitará acceso únicamente cuando elijas “Tomar foto” en Documentos. Para revocar el permiso,
+            usa los ajustes de privacidad del navegador o del dispositivo.
+          </p>
+        </section>
+      </div>
 </div>
 
 <!-- MODAL EDITAR PERFIL -->

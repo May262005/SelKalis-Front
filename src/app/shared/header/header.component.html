@@ -28,6 +28,42 @@
   </ng-template>
 
   <div class="header-right">
+    <div class="notifications-control">
+      <button class="notifications-button"
+              type="button"
+              aria-label="Abrir notificaciones"
+              [attr.aria-expanded]="notificationsOpen"
+              (click)="toggleNotifications()">
+        <i class="fas fa-bell"></i>
+        <span class="notification-count" *ngIf="unreadCount">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+      </button>
+      <section class="notifications-panel" *ngIf="notificationsOpen" aria-label="Notificaciones">
+        <div class="notifications-panel-header">
+          <strong>Notificaciones</strong>
+          <button type="button" class="mark-all-read" (click)="marcarTodasLeidas()" [disabled]="!unreadCount">
+            Marcar leídas
+          </button>
+        </div>
+        <p class="notifications-empty" *ngIf="!notifications.length">No tienes notificaciones.</p>
+        <button class="notification-entry"
+                type="button"
+                *ngFor="let notification of notifications"
+                [class.unread]="!notification.read_at"
+                (click)="abrirNotificacion(notification)">
+          <span class="notification-entry-icon">
+            <i class="fas"
+               [class.fa-pills]="notification.tipo === 'medicamento'"
+               [class.fa-calendar-check]="notification.tipo === 'cita'"
+               [class.fa-life-ring]="notification.tipo === 'soporte'"></i>
+          </span>
+          <span class="notification-entry-content">
+            <strong>{{ notification.titulo }}</strong>
+            <span>{{ notification.mensaje }}</span>
+            <small>{{ notification.created_at | date:'short' }}</small>
+          </span>
+        </button>
+      </section>
+    </div>
     <div class="user-menu">
       <div class="user-avatar" (click)="toggleMenu()">
         <span>{{ iniciales }}</span>
@@ -47,3 +83,16 @@
     </div>
   </div>
 </header>
+
+<aside class="permission-setup-notice" *ngIf="setupNoticeVisible">
+  <div>
+    <strong>Configura tus opciones de privacidad</strong>
+    <p>Administra notificaciones, biometría y el estado del permiso de cámara desde tu perfil.</p>
+  </div>
+  <div class="permission-setup-actions">
+    <button type="button" class="setup-link" (click)="configurarPermisos()">Configurar</button>
+    <button type="button" class="setup-dismiss" aria-label="Cerrar aviso" (click)="descartarAvisoConfiguracion()">
+      <i class="fas fa-times"></i>
+    </button>
+  </div>
+</aside>

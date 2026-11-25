@@ -1,7 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
+import { NotificationsService, NotificationPreferences } from '../../services/notifications.service';
+import { WebAuthnService } from '../../services/webauthn.service';
+import { DispositivoService } from '../../services/dispositivo.service';
 
 @Component({
   selector: 'app-perfil',
@@ -24,6 +29,22 @@ export class PerfilComponent implements OnInit {
   usuarioEdit = { ...this.usuario };
 
   preferencias = { email: true, push: true };
+  notificationPreferences: NotificationPreferences = {
+    push_enabled: false,
+    medicamentos_enabled: true,
+    citas_enabled: true,
+    soporte_enabled: true,
+    timezone: 'America/Mexico_City'
+  };
+  notificationError = '';
+  pushLoading = false;
+  preferencesLoading = true;
+  notificationPermission = 'unknown';
+  cameraPermission = 'unknown';
+  biometriaDisponible = false;
+  biometriaRegistrada = false;
+  biometriaCredencialExistente = false;
+  biometriaLoading = false;
 
   // Modales
   mostrarModalEditar = false;
@@ -48,14 +69,23 @@ export class PerfilComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private notificationsService: NotificationsService,
+    private webAuthn: WebAuthnService,
+    private dispositivoService: DispositivoService,
+    @Inject(PLATFORM_ID) private platformId: object
   ) {}
 
   ngOnInit() {
     this.cargarPerfil();
     
-    const savedPrefs = localStorage.getItem('preferencias');
-    if (savedPrefs) this.preferencias = JSON.parse(savedPrefs);
+    if (isPlatformBrowser(this.platformId)) {
+      const savedPrefs = localStorage.getItem('preferencias');
+      if (savedPrefs) this.preferencias = JSON.parse(savedPrefs);
+    }
+    this.cargarPreferenciasNotificaciones();
+    void this.cargarEstadoBiometria();
+    this.cargarEstadoPermisos();
   }
 
   // ✅ NUEVO: Método para cargar el perfil
@@ -320,8 +350,170 @@ export class PerfilComponent implements OnInit {
 
   // ── Preferencias ───────────────────────────────────────
   togglePreferencia(pref: 'email' | 'push') {
+    if (pref === 'push') {
+      void this.cambiarPush();
+      return;
+    }
     this.preferencias[pref] = !this.preferencias[pref];
     localStorage.setItem('preferencias', JSON.stringify(this.preferencias));
+  }
+
+  cargarPreferenciasNotificaciones(): void {
+    this.preferencesLoading = true;
+    this.notificationsService.getPreferences().subscribe({
+      next: response => {
+        this.notificationPreferences = response.data;
+        this.preferencesLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.notificationError = error.error?.error || 'No se pudieron cargar las preferencias de notificación.';
+        this.preferencesLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  cambiarCategoriaNotificacion(categoria: 'medicamentos_enabled' | 'citas_enabled' | 'soporte_enabled'): void {
+    const updated = {
+      ...this.notificationPreferences,
+      [categoria]: !this.notificationPreferences[categoria]
+    };
+    this.notificationPreferences = updated;
+    this.notificationsService.updatePreferences({
+      medicamentos_enabled: updated.medicamentos_enabled,
+      citas_enabled: updated.citas_enabled,
+      soporte_enabled: updated.soporte_enabled,
+      timezone: updated.timezone
+    }).subscribe({
+      next: response => this.notificationPreferences = response.data,
+      error: error => {
+        this.notificationPreferences = { ...this.notificationPreferences, [categoria]: !updated[categoria] };
+        this.notificationError = error.error?.error || 'No se pudo guardar la preferencia.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  async cambiarPush(): Promise<void> {
+    if (this.pushLoading) return;
+    this.pushLoading = true;
+    this.notificationError = '';
+    try {
+      if (this.notificationPreferences.push_enabled) {
+        await this.notificationsService.disablePush();
+        this.notificationPreferences = { ...this.notificationPreferences, push_enabled: false };
+      } else {
+        if (isPlatformBrowser(this.platformId) && 'Notification' in window && Notification.permission === 'denied') {
+          throw new Error('Las notificaciones están bloqueadas en el navegador. Habilítalas desde los ajustes del sitio.');
+        }
+        await this.notificationsService.enablePush();
+        this.notificationPreferences = { ...this.notificationPreferences, push_enabled: true };
+        this.notificationPermission = 'granted';
+      }
+    } catch (error) {
+      this.notificationError = error instanceof Error ? error.message : 'No se pudo actualizar el permiso de notificaciones.';
+      this.cargarPreferenciasNotificaciones();
+      this.cargarEstadoPermisos();
+    } finally {
+      this.pushLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private cargarEstadoPermisos(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.notificationPermission = 'Notification' in window ? Notification.permission : 'unsupported';
+    if (!navigator.permissions?.query) {
+      this.cameraPermission = 'unsupported';
+      return;
+    }
+    navigator.permissions.query({ name: 'camera' as PermissionName }).then(permission => {
+      this.cameraPermission = permission.state;
+      this.cdr.detectChanges();
+    }).catch(() => {
+      this.cameraPermission = 'unknown';
+      this.cdr.detectChanges();
+    });
+  }
+
+  get cameraPermissionLabel(): string {
+    const labels: Record<string, string> = {
+      granted: 'Permitida',
+      denied: 'Bloqueada',
+      prompt: 'Se solicitará al tomar una foto',
+      unsupported: 'El navegador no informa el estado',
+      unknown: 'No se pudo consultar'
+    };
+    return labels[this.cameraPermission] || 'No disponible';
+  }
+
+  get notificationPermissionLabel(): string {
+    const labels: Record<string, string> = {
+      granted: 'Permitidas',
+      denied: 'Bloqueadas en el navegador',
+      default: 'Aún no solicitadas',
+      unsupported: 'No disponible en este navegador',
+      unknown: 'No se pudo consultar'
+    };
+    return labels[this.notificationPermission] || 'No disponible';
+  }
+
+  get pushSupported(): boolean {
+    return this.notificationsService.isPushAvailable;
+  }
+
+  private async cargarEstadoBiometria(): Promise<void> {
+    const user = this.authService.getCurrentUser();
+    if (!user?.email || !isPlatformBrowser(this.platformId)) return;
+    try {
+      this.biometriaDisponible = await this.webAuthn.disponible();
+      const state = await firstValueFrom(this.webAuthn.estado(user.email));
+      this.biometriaRegistrada = Boolean(state.biometric_enabled);
+      this.biometriaCredencialExistente = Boolean(state.tiene_credenciales);
+    } catch (error) {
+      console.error('No se pudo consultar el estado biométrico:', error);
+    } finally {
+      this.cdr.detectChanges();
+    }
+  }
+
+  async cambiarBiometria(): Promise<void> {
+    const user = this.authService.getCurrentUser();
+    const token = this.authService.getToken();
+    if (!user || !token || this.biometriaLoading) return;
+
+    this.biometriaLoading = true;
+    try {
+      if (this.biometriaRegistrada) {
+        await firstValueFrom(this.authService.actualizarBiometria(user.id, false));
+        this.biometriaRegistrada = false;
+        if (isPlatformBrowser(this.platformId)) localStorage.removeItem('sk_biometric_registered');
+        this.showToast('Biometría desactivada para esta cuenta.', 'success');
+      } else if (this.biometriaCredencialExistente) {
+        await firstValueFrom(this.authService.actualizarBiometria(user.id, true));
+        this.biometriaRegistrada = true;
+        if (isPlatformBrowser(this.platformId)) localStorage.setItem('sk_biometric_registered', 'true');
+        this.showToast('Biometría activada nuevamente.', 'success');
+      } else {
+        const options = await firstValueFrom(this.webAuthn.opcionesRegistro(token));
+        const credential = await this.webAuthn.crearCredencial(options.options);
+        const deviceLabel = this.dispositivoService.detectarModelo();
+        await firstValueFrom(this.webAuthn.verificarRegistro(token, credential, deviceLabel));
+        this.biometriaRegistrada = true;
+        this.biometriaCredencialExistente = true;
+        this.webAuthn.marcarRegistrada();
+        this.showToast('Biometría activada para este dispositivo.', 'success');
+      }
+    } catch (error: unknown) {
+      const message = error instanceof HttpErrorResponse
+        ? error.error?.error
+        : error instanceof Error ? error.message : '';
+      this.showToast(message || 'No se pudo actualizar la biometría.', 'error');
+    } finally {
+      this.biometriaLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   // ── Helpers de vista ───────────────────────────────────

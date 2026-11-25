@@ -238,6 +238,34 @@
   margin: 0;
 }
 
+.settings-description {
+  color: var(--text-secondary, #4F6B8A);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+
+.permission-state {
+  color: var(--text-soft, #7B8CA8);
+  font-size: 13px;
+  margin: 8px 0 12px;
+}
+
+.permission-state strong {
+  color: var(--text-primary, #1F3A5F);
+}
+
+.settings-error {
+  color: #A93226;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 12px 0 0;
+}
+
+.settings-action {
+  margin: 8px 0 14px;
+}
+
 /* =================== BOTONES =================== */
 .btn-edit {
   background: none;
