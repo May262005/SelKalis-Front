@@ -9,6 +9,7 @@ import {
   TicketStatus,
   SoporteService
 } from '../../services/soporte.service';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-soporte',
@@ -21,13 +22,12 @@ export class SoporteComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly service = inject(SoporteService);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   readonly usuarioId = this.auth.getCurrentUser()?.id ?? '';
   readonly esAdmin = this.auth.getCurrentUser()?.rol === 'admin';
   readonly cargando = signal(false);
   readonly enviando = signal(false);
-  readonly error = signal('');
-  readonly aviso = signal('');
   readonly tickets = signal<SupportTicket[]>([]);
   readonly ticketSeleccionado = signal<SupportTicket | null>(null);
   readonly respuestas = signal<TicketReply[]>([]);
@@ -49,11 +49,11 @@ export class SoporteComponent implements OnInit {
     if (this.esAdmin) return;
     if (this.ticketForm.invalid) {
       this.ticketForm.markAllAsTouched();
+      this.toast.show('Revisa el asunto y describe la incidencia con al menos 15 caracteres.', 'error');
       return;
     }
 
     this.enviando.set(true);
-    this.error.set('');
     this.service.createTicket({
       ...this.ticketForm.getRawValue(),
       categoria: this.ticketForm.controls.categoria.value
@@ -63,7 +63,7 @@ export class SoporteComponent implements OnInit {
         this.ticketForm.reset({ asunto: '', categoria: 'tecnica', descripcion: '' });
         this.ticketSeleccionado.set(ticket);
         this.respuestas.set([]);
-        this.aviso.set('Tu reporte quedó registrado.');
+        this.toast.show('Tu reporte quedó registrado.', 'success');
         this.enviando.set(false);
       },
       error: error => this.manejarError(error)
@@ -84,7 +84,7 @@ export class SoporteComponent implements OnInit {
       next: updated => {
         this.tickets.update(tickets => tickets.map(item => item.id === updated.id ? updated : item));
         if (this.ticketSeleccionado()?.id === updated.id) this.ticketSeleccionado.set(updated);
-        this.aviso.set('Se actualizó el estado del reporte.');
+        this.toast.show('Se actualizó el estado del reporte.', 'success');
       },
       error: error => this.manejarError(error)
     });
@@ -95,6 +95,7 @@ export class SoporteComponent implements OnInit {
     const mensaje = this.respuestaForm.controls.mensaje.value.trim();
     if (!ticket || !mensaje || this.respuestaForm.invalid) {
       this.respuestaForm.controls.mensaje.markAsTouched();
+      if (ticket) this.toast.show('Escribe una respuesta de hasta 1000 caracteres.', 'error');
       return;
     }
 
@@ -104,7 +105,7 @@ export class SoporteComponent implements OnInit {
         this.respuestas.update(replies => [...replies, reply]);
         this.respuestaForm.reset();
         this.enviando.set(false);
-        this.aviso.set('Se envió la respuesta.');
+        this.toast.show('Se envió la respuesta.', 'success');
       },
       error: error => this.manejarError(error)
     });
@@ -163,11 +164,12 @@ export class SoporteComponent implements OnInit {
 
   private manejarError(error: unknown): void {
     const response = error as { error?: { error?: string; message?: string }; message?: string };
-    this.error.set(
+    this.toast.show(
       response.error?.error
       ?? response.error?.message
       ?? response.message
-      ?? 'No se pudo completar la operación. Intenta de nuevo.'
+      ?? 'No se pudo completar la operación. Intenta de nuevo.',
+      'error'
     );
     this.cargando.set(false);
     this.enviando.set(false);

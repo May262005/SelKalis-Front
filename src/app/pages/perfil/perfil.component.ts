@@ -41,6 +41,8 @@ export class PerfilComponent implements OnInit {
   preferencesLoading = true;
   notificationPermission = 'unknown';
   cameraPermission = 'unknown';
+  cameraError = '';
+  cameraLoading = false;
   biometriaDisponible = false;
   biometriaRegistrada = false;
   biometriaCredencialExistente = false;
@@ -457,6 +459,34 @@ export class PerfilComponent implements OnInit {
       unknown: 'No se pudo consultar'
     };
     return labels[this.notificationPermission] || 'No disponible';
+  }
+
+  async solicitarPermisoCamara(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId) || !navigator.mediaDevices?.getUserMedia) {
+      this.cameraPermission = 'unsupported';
+      this.cameraError = 'Este navegador no permite solicitar acceso a la cámara.';
+      return;
+    }
+
+    this.cameraLoading = true;
+    this.cameraError = '';
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop());
+      this.cameraPermission = 'granted';
+    } catch (error: unknown) {
+      const errorName = error instanceof DOMException ? error.name : '';
+      this.cameraPermission = errorName === 'NotAllowedError' ? 'denied' : 'unknown';
+      this.cameraError = errorName === 'NotAllowedError'
+        ? 'No se concedió el permiso. Revisa los permisos del sitio en tu navegador.'
+        : errorName === 'NotFoundError'
+          ? 'No se encontró una cámara disponible en este dispositivo.'
+          : 'No se pudo acceder a la cámara. Comprueba que el sitio use HTTPS y vuelve a intentarlo.';
+    } finally {
+      this.cameraLoading = false;
+      this.cargarEstadoPermisos();
+      this.cdr.detectChanges();
+    }
   }
 
   get pushSupported(): boolean {

@@ -83,8 +83,23 @@ export class NotificationsService {
   }
 
   async enablePush(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId) || !this.swPush.isEnabled) {
-      throw new Error('Las notificaciones push requieren una PWA instalada o un navegador compatible en HTTPS.');
+    if (!isPlatformBrowser(this.platformId)) {
+      throw new Error('Las notificaciones solo se pueden configurar desde el navegador.');
+    }
+
+    if (!('Notification' in window)) {
+      throw new Error('Este navegador no permite notificaciones.');
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      throw new Error(permission === 'denied'
+        ? 'Las notificaciones están bloqueadas en los ajustes del navegador.'
+        : 'No se concedió el permiso de notificaciones.');
+    }
+
+    if (!this.swPush.isEnabled) {
+      throw new Error('Permiso concedido, pero las notificaciones push requieren HTTPS y el service worker activo de la PWA.');
     }
 
     const config = await firstValueFrom(this.http.get<ApiResponse<{

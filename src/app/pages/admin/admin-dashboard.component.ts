@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import { SoporteService, SupportTicket, TicketStatus } from '../../services/soporte.service';
 import { WebAuthnService } from '../../services/webauthn.service';
 import { DispositivoService } from '../../services/dispositivo.service';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -30,8 +31,6 @@ export class AdminDashboardComponent implements OnInit {
   biometriaRegistrada = false;
   cargandoEstadoBiometria = true;
   cargandoBiometria = false;
-  biometriaAviso = '';
-  biometriaError = '';
 
   constructor(
     private adminService: AdminService,
@@ -40,7 +39,8 @@ export class AdminDashboardComponent implements OnInit {
     @Inject(PLATFORM_ID) private platformId: object,
     private authService: AuthService,
     private webAuthn: WebAuthnService,
-    private dispositivoService: DispositivoService
+    private dispositivoService: DispositivoService,
+    private toast: ToastService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -58,7 +58,7 @@ export class AdminDashboardComponent implements OnInit {
         this.biometriaRegistrada = Boolean(status.biometric_enabled || status.tiene_credenciales);
       }
     } catch (error: unknown) {
-      this.biometriaError = this.errorBiometria(error, 'No se pudo consultar el estado biométrico.');
+      this.toast.show(this.errorBiometria(error, 'No se pudo consultar el estado biométrico.'), 'error');
     } finally {
       this.cargandoEstadoBiometria = false;
       this.cdr.detectChanges();
@@ -68,13 +68,11 @@ export class AdminDashboardComponent implements OnInit {
   async activarBiometriaDesdeDashboard(): Promise<void> {
     const token = this.authService.getToken();
     if (!token) {
-      this.biometriaError = 'No se encontró una sesión activa. Vuelve a iniciar sesión e inténtalo de nuevo.';
+      this.toast.show('No se encontró una sesión activa. Vuelve a iniciar sesión e inténtalo de nuevo.', 'error');
       return;
     }
 
     this.cargandoBiometria = true;
-    this.biometriaAviso = '';
-    this.biometriaError = '';
     this.cdr.detectChanges();
 
     try {
@@ -85,9 +83,9 @@ export class AdminDashboardComponent implements OnInit {
       await firstValueFrom(this.webAuthn.verificarRegistro(token, credential, deviceLabel));
       this.webAuthn.marcarRegistrada();
       this.biometriaRegistrada = true;
-      this.biometriaAviso = 'Biometría activada. La próxima vez podrás entrar sin contraseña.';
+      this.toast.show('Biometría activada. La próxima vez podrás entrar sin contraseña.', 'success');
     } catch (error: unknown) {
-      this.biometriaError = this.errorBiometria(error);
+      this.toast.show(this.errorBiometria(error), 'error');
     } finally {
       this.cargandoBiometria = false;
       this.cdr.detectChanges();
@@ -158,6 +156,7 @@ export class AdminDashboardComponent implements OnInit {
       },
       error: error => {
         this.errorUsuarios = error?.message || 'No se pudieron cargar los usuarios.';
+        this.toast.show(this.errorUsuarios, 'error');
         this.cargandoUsuarios = false;
         this.cdr.detectChanges();
       }
@@ -171,6 +170,7 @@ export class AdminDashboardComponent implements OnInit {
       },
       error: error => {
         this.errorTickets = error?.error?.error || error?.message || 'No se pudieron cargar las incidencias.';
+        this.toast.show(this.errorTickets, 'error');
         this.cargandoTickets = false;
         this.cdr.detectChanges();
       }
