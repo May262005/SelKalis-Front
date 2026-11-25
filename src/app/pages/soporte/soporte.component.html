@@ -1,0 +1,184 @@
+<main class="support-page">
+  <header class="support-heading">
+    <div>
+      <p class="eyebrow">SEL KALIS · ATENCIÓN</p>
+      <h1>Chat y mesa de ayuda</h1>
+      <p>Comunícate con nuestro equipo o consulta el seguimiento de tus reportes.</p>
+    </div>
+    <button class="button button-secondary" type="button" (click)="recargar()" [disabled]="cargando()">
+      <i class="fas fa-rotate-right" aria-hidden="true"></i>
+      Actualizar
+    </button>
+  </header>
+
+  <div class="support-tabs" role="tablist" aria-label="Opciones de soporte">
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'chat'"
+      [class.active]="pestana() === 'chat'" (click)="cambiarPestaña('chat')">
+      <i class="fas fa-comments" aria-hidden="true"></i> ChatBox
+    </button>
+    <button type="button" role="tab" [attr.aria-selected]="pestana() === 'tickets'"
+      [class.active]="pestana() === 'tickets'" (click)="cambiarPestaña('tickets')">
+      <i class="fas fa-ticket" aria-hidden="true"></i> Reportar incidencia
+    </button>
+  </div>
+
+  @if (error()) {
+    <p class="notice notice-error" role="alert">{{ error() }}</p>
+  }
+  @if (aviso()) {
+    <p class="notice notice-success" role="status">{{ aviso() }}</p>
+  }
+
+  @if (pestana() === 'chat') {
+    <section class="chat-layout" aria-label="Chat de soporte">
+      @if (esAdmin) {
+        <aside class="conversation-list">
+          <h2>Conversaciones</h2>
+          @for (conversation of conversaciones(); track conversation.id) {
+            <button type="button" class="conversation-option"
+              [class.selected]="conversacionSeleccionada()?.id === conversation.id"
+              (click)="seleccionarConversacion(conversation)">
+              <span class="conversation-name">{{ conversation.nombre || conversation.email }}</span>
+              <span class="conversation-preview">{{ conversation.ultimo_mensaje || 'Sin mensajes todavía' }}</span>
+            </button>
+          } @empty {
+            <p class="empty-state">Todavía no hay conversaciones.</p>
+          }
+        </aside>
+      }
+
+      <div class="chat-panel">
+        <div class="chat-title">
+          <div class="avatar" aria-hidden="true"><i class="fas fa-headset"></i></div>
+          <div>
+            <h2>{{ esAdmin ? (conversacionSeleccionada()?.nombre || 'Selecciona una conversación') : 'Atención Sel Kalis' }}</h2>
+            <p>{{ esAdmin ? (conversacionSeleccionada()?.email || 'Bandeja de soporte') : 'Déjanos tu consulta y te responderemos aquí.' }}</p>
+          </div>
+        </div>
+
+        <div class="message-list" role="log" aria-label="Mensajes del chat" aria-live="polite">
+          @for (message of mensajes(); track message.id) {
+            <article class="message" [class.message-own]="esMensajePropio(message.sender_id)">
+              <span class="message-author">{{ esMensajePropio(message.sender_id) ? 'Tú' : (message.sender_role === 'admin' ? 'Soporte' : 'Usuario') }}</span>
+              <p>{{ message.mensaje }}</p>
+              <time [attr.datetime]="message.created_at">{{ message.created_at | date:'short' }}</time>
+            </article>
+          } @empty {
+            <p class="empty-state">Aún no hay mensajes. Escribe para iniciar la conversación.</p>
+          }
+          @if (cargando()) { <p class="loading-note">Cargando mensajes…</p> }
+        </div>
+
+        <form class="composer" [formGroup]="chatForm" (ngSubmit)="enviarMensaje()">
+          <label for="chat-message">Escribe tu mensaje</label>
+          <div class="composer-row">
+            <textarea id="chat-message" formControlName="mensaje" rows="2" maxlength="1000"
+              placeholder="¿En qué podemos ayudarte?" [disabled]="esAdmin && !conversacionSeleccionada()"></textarea>
+            <button class="button button-primary" type="submit"
+              [disabled]="enviando() || (esAdmin && !conversacionSeleccionada())" aria-label="Enviar mensaje">
+              <i class="fas fa-paper-plane" aria-hidden="true"></i>
+              <span>Enviar</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  } @else {
+    <section class="tickets-layout" aria-label="Mesa de ayuda">
+      <section class="ticket-create">
+        <h2>Nueva incidencia</h2>
+        <p>Describe el problema para que podamos darle seguimiento.</p>
+        <form [formGroup]="ticketForm" (ngSubmit)="crearTicket()">
+          <label for="ticket-subject">Asunto</label>
+          <input id="ticket-subject" type="text" formControlName="asunto" maxlength="120"
+            placeholder="Ej. No puedo ver mis estudios">
+
+          <label for="ticket-category">Categoría</label>
+          <select id="ticket-category" formControlName="categoria">
+            <option value="tecnica">Problema técnico</option>
+            <option value="cuenta">Cuenta y acceso</option>
+            <option value="citas">Citas</option>
+            <option value="otra">Otro</option>
+          </select>
+
+          <label for="ticket-description">Descripción</label>
+          <textarea id="ticket-description" formControlName="descripcion" rows="5" maxlength="2000"
+            placeholder="Cuéntanos qué pasó y qué estabas intentando hacer."></textarea>
+          @if (ticketForm.controls.descripcion.touched && ticketForm.controls.descripcion.invalid) {
+            <small class="field-error">Escribe al menos 15 caracteres para describir el problema.</small>
+          }
+
+          <button class="button button-primary" type="submit" [disabled]="enviando()">
+            <i class="fas fa-plus" aria-hidden="true"></i> Registrar incidencia
+          </button>
+        </form>
+      </section>
+
+      <section class="ticket-list">
+        <h2>{{ esAdmin ? 'Incidencias reportadas' : 'Mis reportes' }}</h2>
+        @if (tickets().length === 0) {
+          <p class="empty-state">Aún no hay incidencias registradas.</p>
+        }
+        @for (ticket of tickets(); track ticket.id) {
+          <button type="button" class="ticket-card"
+            [class.ticket-selected]="ticketSeleccionado()?.id === ticket.id"
+            (click)="seleccionarTicket(ticket)">
+            <span class="ticket-card-heading">
+              <strong>{{ ticket.asunto }}</strong>
+              <span class="status-badge" [attr.data-status]="ticket.estado">{{ etiquetaEstado(ticket.estado) }}</span>
+            </span>
+            <span>{{ etiquetaCategoria(ticket.categoria) }}</span>
+            @if (esAdmin) {
+              <span>{{ ticket.nombre_solicitante || ticket.email_solicitante }}</span>
+            }
+            <time [attr.datetime]="ticket.created_at">{{ ticket.created_at | date:'mediumDate' }}</time>
+          </button>
+        }
+      </section>
+
+      @if (ticketSeleccionado(); as ticket) {
+        <section class="ticket-detail">
+          <div class="detail-heading">
+            <div>
+              <p class="eyebrow">INCIDENCIA · {{ ticket.id.slice(0, 8) }}</p>
+              <h2>{{ ticket.asunto }}</h2>
+              <p>{{ etiquetaCategoria(ticket.categoria) }} · {{ ticket.created_at | date:'medium' }}</p>
+            </div>
+            @if (esAdmin) {
+              <label class="status-control">
+                Estado
+                <select [value]="ticket.estado" (change)="actualizarEstado(ticket, $event)">
+                  <option value="abierto">Abierto</option>
+                  <option value="en_proceso">En proceso</option>
+                  <option value="resuelto">Resuelto</option>
+                  <option value="cerrado">Cerrado</option>
+                </select>
+              </label>
+            } @else {
+              <span class="status-badge" [attr.data-status]="ticket.estado">{{ etiquetaEstado(ticket.estado) }}</span>
+            }
+          </div>
+          <p class="ticket-description">{{ ticket.descripcion }}</p>
+          <h3>Seguimiento</h3>
+          <div class="reply-list" role="log" aria-label="Respuestas de la incidencia">
+            @for (reply of respuestas(); track reply.id) {
+              <article class="reply" [class.reply-own]="esMensajePropio(reply.sender_id)">
+                <strong>{{ esMensajePropio(reply.sender_id) ? 'Tú' : (reply.sender_role === 'admin' ? 'Soporte' : 'Usuario') }}</strong>
+                <p>{{ reply.mensaje }}</p>
+                <time [attr.datetime]="reply.created_at">{{ reply.created_at | date:'short' }}</time>
+              </article>
+            } @empty {
+              <p class="empty-state">Todavía no hay respuestas para esta incidencia.</p>
+            }
+          </div>
+          <form class="reply-composer" [formGroup]="respuestaForm" (ngSubmit)="enviarRespuesta()">
+            <label for="ticket-reply">{{ esAdmin ? 'Responder al usuario' : 'Agregar información' }}</label>
+            <textarea id="ticket-reply" formControlName="mensaje" rows="3" maxlength="1000"
+              placeholder="Escribe una respuesta o información adicional"></textarea>
+            <button class="button button-primary" type="submit" [disabled]="enviando()">Enviar respuesta</button>
+          </form>
+        </section>
+      }
+    </section>
+  }
+</main>

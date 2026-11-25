@@ -23,6 +23,7 @@ export class AuthInterceptor implements HttpInterceptor {
       'selkalis-auth-service.onrender.com',
       'selkalis-tratamientos-service.onrender.com',
       'selkalis-citas-service.onrender.com',
+      'selkalis-soporte-service.onrender.com',
       'selkalis-estudios-service.onrender.com',
       'selkalis-documentos-service.onrender.com'
     ];

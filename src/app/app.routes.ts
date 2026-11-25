@@ -4,7 +4,6 @@ import { LandingComponent } from './landing/landing.component';
 import { LoginComponent } from './auth/login/login.component';
 import { RegistroComponent } from './auth/registro/registro.component';
 import { RecuperarComponent } from './pages/auth/recuperar.component';
-import { SeguridadFlutterComponent } from './pages/seguridad-flutter/seguridad-flutter.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { TratamientosComponent } from './pages/medicamentos/tratamientos.component';
 import { CitasComponent } from './pages/citas/citas.component';
@@ -32,7 +31,6 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'registro', component: RegistroComponent },
   { path: 'recuperar', component: RecuperarComponent },
-  { path: 'seguridad-flutter', component: SeguridadFlutterComponent },
 
   // PÁGINAS LEGALES (públicas, sin autenticación)
   { path: 'terminos', component: TerminosComponent },
@@ -52,6 +50,11 @@ export const routes: Routes = [
   { path: 'estudios', component: EstudiosComponent, canActivate: [authGuard] },
   { path: 'documentos', component: DocumentosComponent, canActivate: [authGuard] },
   { path: 'perfil', component: PerfilComponent, canActivate: [authGuard] },
+  {
+    path: 'soporte',
+    loadComponent: () => import('./pages/soporte/soporte.component').then(module => module.SoporteComponent),
+    canActivate: [authGuard]
+  },
 
   // Página protegida solo para administradores
   { path: 'admin', component: AdminComponent, canActivate: [authGuard, adminGuard] },

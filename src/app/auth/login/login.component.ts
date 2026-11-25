@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { WebAuthnService } from '../../services/webauthn.service';
-import { DispositivoService } from '../../services/dispositivo.service';
 
 const SK_TOKEN = 'sk_token';
 
@@ -27,11 +26,6 @@ export class LoginComponent implements OnInit, OnDestroy {
   biometriaCargando = false;
   biometriaError = '';
 
-  mostrarModalTelefono = false;
-  telefonoModal = '';
-  telefonoModalError = '';
-  telefonoModalCargando = false;
-
   private loadingTimeout: any = null;
 
   constructor(
@@ -39,8 +33,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object,
-    private webAuthnService: WebAuthnService,
-    private dispositivoService: DispositivoService
+    private webAuthnService: WebAuthnService
   ) {}
 
   async ngOnInit() {
@@ -169,55 +162,6 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
   }
 
-  private verificarVinculacionPostLogin(): void {
-    const user = this.authService.getCurrentUser();
-    if (!user) return;
-
-    if (!user.telefono || user.telefono.trim() === '') {
-      this.mostrarModalTelefono = true;
-      this.cdr.detectChanges();
-    }
-  }
-
-  guardarTelefonoModal(): void {
-    this.telefonoModalError = '';
-    const tel = this.telefonoModal.trim();
-    if (!/^\+?[0-9]{10,15}$/.test(tel)) {
-      this.telefonoModalError = 'Número inválido (10-15 dígitos, opcional +)';
-      return;
-    }
-
-    const user = this.authService.getCurrentUser();
-    if (!user) return;
-
-    this.telefonoModalCargando = true;
-    this.dispositivoService.vincularTelefono(user.id, tel).subscribe({
-      next: () => {
-        this.dispositivoService.asociarDispositivo(user.id, {
-          device_id: this.dispositivoService.obtenerDeviceId(),
-          device_platform: this.dispositivoService.detectarPlataforma(),
-          device_model: this.dispositivoService.detectarModelo()
-        }).subscribe({
-          next: () => {
-            this.telefonoModalCargando = false;
-            this.mostrarModalTelefono = false;
-            this.authService.updateUserData({ telefono: tel });
-            this.showToast('Teléfono y dispositivo vinculados', 'success');
-            setTimeout(() => this.redirigirSegunRol(), 800);
-          },
-          error: (err) => {
-            this.telefonoModalCargando = false;
-            this.telefonoModalError = err?.error?.error || 'Error al asociar dispositivo';
-          }
-        });
-      },
-      error: (err) => {
-        this.telefonoModalCargando = false;
-        this.telefonoModalError = err?.error?.error || 'Error al guardar teléfono';
-      }
-    });
-  }
-
   onSubmit(): void {
     if (!this.email || !this.email.trim()) {
       this.showToast('Por favor, ingresa tu correo electrónico', 'warning');
@@ -244,11 +188,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         }
 
         this.showToast('Bienvenido a SelKalis', 'success');
-        this.verificarVinculacionPostLogin();
-        
-        if (!this.mostrarModalTelefono) {
-          this.redirigirSegunRol();
-        }
+        this.redirigirSegunRol();
       },
       error: (error: any) => {
         this.setLoading(false);

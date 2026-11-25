@@ -30,7 +30,7 @@ export class App implements OnInit, OnDestroy {
       '/estudios',
       '/documentos', 
       '/perfil',
-      '/seguridad-flutter' // ✅ AGREGADO AQUÍ
+      '/soporte'
     ];
     
     // Páginas públicas (sin autenticación)
