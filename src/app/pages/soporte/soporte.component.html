@@ -2,7 +2,7 @@
   <header class="support-heading">
     <div>
       <p class="eyebrow">SEL KALIS · ATENCIÓN</p>
-      <h1>Chat y mesa de ayuda</h1>
+      <h1>Chat y <span>mesa de ayuda</span></h1>
       <p>Comunícate con nuestro equipo o consulta el seguimiento de tus reportes.</p>
     </div>
     <button class="button button-secondary" type="button" (click)="recargar()" [disabled]="cargando()">
@@ -93,13 +93,10 @@
           <input id="ticket-subject" type="text" formControlName="asunto" maxlength="120"
             placeholder="Ej. No puedo ver mis estudios">
 
-          <label for="ticket-category">Categoría</label>
-          <select id="ticket-category" formControlName="categoria">
-            <option value="tecnica">Problema técnico</option>
-            <option value="cuenta">Cuenta y acceso</option>
-            <option value="citas">Citas</option>
-            <option value="otra">Otro</option>
-          </select>
+          <span class="support-category">
+            <i class="fas fa-screwdriver-wrench" aria-hidden="true"></i>
+            Categoría: Soporte técnico
+          </span>
 
           <label for="ticket-description">Descripción</label>
           <textarea id="ticket-description" formControlName="descripcion" rows="5" maxlength="2000"

@@ -1,0 +1,61 @@
+@if (!esAdmin) {
+  <div class="chat-widget">
+    @if (abierto()) {
+      <section class="chat-window" role="dialog" aria-labelledby="chat-widget-title">
+        <header class="chat-header">
+          <div class="chat-brand">
+            <span class="chat-icon"><i class="fas fa-headset" aria-hidden="true"></i></span>
+            <div>
+              <h2 id="chat-widget-title">ChatBox</h2>
+              <p>Soporte técnico Sel Kalis</p>
+            </div>
+          </div>
+          <div class="chat-header-actions">
+            <button type="button" class="icon-button" aria-label="Actualizar mensajes"
+              (click)="recargar()" [disabled]="cargando()">
+              <i class="fas fa-rotate-right" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="icon-button" aria-label="Cerrar ChatBox" (click)="toggle()">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+        </header>
+
+        <div class="chat-messages" role="log" aria-label="Mensajes del chat" aria-live="polite">
+          @for (message of mensajes(); track message.id) {
+            <article class="chat-message" [class.own-message]="message.sender_id === usuarioId">
+              <span>{{ message.sender_id === usuarioId ? 'Tú' : 'Soporte' }}</span>
+              <p>{{ message.mensaje }}</p>
+              <time [attr.datetime]="message.created_at">{{ message.created_at | date:'shortTime' }}</time>
+            </article>
+          } @empty {
+            @if (!cargando()) {
+              <p class="empty-message">¡Hola! Escríbenos y te ayudaremos.</p>
+            }
+          }
+          @if (cargando()) {
+            <p class="empty-message" role="status">Cargando conversación…</p>
+          }
+        </div>
+
+        @if (error()) {
+          <p class="chat-error" role="alert">{{ error() }}</p>
+        }
+
+        <form class="chat-composer" [formGroup]="form" (ngSubmit)="enviar()">
+          <label class="sr-only" for="dashboard-chat-message">Escribe tu mensaje</label>
+          <textarea id="dashboard-chat-message" formControlName="mensaje" rows="2" maxlength="1000"
+            placeholder="Escribe tu mensaje…"></textarea>
+          <button type="submit" class="send-button" [disabled]="enviando()" aria-label="Enviar mensaje">
+            <i class="fas fa-paper-plane" aria-hidden="true"></i>
+          </button>
+        </form>
+      </section>
+    }
+
+    <button type="button" class="chat-launcher" (click)="toggle()"
+      [attr.aria-expanded]="abierto()" [attr.aria-label]="abierto() ? 'Cerrar ChatBox' : 'Abrir ChatBox'">
+      <i class="fas" [class.fa-comments]="!abierto()" [class.fa-times]="abierto()" aria-hidden="true"></i>
+    </button>
+  </div>
+}

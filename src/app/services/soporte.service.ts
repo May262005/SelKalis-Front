@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 export type TicketStatus = 'abierto' | 'en_proceso' | 'resuelto' | 'cerrado';
-export type TicketCategory = 'tecnica' | 'cuenta' | 'citas' | 'otra';
+export type TicketCategory = 'tecnica';
 export type SupportRole = 'user' | 'admin';
 
 export interface ChatMessage {
@@ -56,7 +56,7 @@ const TOKEN_KEY = 'sk_token';
 @Injectable({ providedIn: 'root' })
 export class SoporteService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'https://selkalis-soporte-service.onrender.com/';
+  private readonly apiUrl = 'https://selkalis-soporte-service.onrender.com';
 
   private headers(): HttpHeaders {
     const token = localStorage.getItem(TOKEN_KEY);

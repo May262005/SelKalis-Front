@@ -5,11 +5,12 @@ import { AuthService } from '../../services/auth.service';
 import { DashboardService, DashboardData } from '../../services/dashboard.service';
 import { WebAuthnService } from '../../services/webauthn.service';
 import { DispositivoService } from '../../services/dispositivo.service';
+import { ChatWidgetComponent } from '../../components/chat-widget/chat-widget.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, CommonModule],
+  imports: [RouterLink, CommonModule, ChatWidgetComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })

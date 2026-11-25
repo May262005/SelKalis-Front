@@ -46,7 +46,6 @@ export class SoporteComponent implements OnInit {
   });
   readonly ticketForm = this.fb.nonNullable.group({
     asunto: ['', [Validators.required, Validators.maxLength(120)]],
-    categoria: ['tecnica' as TicketCategory, Validators.required],
     descripcion: ['', [Validators.required, Validators.minLength(15), Validators.maxLength(2000)]]
   });
   readonly respuestaForm = this.fb.nonNullable.group({
@@ -149,10 +148,13 @@ export class SoporteComponent implements OnInit {
 
     this.enviando.set(true);
     this.error.set('');
-    this.service.createTicket(this.ticketForm.getRawValue()).subscribe({
+    this.service.createTicket({
+      ...this.ticketForm.getRawValue(),
+      categoria: 'tecnica'
+    }).subscribe({
       next: ticket => {
         this.tickets.update(tickets => [ticket, ...tickets]);
-        this.ticketForm.reset({ asunto: '', categoria: 'tecnica', descripcion: '' });
+        this.ticketForm.reset({ asunto: '', descripcion: '' });
         this.ticketSeleccionado.set(ticket);
         this.respuestas.set([]);
         this.aviso.set('Tu reporte quedó registrado.');
@@ -214,13 +216,8 @@ export class SoporteComponent implements OnInit {
     }[status];
   }
 
-  etiquetaCategoria(category: TicketCategory): string {
-    return {
-      tecnica: 'Problema técnico',
-      cuenta: 'Cuenta y acceso',
-      citas: 'Citas',
-      otra: 'Otro'
-    }[category];
+  etiquetaCategoria(_category: TicketCategory): string {
+    return 'Soporte técnico';
   }
 
   private cargarMensajesAdmin(conversacion: SupportConversation): void {
