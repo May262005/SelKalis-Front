@@ -101,6 +101,15 @@
               {{ pushLoading ? 'Actualizando...' : (notificationPreferences.push_enabled ? 'Desactivar notificaciones' : 'Pedir permiso y activar') }}
             </button>
           </div>
+          <button *ngIf="notificationPreferences.push_enabled"
+                  type="button"
+                  class="btn-primary settings-action"
+                  [disabled]="pushTestLoading"
+                  (click)="enviarNotificacionNativaDePrueba()">
+            <i class="fas" [class.fa-spinner]="pushTestLoading" [class.fa-spin]="pushTestLoading"
+               [class.fa-paper-plane]="!pushTestLoading"></i>
+            {{ pushTestLoading ? 'Enviando prueba...' : 'Probar notificación nativa' }}
+          </button>
           <p class="settings-description" *ngIf="!pushSupported">
             Push requiere HTTPS, un navegador compatible y el service worker habilitado. Puedes conceder el permiso,
             pero no se entregarán avisos hasta que el servicio de soporte tenga configuradas sus claves VAPID.

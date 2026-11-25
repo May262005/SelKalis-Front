@@ -38,6 +38,7 @@ export class PerfilComponent implements OnInit {
   };
   notificationError = '';
   pushLoading = false;
+  pushTestLoading = false;
   preferencesLoading = true;
   notificationPermission = 'unknown';
   cameraPermission = 'unknown';
@@ -421,6 +422,29 @@ export class PerfilComponent implements OnInit {
       this.pushLoading = false;
       this.cdr.detectChanges();
     }
+  }
+
+  enviarNotificacionNativaDePrueba(): void {
+    if (this.pushTestLoading) return;
+    this.pushTestLoading = true;
+    this.notificationsService.sendTestPush().subscribe({
+      next: response => {
+        this.pushTestLoading = false;
+        this.showToast(
+          `El servicio push aceptó el envío a ${response.data.sent} suscripción(es). Esto confirma el envío al navegador, no que Windows lo haya mostrado; revisa las notificaciones de Edge y Windows.`,
+          'success'
+        );
+        this.cdr.detectChanges();
+      },
+      error: (error: unknown) => {
+        this.pushTestLoading = false;
+        const message = error instanceof HttpErrorResponse
+          ? error.error?.error
+          : error instanceof Error ? error.message : '';
+        this.showToast(message || 'No se pudo enviar la notificación de prueba.', 'error');
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   private cargarEstadoPermisos(): void {
