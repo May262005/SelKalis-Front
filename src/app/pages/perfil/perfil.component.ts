@@ -38,6 +38,7 @@ export class PerfilComponent implements OnInit {
   };
   notificationError = '';
   pushLoading = false;
+  devicePushEnabled = false;
   preferencesLoading = true;
   notificationPermission = 'unknown';
   cameraPermission = 'unknown';
@@ -365,8 +366,7 @@ export class PerfilComponent implements OnInit {
     this.notificationsService.getPreferences().subscribe({
       next: response => {
         this.notificationPreferences = response.data;
-        this.preferencesLoading = false;
-        this.cdr.detectChanges();
+        void this.actualizarEstadoPushDispositivo();
       },
       error: error => {
         this.notificationError = error.error?.error || 'No se pudieron cargar las preferencias de notificación.';
@@ -374,6 +374,18 @@ export class PerfilComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private async actualizarEstadoPushDispositivo(): Promise<void> {
+    try {
+      this.devicePushEnabled = await this.notificationsService.hasCurrentDeviceSubscription();
+    } catch (error) {
+      console.error('No se pudo comprobar la suscripción push de este dispositivo:', error);
+      this.notificationError = 'No se pudo comprobar si este dispositivo está suscrito a notificaciones.';
+    } finally {
+      this.preferencesLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   cambiarCategoriaNotificacion(categoria: 'medicamentos_enabled' | 'citas_enabled' | 'soporte_enabled'): void {
@@ -402,14 +414,19 @@ export class PerfilComponent implements OnInit {
     this.pushLoading = true;
     this.notificationError = '';
     try {
-      if (this.notificationPreferences.push_enabled) {
-        await this.notificationsService.disablePush();
-        this.notificationPreferences = { ...this.notificationPreferences, push_enabled: false };
+      if (this.devicePushEnabled) {
+        const pushEnabledForAccount = await this.notificationsService.disablePush();
+        this.devicePushEnabled = false;
+        this.notificationPreferences = {
+          ...this.notificationPreferences,
+          push_enabled: pushEnabledForAccount
+        };
       } else {
         if (isPlatformBrowser(this.platformId) && 'Notification' in window && Notification.permission === 'denied') {
           throw new Error('Las notificaciones están bloqueadas en el navegador. Habilítalas desde los ajustes del sitio.');
         }
         await this.notificationsService.enablePush();
+        this.devicePushEnabled = true;
         this.notificationPreferences = { ...this.notificationPreferences, push_enabled: true };
         this.notificationPermission = 'granted';
       }

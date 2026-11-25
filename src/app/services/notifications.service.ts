@@ -136,6 +136,11 @@ export class NotificationsService {
     await this.persistSubscription(subscription, preferences.data.timezone);
   }
 
+  async hasCurrentDeviceSubscription(): Promise<boolean> {
+    if (!this.isPushAvailable) return false;
+    return Boolean(await firstValueFrom(this.swPush.subscription.pipe(take(1))));
+  }
+
   async removeCurrentDeviceSubscription(): Promise<void> {
     if (!this.isPushAvailable || !this.auth.isTokenValid()) return;
 
@@ -151,25 +156,26 @@ export class NotificationsService {
     ));
   }
 
-  async disablePush(): Promise<void> {
-    if (!isPlatformBrowser(this.platformId)) return;
+  async disablePush(): Promise<boolean> {
+    if (!isPlatformBrowser(this.platformId)) return false;
 
     const subscription = this.swPush.isEnabled
       ? await firstValueFrom(this.swPush.subscription.pipe(take(1)))
       : null;
 
-    await firstValueFrom(this.http.delete(
+    if (!subscription) return false;
+
+    const response = await firstValueFrom(this.http.delete<ApiResponse<{ push_enabled: boolean }>>(
       `${this.apiUrl}/notifications/subscriptions`,
       {
         headers: this.auth.getAuthHeaders(),
-        body: {}
+        body: { endpoint: subscription.endpoint }
       }
     ));
 
-    if (subscription) {
-      const unsubscribed = await subscription.unsubscribe();
-      if (!unsubscribed) throw new Error('El navegador no pudo cancelar la suscripción push.');
-    }
+    const unsubscribed = await subscription.unsubscribe();
+    if (!unsubscribed) throw new Error('El navegador no pudo cancelar la suscripción push.');
+    return response.data.push_enabled;
   }
 
   private async persistSubscription(subscription: PushSubscription, timezone: string): Promise<void> {

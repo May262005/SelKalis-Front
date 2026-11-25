@@ -76,7 +76,7 @@
             <h3 id="notification-settings-title"><i class="fas fa-bell"></i> Notificaciones</h3>
           </div>
           <p class="settings-description">
-            Elige qué avisos quieres recibir. Los recordatorios push requieren permiso del navegador y conexión segura.
+            Elige qué avisos quieres recibir. Activa las notificaciones por separado en cada dispositivo y navegador.
           </p>
           <p class="permission-state">
             Permiso del navegador: <strong>{{ notificationPermissionLabel }}</strong>
@@ -86,7 +86,7 @@
               <i class="fas fa-mobile-alt"></i>
               <div>
                 <strong>Notificaciones push</strong>
-                <p>{{ notificationPreferences.push_enabled ? 'Activas para tu cuenta' : 'Desactivadas para tu cuenta' }}</p>
+                <p>{{ devicePushEnabled ? 'Activas en este dispositivo' : (notificationPreferences.push_enabled ? 'Activas en otros dispositivos' : 'Desactivadas en este dispositivo') }}</p>
               </div>
             </div>
             <button type="button" class="btn-primary settings-action"
@@ -94,7 +94,7 @@
                     (click)="cambiarPush()">
               <i class="fas" [class.fa-spinner]="pushLoading" [class.fa-spin]="pushLoading"
                  [class.fa-bell]="!pushLoading"></i>
-              {{ pushLoading ? 'Actualizando...' : (notificationPreferences.push_enabled ? 'Desactivar notificaciones' : 'Pedir permiso y activar') }}
+              {{ pushLoading ? 'Actualizando...' : (devicePushEnabled ? 'Desactivar en este dispositivo' : 'Activar en este dispositivo') }}
             </button>
           </div>
           <div class="preferencias-list">
