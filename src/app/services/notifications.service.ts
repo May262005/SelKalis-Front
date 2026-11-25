@@ -121,10 +121,33 @@ export class NotificationsService {
     }
 
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Mexico_City';
-    await firstValueFrom(this.http.post(
+    await this.persistSubscription(subscription, timezone);
+  }
+
+  async restoreCurrentDeviceSubscription(): Promise<void> {
+    if (!this.isPushAvailable || !this.auth.isTokenValid()) return;
+
+    const subscription = await firstValueFrom(this.swPush.subscription.pipe(take(1)));
+    if (!subscription) return;
+
+    const preferences = await firstValueFrom(this.getPreferences());
+    if (!preferences.data.push_enabled) return;
+
+    await this.persistSubscription(subscription, preferences.data.timezone);
+  }
+
+  async removeCurrentDeviceSubscription(): Promise<void> {
+    if (!this.isPushAvailable || !this.auth.isTokenValid()) return;
+
+    const subscription = await firstValueFrom(this.swPush.subscription.pipe(take(1)));
+    if (!subscription) return;
+
+    await firstValueFrom(this.http.delete(
       `${this.apiUrl}/notifications/subscriptions`,
-      { subscription: subscription.toJSON(), timezone },
-      { headers: this.auth.getAuthHeaders() }
+      {
+        headers: this.auth.getAuthHeaders(),
+        body: { endpoint: subscription.endpoint }
+      }
     ));
   }
 
@@ -147,5 +170,13 @@ export class NotificationsService {
       const unsubscribed = await subscription.unsubscribe();
       if (!unsubscribed) throw new Error('El navegador no pudo cancelar la suscripción push.');
     }
+  }
+
+  private async persistSubscription(subscription: PushSubscription, timezone: string): Promise<void> {
+    await firstValueFrom(this.http.post(
+      `${this.apiUrl}/notifications/subscriptions`,
+      { subscription: subscription.toJSON(), timezone },
+      { headers: this.auth.getAuthHeaders() }
+    ));
   }
 }

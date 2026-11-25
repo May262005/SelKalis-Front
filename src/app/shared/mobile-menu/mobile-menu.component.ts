@@ -3,6 +3,8 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { MenuService } from '../menu.service';
 import { AuthService } from '../../services/auth.service';
+import { NotificationsService } from '../../services/notifications.service';
+import { ToastService } from '../toast.service';
 
 @Component({
   selector: 'app-mobile-menu',
@@ -21,7 +23,9 @@ export class MobileMenuComponent implements OnInit {
     @Inject(PLATFORM_ID) private platformId: object,
     private router: Router,
     private menuService: MenuService,
-    private authService: AuthService
+    private authService: AuthService,
+    private notificationsService: NotificationsService,
+    private toast: ToastService
   ) {
     this.menuService.isOpen.subscribe(open => {
       this.isOpen = open;
@@ -53,7 +57,15 @@ export class MobileMenuComponent implements OnInit {
 
   closeMenu() { this.menuService.close(); }
 
-  cerrarSesion() {
+  async cerrarSesion(): Promise<void> {
+    try {
+      await this.notificationsService.removeCurrentDeviceSubscription();
+    } catch (error) {
+      console.error('No se pudo desactivar push en este dispositivo antes del cierre de sesión:', error);
+      this.toast.show('No se pudo desactivar push en este dispositivo. Revisa tu conexión e inténtalo de nuevo.', 'error');
+      return;
+    }
+
     this.authService.logout();
     this.closeMenu();
     this.router.navigate(['/']);

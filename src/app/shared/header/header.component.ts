@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { MenuService } from '../menu.service';
 import { AuthService } from '../../services/auth.service';
 import { AppNotification, NotificationsService } from '../../services/notifications.service';
+import { ToastService } from '../toast.service';
 
 @Component({
   selector: 'app-header',
@@ -30,6 +31,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     public menuService: MenuService,
     private authService: AuthService,
     private notificationsService: NotificationsService,
+    private toast: ToastService,
     @Inject(PLATFORM_ID) private platformId: object
   ) {}
 
@@ -37,11 +39,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (isPlatformBrowser(this.platformId)) {
       this.subscriptions.add(this.authService.currentUser$.subscribe(user => {
         if (user) {
+          const userChanged = this.currentUserId !== user.id;
           this.nombreUsuario = user.nombre;
           this.iniciales = user.nombre.charAt(0).toUpperCase();
           this.esAdmin = user.rol === 'admin';
           this.currentUserId = user.id;
           this.setupNoticeVisible = !localStorage.getItem(`sk_permission_setup_seen:${user.id}`);
+          if (userChanged) {
+            void this.notificationsService.restoreCurrentDeviceSubscription().catch(error => {
+              console.error('No se pudo restaurar la suscripción push de este dispositivo:', error);
+            });
+          }
           this.cargarNotificaciones();
           if (!this.notificationPoll) {
             this.notificationPoll = setInterval(() => this.cargarNotificaciones(), 45000);
@@ -146,8 +154,15 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
   }
 
-  cerrarSesion() {
+  async cerrarSesion(): Promise<void> {
     this.menuAbierto = false;
+    try {
+      await this.notificationsService.removeCurrentDeviceSubscription();
+    } catch (error) {
+      console.error('No se pudo desactivar push en este dispositivo antes del cierre de sesión:', error);
+      this.toast.show('No se pudo desactivar push en este dispositivo. Revisa tu conexión e inténtalo de nuevo.', 'error');
+      return;
+    }
     this.authService.logout();
   }
 

@@ -96,12 +96,22 @@ export class DashboardService {
     return headers;
   }
 
+  private getTimezone(): string {
+    if (!isPlatformBrowser(this.platformId)) return 'UTC';
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch {
+      return 'UTC';
+    }
+  }
+
   private handleError(error: any): Observable<never> {
     return throwError(() => error);
   }
 
   getDashboardData(): Observable<DashboardData> {
     const headers = this.getAuthHeaders();
+    const citasHeaders = headers.set('X-Timezone', this.getTimezone());
 
     const tratamientos$ = this.http.get(`${this.TRATAMIENTOS_URL}/tratamientos`, { headers })
       .pipe(
@@ -109,7 +119,7 @@ export class DashboardService {
         catchError(() => of({ success: true, data: [] }))
       );
 
-    const citas$ = this.http.get(`${this.CITAS_URL}/citas`, { headers })
+    const citas$ = this.http.get(`${this.CITAS_URL}/citas`, { headers: citasHeaders })
       .pipe(
         timeout(this.TIMEOUT),
         catchError(() => of({ success: true, data: [] }))
@@ -174,11 +184,12 @@ export class DashboardService {
 
   private getDashboardDataFallback(): Observable<DashboardData> {
     const headers = this.getAuthHeaders();
+    const citasHeaders = headers.set('X-Timezone', this.getTimezone());
 
     const tratamientos$ = this.http.get(`${this.TRATAMIENTOS_URL}/tratamientos`, { headers })
       .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
 
-    const citas$ = this.http.get(`${this.CITAS_URL}/citas`, { headers })
+    const citas$ = this.http.get(`${this.CITAS_URL}/citas`, { headers: citasHeaders })
       .pipe(timeout(this.TIMEOUT), catchError(() => of({ success: true, data: [] })));
 
     const estudios$ = this.http.get(`${this.ESTUDIOS_URL}/estudios`, { headers })
