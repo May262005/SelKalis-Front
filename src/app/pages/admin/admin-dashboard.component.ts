@@ -28,6 +28,7 @@ export class AdminDashboardComponent implements OnInit {
 
   biometriaDisponible = false;
   biometriaRegistrada = false;
+  cargandoEstadoBiometria = true;
   cargandoBiometria = false;
   biometriaAviso = '';
   biometriaError = '';
@@ -44,11 +45,24 @@ export class AdminDashboardComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.cargarDatos();
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (!isPlatformBrowser(this.platformId)) {
+      this.cargandoEstadoBiometria = false;
+      return;
+    }
 
-    this.biometriaDisponible = await this.webAuthn.disponible();
-    this.biometriaRegistrada = this.webAuthn.estaRegistrada();
-    this.cdr.detectChanges();
+    try {
+      this.biometriaDisponible = await this.webAuthn.disponible();
+      const user = this.authService.getCurrentUser();
+      if (this.biometriaDisponible && user?.email) {
+        const status = await firstValueFrom(this.webAuthn.estado(user.email));
+        this.biometriaRegistrada = Boolean(status.biometric_enabled || status.tiene_credenciales);
+      }
+    } catch (error: unknown) {
+      this.biometriaError = this.errorBiometria(error, 'No se pudo consultar el estado biométrico.');
+    } finally {
+      this.cargandoEstadoBiometria = false;
+      this.cdr.detectChanges();
+    }
   }
 
   async activarBiometriaDesdeDashboard(): Promise<void> {
@@ -194,12 +208,12 @@ export class AdminDashboardComponent implements OnInit {
     }).format(new Date(fecha));
   }
 
-  private errorBiometria(error: unknown): string {
+  private errorBiometria(error: unknown, fallback = 'Error al activar biometría.'): string {
     if (error instanceof HttpErrorResponse) {
-      return error.error?.error || error.message || 'Error al activar biometría.';
+      return error.error?.error || error.message || fallback;
     }
     return error instanceof Error && error.message
       ? error.message
-      : 'Error al activar biometría.';
+      : fallback;
   }
 }
