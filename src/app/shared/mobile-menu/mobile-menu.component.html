@@ -10,34 +10,46 @@
   </div>
 
   <nav class="mobile-nav">
-    <a routerLink="/dashboard" routerLinkActive="active"
-       class="mobile-nav-item" (click)="closeMenu()">
-      <i class="fas fa-chart-line"></i><span>Dashboard</span>
-    </a>
-    <a routerLink="/tratamientos" routerLinkActive="active"
-       class="mobile-nav-item" (click)="closeMenu()">
-      <i class="fas fa-capsules"></i><span>Tratamientos</span>
-    </a>
-    <a routerLink="/citas" routerLinkActive="active"
-       class="mobile-nav-item" (click)="closeMenu()">
-      <i class="fas fa-calendar-alt"></i><span>Citas</span>
-    </a>
-    <a routerLink="/estudios" routerLinkActive="active"
-       class="mobile-nav-item" (click)="closeMenu()">
-      <i class="fas fa-vials"></i><span>Estudios</span>
-    </a>
-    <a routerLink="/documentos" routerLinkActive="active"
-       class="mobile-nav-item" (click)="closeMenu()">
-      <i class="fas fa-folder-open"></i><span>Documentos</span>
-    </a>  
-    <a routerLink="/soporte" routerLinkActive="active"
-       class="mobile-nav-item" (click)="closeMenu()">
-      <i class="fas fa-headset"></i><span>Chat y soporte</span>
-    </a>
-    <a *ngIf="esAdmin" routerLink="/admin" routerLinkActive="active"
-       class="mobile-nav-item mobile-nav-item-admin" (click)="closeMenu()">
-      <i class="fas fa-user-shield"></i><span>Admin</span>
-    </a>
+    <ng-container *ngIf="esAdmin; else userLinks">
+      <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-chart-line"></i><span>Inicio</span>
+      </a>
+      <a routerLink="/admin/usuarios" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-users"></i><span>Usuarios</span>
+      </a>
+      <a routerLink="/soporte" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-headset"></i><span>Mesa de ayuda</span>
+      </a>
+    </ng-container>
+    <ng-template #userLinks>
+      <a routerLink="/dashboard" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-chart-line"></i><span>Dashboard</span>
+      </a>
+      <a routerLink="/tratamientos" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-capsules"></i><span>Tratamientos</span>
+      </a>
+      <a routerLink="/citas" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-calendar-alt"></i><span>Citas</span>
+      </a>
+      <a routerLink="/estudios" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-vials"></i><span>Estudios</span>
+      </a>
+      <a routerLink="/documentos" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-folder-open"></i><span>Documentos</span>
+      </a>
+      <a routerLink="/soporte" routerLinkActive="active"
+         class="mobile-nav-item" (click)="closeMenu()">
+        <i class="fas fa-headset"></i><span>Soporte</span>
+      </a>
+    </ng-template>
   </nav>
 
   <div class="mobile-menu-footer"></div>

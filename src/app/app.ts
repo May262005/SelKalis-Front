@@ -30,6 +30,7 @@ export class App implements OnInit, OnDestroy {
       '/estudios',
       '/documentos', 
       '/perfil',
+      '/admin',
       '/soporte'
     ];
     

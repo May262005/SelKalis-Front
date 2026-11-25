@@ -1,0 +1,139 @@
+:host {
+  display: block;
+}
+
+.admin-dashboard {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 40px;
+  color: #1f3a5f;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.admin-hero {
+  margin-bottom: 28px;
+}
+
+.eyebrow,
+.shortcut-kicker {
+  color: #4a6fa5;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+}
+
+.admin-hero h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -.5px;
+}
+
+.admin-hero h1 span {
+  color: #4a6fa5;
+}
+
+.admin-hero > p:last-child {
+  max-width: 650px;
+  margin: 0;
+  color: #7b8ca8;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.admin-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-shortcut {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 148px;
+  padding: 22px;
+  border: 1px solid #d6e2ee;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(31 58 95 / 6%);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.admin-shortcut:hover {
+  transform: translateY(-2px);
+  border-color: #9dbbe0;
+  box-shadow: 0 10px 24px rgb(31 58 95 / 10%);
+}
+
+.shortcut-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 16px;
+  background: #eef3f8;
+  color: #4a6fa5;
+  font-size: 21px;
+}
+
+.shortcut-content {
+  display: grid;
+  gap: 7px;
+}
+
+.shortcut-kicker {
+  font-size: .68rem;
+}
+
+.shortcut-content strong {
+  font-size: 19px;
+}
+
+.shortcut-content > span:last-child {
+  color: #7b8ca8;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.shortcut-arrow {
+  color: #4a6fa5;
+}
+
+@media (max-width: 760px) {
+  .admin-dashboard {
+    padding: 24px 16px;
+  }
+
+  .admin-shortcuts {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-shortcut {
+    min-height: 128px;
+    padding: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-hero h1 {
+    font-size: 26px;
+  }
+
+  .admin-shortcut {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .shortcut-arrow {
+    display: none;
+  }
+}

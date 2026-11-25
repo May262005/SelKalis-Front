@@ -9,18 +9,23 @@
     </div>
   </div>
 
-  <nav class="nav-tabs">
-    <a routerLink="/dashboard" routerLinkActive="active" class="tab">Dashboard</a>
-    <a routerLink="/tratamientos" routerLinkActive="active" class="tab">Tratamientos</a>
-    <a routerLink="/citas" routerLinkActive="active" class="tab">Citas</a>
-    <a routerLink="/estudios" routerLinkActive="active" class="tab">Estudios</a>
-    <a routerLink="/documentos" routerLinkActive="active" class="tab">Documentos</a>
-    <a routerLink="/soporte" routerLinkActive="active" class="tab">Soporte</a>
-    <a *ngIf="esAdmin" routerLink="/admin" routerLinkActive="active" class="tab tab-admin">
-      <i class="fas fa-user-shield"></i>
-      Admin
-    </a>
-  </nav>
+  <ng-container *ngIf="esAdmin; else userNavigation">
+    <nav class="nav-tabs admin-nav-tabs">
+      <a routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="tab">Inicio</a>
+      <a routerLink="/admin/usuarios" routerLinkActive="active" class="tab">Usuarios</a>
+      <a routerLink="/soporte" routerLinkActive="active" class="tab">Mesa de ayuda</a>
+    </nav>
+  </ng-container>
+  <ng-template #userNavigation>
+    <nav class="nav-tabs">
+      <a routerLink="/dashboard" routerLinkActive="active" class="tab">Dashboard</a>
+      <a routerLink="/tratamientos" routerLinkActive="active" class="tab">Tratamientos</a>
+      <a routerLink="/citas" routerLinkActive="active" class="tab">Citas</a>
+      <a routerLink="/estudios" routerLinkActive="active" class="tab">Estudios</a>
+      <a routerLink="/documentos" routerLinkActive="active" class="tab">Documentos</a>
+      <a routerLink="/soporte" routerLinkActive="active" class="tab">Soporte</a>
+    </nav>
+  </ng-template>
 
   <div class="header-right">
     <div class="user-menu">

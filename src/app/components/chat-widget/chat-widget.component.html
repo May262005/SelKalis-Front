@@ -23,9 +23,12 @@
 
         <div class="chat-messages" role="log" aria-label="Mensajes del chat" aria-live="polite">
           @for (message of mensajes(); track message.id) {
-            <article class="chat-message" [class.own-message]="message.sender_id === usuarioId">
-              <span>{{ message.sender_id === usuarioId ? 'Tú' : 'Soporte' }}</span>
-              <p>{{ message.mensaje }}</p>
+            <article class="chat-message"
+              [class.own-message]="message.sender_role === 'user' && message.sender_id === usuarioId">
+              <span>{{ message.sender_role === 'user'
+                ? (message.sender_id === usuarioId ? 'Tú' : 'Usuario')
+                : (esRespuestaAutomatica(message) ? 'Asistente automático' : 'Soporte') }}</span>
+              <p>{{ contenidoMensaje(message) }}</p>
               <time [attr.datetime]="message.created_at">{{ message.created_at | date:'shortTime' }}</time>
             </article>
           } @empty {

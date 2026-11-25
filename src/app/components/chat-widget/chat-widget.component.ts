@@ -40,6 +40,16 @@ export class ChatWidgetComponent {
     this.cargarMensajes();
   }
 
+  esRespuestaAutomatica(message: ChatMessage): boolean {
+    return message.sender_role === 'admin' && message.mensaje.startsWith('Respuesta automática: ');
+  }
+
+  contenidoMensaje(message: ChatMessage): string {
+    return this.esRespuestaAutomatica(message)
+      ? message.mensaje.slice('Respuesta automática: '.length)
+      : message.mensaje;
+  }
+
   enviar(): void {
     const mensaje = this.form.controls.mensaje.value.trim();
     if (!mensaje || this.form.invalid || this.enviando()) {
@@ -50,8 +60,8 @@ export class ChatWidgetComponent {
     this.enviando.set(true);
     this.error.set('');
     this.soporte.sendChatMessage(mensaje).subscribe({
-      next: message => {
-        this.mensajes.update(messages => [...messages, message]);
+      next: newMessages => {
+        this.mensajes.update(messages => [...messages, ...newMessages]);
         this.form.reset();
         this.enviando.set(false);
         this.mensajesCargados = true;

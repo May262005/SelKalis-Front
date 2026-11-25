@@ -336,6 +336,10 @@ button:focus-visible {
   grid-template-columns: minmax(260px, .8fr) minmax(280px, 1fr);
 }
 
+.tickets-layout-admin {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .ticket-create,
 .ticket-list,
 .ticket-detail {

@@ -3,7 +3,14 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 export type TicketStatus = 'abierto' | 'en_proceso' | 'resuelto' | 'cerrado';
-export type TicketCategory = 'tecnica';
+export type TicketCategory =
+  | 'tecnica'
+  | 'cuenta'
+  | 'citas'
+  | 'estudios'
+  | 'tratamientos'
+  | 'documentos'
+  | 'otro';
 export type SupportRole = 'user' | 'admin';
 
 export interface ChatMessage {
@@ -73,8 +80,8 @@ export class SoporteService {
     ).pipe(map(response => response.data));
   }
 
-  sendChatMessage(mensaje: string): Observable<ChatMessage> {
-    return this.http.post<ApiResponse<ChatMessage>>(
+  sendChatMessage(mensaje: string): Observable<ChatMessage[]> {
+    return this.http.post<ApiResponse<ChatMessage[]>>(
       `${this.apiUrl}/chat/mensajes`,
       { mensaje },
       { headers: this.headers() }

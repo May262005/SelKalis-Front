@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import {
   ChatMessage,
@@ -104,11 +104,12 @@ export class SoporteComponent implements OnInit {
       return;
     }
 
-    let request: Observable<ChatMessage>;
+    let request: Observable<ChatMessage[]>;
     if (this.esAdmin) {
       const conversacionId = this.conversacionSeleccionada()?.id;
       if (!conversacionId) return;
-      request = this.service.sendAdminChatMessage(conversacionId, mensaje);
+      request = this.service.sendAdminChatMessage(conversacionId, mensaje)
+        .pipe(map(adminMessage => [adminMessage]));
     } else {
       request = this.service.sendChatMessage(mensaje);
     }
@@ -116,8 +117,8 @@ export class SoporteComponent implements OnInit {
     this.enviando.set(true);
     this.error.set('');
     request.subscribe({
-      next: message => {
-        this.mensajes.update(messages => [...messages, message]);
+      next: newMessages => {
+        this.mensajes.update(messages => [...messages, ...newMessages]);
         this.chatForm.reset();
         this.enviando.set(false);
         if (this.esAdmin) this.cargarConversaciones();
@@ -127,6 +128,7 @@ export class SoporteComponent implements OnInit {
   }
 
   crearTicket(): void {
+    if (this.esAdmin) return;
     if (this.ticketForm.invalid) {
       this.ticketForm.markAllAsTouched();
       return;
@@ -202,8 +204,16 @@ export class SoporteComponent implements OnInit {
     }[status];
   }
 
-  etiquetaCategoria(_category: TicketCategory): string {
-    return 'Soporte técnico';
+  etiquetaCategoria(category: TicketCategory): string {
+    return {
+      tecnica: 'Soporte técnico',
+      cuenta: 'Cuenta y acceso',
+      citas: 'Citas',
+      estudios: 'Estudios y resultados',
+      tratamientos: 'Tratamientos y medicamentos',
+      documentos: 'Documentos',
+      otro: 'Otro'
+    }[category];
   }
 
   private cargarMensajesAdmin(conversacion: SupportConversation): void {

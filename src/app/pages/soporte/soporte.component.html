@@ -61,8 +61,8 @@
         <div class="message-list" role="log" aria-label="Mensajes del chat" aria-live="polite">
           @for (message of mensajes(); track message.id) {
             <article class="message" [class.message-own]="esMensajePropio(message.sender_id)">
-              <span class="message-author">{{ esMensajePropio(message.sender_id) ? 'Tú' : (message.sender_role === 'admin' ? 'Soporte' : 'Usuario') }}</span>
-              <p>{{ message.mensaje }}</p>
+              <span class="message-author">{{ esMensajePropio(message.sender_id) ? 'Tú' : (message.sender_role === 'admin' ? (message.mensaje.startsWith('Respuesta automática: ') ? 'Asistente automático' : 'Soporte') : 'Usuario') }}</span>
+              <p>{{ message.mensaje.replace('Respuesta automática: ', '') }}</p>
               <time [attr.datetime]="message.created_at">{{ message.created_at | date:'short' }}</time>
             </article>
           } @empty {
@@ -86,7 +86,8 @@
       </div>
     </section>
   } @else {
-    <section class="tickets-layout" aria-label="Mesa de ayuda">
+    <section class="tickets-layout" [class.tickets-layout-admin]="esAdmin" aria-label="Mesa de ayuda">
+      @if (!esAdmin) {
       <section class="ticket-create">
         <h2>Nueva incidencia</h2>
         <p>Describe el problema para que podamos darle seguimiento.</p>
@@ -98,6 +99,12 @@
           <label for="ticket-category">Categoría</label>
           <select id="ticket-category" formControlName="categoria">
             <option value="tecnica">Soporte técnico</option>
+            <option value="cuenta">Cuenta y acceso</option>
+            <option value="citas">Citas</option>
+            <option value="estudios">Estudios y resultados</option>
+            <option value="tratamientos">Tratamientos y medicamentos</option>
+            <option value="documentos">Documentos</option>
+            <option value="otro">Otro</option>
           </select>
 
           <label for="ticket-description">Descripción</label>
@@ -112,6 +119,7 @@
           </button>
         </form>
       </section>
+      }
 
       <section class="ticket-list">
         <h2>{{ esAdmin ? 'Incidencias reportadas' : 'Mis reportes' }}</h2>

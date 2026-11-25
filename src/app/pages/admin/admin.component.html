@@ -1,46 +1,12 @@
 <!-- admin/admin.component.html -->
 <div class="admin-container">
-  <!-- Header -->
-  <header class="admin-header">
-    <div class="header-left">
-      <div class="header-logo">
-        <span>Sel<span>Kalis</span></span>
-        <span class="admin-badge">Admin</span>
-      </div>
-      <h1>Panel de Administración</h1>
-      <a routerLink="/soporte" class="btn-primary">
-        <i class="fas fa-headset"></i>
-        Mesa de ayuda
-      </a>
-    </div>
-    <div class="header-right">
-      <span class="user-info">Administrador</span>
-      <button class="btn-logout" (click)="logout()">
-        <i class="fas fa-sign-out-alt"></i>
-        Salir
-      </button>
+  <header class="admin-page-heading">
+    <div>
+      <p class="eyebrow">SEL KALIS · ADMINISTRACIÓN</p>
+      <h1>Gestión de <span>usuarios</span></h1>
+      <p>Busca cuentas y administra sus roles y estados.</p>
     </div>
   </header>
-
-  <!-- Stats -->
-  <div class="admin-stats">
-    <div class="stat-card">
-      <div class="stat-number">{{ usuarios.length }}</div>
-      <div class="stat-label">Total Usuarios</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number">{{ usuarios.filter(u => u.activo).length }}</div>
-      <div class="stat-label">Usuarios Activos</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number">{{ usuarios.filter(u => !u.activo).length }}</div>
-      <div class="stat-label">Usuarios Suspendidos</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number">{{ usuarios.filter(u => u.rol === 'admin').length }}</div>
-      <div class="stat-label">Administradores</div>
-    </div>
-  </div>
 
   <!-- Controls -->
   <div class="admin-controls">

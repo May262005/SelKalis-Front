@@ -1,15 +1,13 @@
 // admin/admin.component.ts
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AdminService, Usuario } from '../../services/admin.service';
-import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.css']
 })
@@ -45,12 +43,12 @@ export class AdminComponent implements OnInit, OnDestroy {
   confirmacionNombre: string = '';
 
   // Actualización automática
-  private refreshInterval: any;
+  private refreshInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private adminService: AdminService,
     private fb: FormBuilder,
-    private router: Router
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -66,6 +64,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
     }
   }
 
@@ -85,16 +84,25 @@ export class AdminComponent implements OnInit, OnDestroy {
   cargarUsuarios(): void {
     this.loading = true;
     this.error = null;
+    this.cdr.markForCheck();
 
     this.adminService.getUsuarios().subscribe({
       next: (data: Usuario[]) => {
+        if (!Array.isArray(data)) {
+          this.error = 'El servicio devolvió una lista de usuarios no válida';
+          this.loading = false;
+          this.cdr.markForCheck();
+          return;
+        }
         this.usuarios = data;
         this.loading = false;
+        this.cdr.markForCheck();
       },
-      error: (err: { message: string; }) => {
+      error: (err: { message?: string; }) => {
         this.error = err.message || 'Error al cargar usuarios';
         this.loading = false;
         this.showToast(this.error, 'error');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -416,10 +424,4 @@ export class AdminComponent implements OnInit, OnDestroy {
     }, 4000);
   }
 
-  // Salir
-  logout(): void {
-    localStorage.removeItem('sk_token');
-    localStorage.removeItem('sk_user_data');
-    this.router.navigate(['/login']);
-  }
 }

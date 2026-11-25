@@ -11,6 +11,7 @@ import { EstudiosComponent } from './pages/estudios/estudios.component';
 import { DocumentosComponent } from './pages/documentos/documentos.component';
 import { PerfilComponent } from './pages/perfil/perfil.component';
 import { AdminComponent } from './pages/admin/admin.component';
+import { AdminDashboardComponent } from './pages/admin/admin-dashboard.component';
 import { authGuard } from './guards/auth.guard';
 import { adminGuard } from './guards/admin.guard';
 
@@ -57,7 +58,8 @@ export const routes: Routes = [
   },
 
   // Página protegida solo para administradores
-  { path: 'admin', component: AdminComponent, canActivate: [authGuard, adminGuard] },
+  { path: 'admin/usuarios', component: AdminComponent, canActivate: [authGuard, adminGuard] },
+  { path: 'admin', component: AdminDashboardComponent, pathMatch: 'full', canActivate: [authGuard, adminGuard] },
 
   // Redirección para rutas no encontradas
   { path: '**', redirectTo: '' }

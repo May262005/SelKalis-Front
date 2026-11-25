@@ -1,8 +1,43 @@
 /* admin/admin.component.css */
 .admin-container {
-  min-height: 100vh;
-  background: #F0F4F8;
-  padding: 20px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1200px;
+  min-height: calc(100vh - 80px);
+  margin: 0 auto;
+  padding: 32px 40px;
+  color: #1F3A5F;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.admin-page-heading {
+  margin-bottom: 24px;
+}
+
+.admin-page-heading .eyebrow {
+  margin: 0 0 8px;
+  color: #4A6FA5;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.admin-page-heading h1 {
+  margin: 0 0 8px;
+  color: #1F3A5F;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -.5px;
+}
+
+.admin-page-heading h1 span {
+  color: #4A6FA5;
+}
+
+.admin-page-heading p:last-child {
+  margin: 0;
+  color: #7B8CA8;
+  font-size: 15px;
 }
 
 /* ========== HEADER ========== */
@@ -237,7 +272,7 @@
   background: white;
   border-radius: 12px;
   border: 1px solid #E8EEF4;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
 }
 
@@ -275,6 +310,7 @@
 
 .admin-table {
   width: 100%;
+  min-width: 900px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -749,6 +785,14 @@
 }
 
 @media (max-width: 768px) {
+  .admin-container {
+    padding: 24px 16px;
+  }
+
+  .admin-page-heading h1 {
+    font-size: 26px;
+  }
+
   .admin-header {
     flex-direction: column;
     align-items: stretch;
